@@ -1,0 +1,52 @@
+name: EasyNCC_v1
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: easyncc_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./src:/var/www/html
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db-postgresql-ams3-58995-do-user-23429309-0.f.db.ondigitalocean.com
+      - DB_PORT=25060
+      - DB_DATABASE=defaultdb
+      - DB_USERNAME=doadmin
+      - DB_PASSWORD=AVNS_ntQNRJFhrXRZmWx_bSh
+      - DB_SSLMODE=require
+      - DB_SCHEMA=EASYNCC
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - easyncc
+
+  web:
+    image: nginx:alpine
+    container_name: easyncc_web
+    restart: unless-stopped
+    ports:
+      - "8095:80"
+    volumes:
+      - ./src:/var/www/html
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - easyncc
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: easyncc_mailhog
+    restart: unless-stopped
+    ports:
+      - "8027:8025"  # Web interface
+      - "1027:1025"  # SMTP server
+    networks:
+      - easyncc
+
+networks:
+  easyncc:

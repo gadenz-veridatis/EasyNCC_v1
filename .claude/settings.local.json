@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(docker exec:*)",
+      "Read(//Users/Odn/Documents/**)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nCrea pagine CRUD Vue.js principali per EasyNCC con pattern Dashboard\n\nAggiunte 8 pagine Vue.js responsive usando Bootstrap Vue Next e layout vertical:\n\nVEHICLES (Veicoli):\n- Vehicles/Index.vue: Lista con filtri (search, status), azioni CRUD, badge colorati\n- Vehicles/Form.vue: Form create/edit con 10 campi, validazione, toggle switch\n\nSERVICES (Servizi):\n- Services/Index.vue: Lista avanzata con filtri (search, status, date range), badge per stati, 3 azioni\n- Services/Form.vue: Form con 11 campi, select dinamici (clienti/veicoli), datetime picker\n- Services/Calendar.vue: Vista FullCalendar con eventi colorati, modal dettagli, click handler\n\nUSERS (Utenti):\n- Users/Index.vue: Lista con filtri (search, role, is_active), badge per ruoli/stato\n- Users/Form.vue: Form con 9 campi, password solo in create, toggle switch attivo\n\nCaratteristiche comuni:\n- Layout vertical.vue + PageHeader component\n- axios per API calls\n- Real-time filtering\n- Loading spinner e error handling\n- Responsive design (mobile-friendly)\n- Colori Bootstrap (soft buttons, badge colors)\n- Icone Remixicon\n- moment.js per date formatting\n- Validazione form 422 handling\n\nTotale: 1710 linee di codice, 3 moduli, pronto per backend integration\n\nGenerated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(php artisan:*)",
+      "Bash(npm run build)",
+      "Bash(npm run)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker logs easyncc_app --tail 50)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
