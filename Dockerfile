@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install -y \
 # Installa Composer
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
+# Copia la configurazione PHP personalizzata per aumentare i limiti di upload
+COPY php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+
 # Imposta la directory di lavoro
 WORKDIR /var/www/html
 

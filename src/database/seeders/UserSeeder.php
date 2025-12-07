@@ -91,12 +91,11 @@ class UserSeeder extends Seeder
 
             \App\Models\DriverProfile::create([
                 'user_id' => $driver1->id,
-                'vehicle_id' => null, // Will be assigned in VehicleSeeder
+                'assigned_vehicle_id' => null, // Will be assigned in VehicleSeeder
                 'birth_date' => '1985-03-15',
+                'fiscal_code' => 'RSSMRO85C15H501Z',
                 'hourly_rate' => 35.00,
                 'allow_overlapping' => false,
-                'license_number' => 'AB123456789IT',
-                'license_expiry_date' => '2028-03-15',
                 'notes' => 'Driver esperto con ottima esperienza nel lusso',
             ]);
 
@@ -119,12 +118,11 @@ class UserSeeder extends Seeder
 
             \App\Models\DriverProfile::create([
                 'user_id' => $driver2->id,
-                'vehicle_id' => null, // Will be assigned in VehicleSeeder
+                'assigned_vehicle_id' => null, // Will be assigned in VehicleSeeder
                 'birth_date' => '1990-07-22',
+                'fiscal_code' => 'BNCGNN90L22H501X',
                 'hourly_rate' => 32.00,
                 'allow_overlapping' => true,
-                'license_number' => 'CD987654321IT',
-                'license_expiry_date' => '2026-07-22',
                 'notes' => 'Driver affidabile e cortese',
             ]);
 

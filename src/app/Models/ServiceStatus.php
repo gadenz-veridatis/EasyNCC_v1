@@ -17,5 +17,10 @@ class ServiceStatus extends Model
         'description',
         'color_code',
         'notes',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 }

@@ -84,13 +84,15 @@
 
             <template #footer>
                 <Link
-                    :href="route('easyncc.services.show', selectedService?.id)"
+                    v-if="selectedService?.id"
+                    :href="route('easyncc.services.show', selectedService.id)"
                     class="btn btn-primary btn-sm"
                 >
                     Visualizza Dettagli
                 </Link>
                 <Link
-                    :href="route('easyncc.services.edit', selectedService?.id)"
+                    v-if="selectedService?.id"
+                    :href="route('easyncc.services.edit', selectedService.id)"
                     class="btn btn-info btn-sm ms-2"
                 >
                     Modifica
@@ -111,8 +113,7 @@ import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import moment from 'moment';
 
-// FullCalendar imports (dynamic)
-let Calendar;
+// FullCalendar instance
 let calendarInstance;
 
 const loading = ref(true);
@@ -121,13 +122,25 @@ const services = ref([]);
 const showDetailModal = ref(false);
 const selectedService = ref(null);
 
-const loadServices = async () => {
+const loadServices = async (start = null, end = null) => {
     loading.value = true;
     error.value = '';
 
     try {
-        const response = await axios.get('/api/services');
-        services.value = response.data;
+        // If no date range specified, load next 3 months
+        if (!start || !end) {
+            start = moment().startOf('month').format('YYYY-MM-DD');
+            end = moment().add(3, 'months').endOf('month').format('YYYY-MM-DD');
+        }
+
+        const response = await axios.get('/api/services', {
+            params: {
+                pickup_date_from: start,
+                pickup_date_to: end,
+                per_page: 1000 // High limit for calendar view
+            }
+        });
+        services.value = response.data.data || [];
         initializeCalendar();
     } catch (err) {
         error.value = 'Errore nel caricamento dei servizi';
@@ -140,12 +153,10 @@ const loadServices = async () => {
 const initializeCalendar = async () => {
     try {
         // Dynamically import FullCalendar
-        const { Calendar: FC } = await import('@fullcalendar/vue3');
+        const { Calendar: CalendarCore } = await import('@fullcalendar/core');
         const dayGridPlugin = (await import('@fullcalendar/daygrid')).default;
         const timeGridPlugin = (await import('@fullcalendar/timegrid')).default;
         const interactionPlugin = (await import('@fullcalendar/interaction')).default;
-
-        Calendar = FC;
 
         const events = services.value.map(service => ({
             id: service.id,
@@ -162,7 +173,7 @@ const initializeCalendar = async () => {
         // Initialize calendar
         const calendarEl = document.getElementById('calendar');
         if (calendarEl && !calendarInstance) {
-            calendarInstance = new Calendar(calendarEl, {
+            calendarInstance = new CalendarCore(calendarEl, {
                 plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
                 headerToolbar: {
                     left: 'prev,next today',

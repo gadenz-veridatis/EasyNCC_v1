@@ -13,12 +13,16 @@ class DriverProfile extends Model
 
     protected $fillable = [
         'user_id',
-        'vehicle_id',
+        'assigned_vehicle_id',
+        'profile_photo',
         'birth_date',
+        'fiscal_code',
+        'vat_number',
         'hourly_rate',
+        'bank_name',
+        'iban',
         'allow_overlapping',
-        'license_number',
-        'license_expiry_date',
+        'color',
         'notes',
     ];
 
@@ -26,7 +30,6 @@ class DriverProfile extends Model
         'birth_date' => 'date',
         'hourly_rate' => 'decimal:2',
         'allow_overlapping' => 'boolean',
-        'license_expiry_date' => 'date',
     ];
 
     // Relationships
@@ -37,7 +40,7 @@ class DriverProfile extends Model
 
     public function assignedVehicle(): BelongsTo
     {
-        return $this->belongsTo(Vehicle::class, 'vehicle_id');
+        return $this->belongsTo(Vehicle::class, 'assigned_vehicle_id');
     }
 
     public function attachments(): MorphMany

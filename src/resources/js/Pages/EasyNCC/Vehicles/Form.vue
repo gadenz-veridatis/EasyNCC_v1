@@ -5,7 +5,7 @@
         <PageHeader :title="isEdit ? 'Modifica Veicolo' : 'Nuovo Veicolo'" pageTitle="EasyNCC" />
 
         <BRow>
-            <BCol lg="8" class="mx-auto">
+            <BCol lg="12">
                 <BCard no-body>
                     <BCardHeader>
                         <h5 class="card-title mb-0">{{ isEdit ? 'Modifica Veicolo' : 'Nuovo Veicolo' }}</h5>
@@ -130,25 +130,6 @@
                                     </small>
                                 </BCol>
 
-                                <!-- Status -->
-                                <BCol md="6" class="mb-3">
-                                    <label for="status" class="form-label">Stato *</label>
-                                    <select
-                                        id="status"
-                                        v-model="form.status"
-                                        class="form-select"
-                                        :class="{ 'is-invalid': errors.status }"
-                                    >
-                                        <option value="">Seleziona uno stato</option>
-                                        <option value="attivo">Attivo</option>
-                                        <option value="manutenzione">Manutenzione</option>
-                                        <option value="inattivo">Inattivo</option>
-                                    </select>
-                                    <small v-if="errors.status" class="text-danger d-block mt-1">
-                                        {{ errors.status[0] }}
-                                    </small>
-                                </BCol>
-
                                 <!-- Allow Overlapping -->
                                 <BCol md="6" class="mb-3">
                                     <div class="form-check form-switch mt-4">
@@ -180,27 +161,34 @@
                                     </small>
                                 </BCol>
                             </BRow>
-
-                            <!-- Buttons -->
-                            <div class="mt-4">
-                                <button
-                                    type="submit"
-                                    class="btn btn-primary"
-                                    :disabled="submitting"
-                                >
-                                    <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                                    {{ isEdit ? 'Aggiorna' : 'Crea' }}
-                                </button>
-                                <Link :href="route('easyncc.vehicles.index')" class="btn btn-secondary ms-2">
-                                    Annulla
-                                </Link>
-                            </div>
-
-                            <!-- Error Message -->
-                            <div v-if="error" class="alert alert-danger mt-3" role="alert">
-                                {{ error }}
-                            </div>
                         </form>
+
+                        <!-- Vehicle Attachments (only shown when editing) -->
+                        <VehicleAttachments v-if="isEdit && props.vehicle?.id" :vehicle-id="props.vehicle.id" />
+
+                        <!-- Vehicle Unavailabilities (only shown when editing) -->
+                        <VehicleUnavailabilities v-if="isEdit && props.vehicle?.id" :vehicle-id="props.vehicle.id" />
+
+                        <!-- Buttons -->
+                        <div class="mt-4">
+                            <button
+                                @click="submitForm"
+                                type="button"
+                                class="btn btn-primary"
+                                :disabled="submitting"
+                            >
+                                <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                                {{ isEdit ? 'Aggiorna' : 'Crea' }}
+                            </button>
+                            <Link :href="route('easyncc.vehicles.index')" class="btn btn-secondary ms-2">
+                                Annulla
+                            </Link>
+                        </div>
+
+                        <!-- Error Message -->
+                        <div v-if="error" class="alert alert-danger mt-3" role="alert">
+                            {{ error }}
+                        </div>
                     </BCardBody>
                 </BCard>
             </BCol>
@@ -213,6 +201,8 @@ import { ref, onMounted } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
+import VehicleAttachments from '@/Components/ProfileFields/VehicleAttachments.vue';
+import VehicleUnavailabilities from '@/Components/ProfileFields/VehicleUnavailabilities.vue';
 import axios from 'axios';
 
 const props = defineProps({
@@ -237,7 +227,6 @@ const form = ref({
     ncc_license_number: props.vehicle?.ncc_license_number || '',
     license_city: props.vehicle?.license_city || '',
     allow_overlapping: props.vehicle?.allow_overlapping || false,
-    status: props.vehicle?.status || '',
     notes: props.vehicle?.notes || ''
 });
 

@@ -16,5 +16,10 @@ class DriverAttachmentType extends Model
         'name',
         'description',
         'notes',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 }

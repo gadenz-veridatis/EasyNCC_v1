@@ -15,18 +15,15 @@ class Vehicle extends Model
 
     protected $fillable = [
         'company_id',
-        'name',
-        'registration_number',
-        'vin',
+        'license_plate',
+        'brand',
         'model',
-        'manufacturer',
-        'year',
-        'color',
         'passenger_capacity',
-        'allow_overlapping',
         'purchase_date',
-        'fuel_type',
-        'euro_class',
+        'ncc_license_number',
+        'license_city',
+        'allow_overlapping',
+        'status',
         'notes',
     ];
 
@@ -39,11 +36,21 @@ class Vehicle extends Model
     // Relationships
     public function assignedDrivers(): HasMany
     {
-        return $this->hasMany(DriverProfile::class);
+        return $this->hasMany(DriverProfile::class, 'assigned_vehicle_id');
     }
 
     public function services(): HasMany
     {
         return $this->hasMany(Service::class);
+    }
+
+    public function vehicleAttachments(): HasMany
+    {
+        return $this->hasMany(VehicleAttachment::class);
+    }
+
+    public function unavailabilities(): HasMany
+    {
+        return $this->hasMany(VehicleUnavailability::class);
     }
 }

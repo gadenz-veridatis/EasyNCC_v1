@@ -15,20 +15,26 @@ class ServiceController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        // For list view, only load essential relationships with minimal fields
+        // This significantly reduces query time and memory usage
         $query = Service::with([
-            'vehicle',
-            'client',
-            'intermediary',
-            'supplier',
-            'dressCode',
-            'status',
-            'drivers',
-            'passengers',
-            'stops',
-            'payments',
-            'costs',
-            'company'
+            'vehicle:id,license_plate,brand,model',
+            'client:id,name,surname,email',
+            'status:id,name',
+            'company:id,name'
         ]);
+
+        // Multi-tenancy: Filter by company
+        // Super-admin can see all companies or filter by company_id
+        if ($request->user()->isSuperAdmin()) {
+            if ($request->filled('company_id')) {
+                $query->where('company_id', $request->company_id);
+            }
+            // If no company_id specified, show all services
+        } else {
+            // Other users see only their company's services
+            $query->where('company_id', $request->user()->company_id);
+        }
 
         // Filter by status
         if ($request->has('status_id')) {
@@ -53,19 +59,23 @@ class ServiceController extends Controller
         }
 
         // Filter by date range
-        if ($request->has('pickup_date_from') && $request->has('pickup_date_to')) {
+        if ($request->filled('pickup_date_from') && $request->filled('pickup_date_to')) {
             $query->whereBetween('pickup_datetime', [
                 $request->pickup_date_from . ' 00:00:00',
                 $request->pickup_date_to . ' 23:59:59'
             ]);
+        } elseif ($request->filled('pickup_date_from')) {
+            $query->where('pickup_datetime', '>=', $request->pickup_date_from . ' 00:00:00');
+        } elseif ($request->filled('pickup_date_to')) {
+            $query->where('pickup_datetime', '<=', $request->pickup_date_to . ' 23:59:59');
         }
 
         // Search
         if ($request->has('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('pickup_location', 'ilike', "%{$search}%")
-                  ->orWhere('dropoff_location', 'ilike', "%{$search}%")
+                $q->where('pickup_address', 'ilike', "%{$search}%")
+                  ->orWhere('dropoff_address', 'ilike', "%{$search}%")
                   ->orWhere('notes', 'ilike', "%{$search}%");
             });
         }
@@ -92,27 +102,82 @@ class ServiceController extends Controller
 
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
-            'vehicle_id' => 'required|exists:vehicles,id',
+            'reference_number' => 'nullable|string|max:255',
+            'service_type' => 'required|string|max:255',
+            'passenger_count' => 'required|integer|min:1',
+            'contact_name' => 'nullable|string|max:255',
+            'contact_phone' => 'nullable|string|max:255',
+            // Passengers array
+            'passengers' => 'required|array|min:1',
+            'passengers.*.surname' => 'required|string|max:255',
+            'passengers.*.name' => 'required|string|max:255',
+            'passengers.*.phone' => 'nullable|string|max:255',
+            'passengers.*.email' => 'nullable|email|max:255',
+            'passengers.*.nationality' => 'nullable|string|max:255',
+            'passengers.*.origin' => 'nullable|string|max:255',
+            'passengers.*.carrier_reference' => 'nullable|string|max:255',
+            // Counterparts
             'client_id' => 'required|exists:users,id',
             'intermediary_id' => 'nullable|exists:users,id',
             'supplier_id' => 'nullable|exists:users,id',
-            'dress_code_id' => 'nullable|exists:dress_codes,id',
-            'status_id' => 'required|exists:service_statuses,id',
-            'pickup_location' => 'required|string',
-            'pickup_datetime' => 'required|date_format:Y-m-d H:i:s|after:now',
-            'dropoff_location' => 'required|string',
-            'dropoff_datetime' => 'required|date_format:Y-m-d H:i:s|after:pickup_datetime',
-            'passenger_count' => 'required|integer|min:1',
+            // Vehicle
+            'vehicle_id' => 'required|exists:vehicles,id',
             'vehicle_not_replaceable' => 'boolean',
+            // Drivers
+            'driver_ids' => 'required|array|min:1',
+            'driver_ids.*' => 'exists:users,id',
+            'external_driver_name' => 'nullable|string|max:255',
+            'external_driver_phone' => 'nullable|string|max:255',
             'driver_not_replaceable' => 'boolean',
-            'bagagli' => 'nullable|integer|min:0',
-            'baby_seat' => 'nullable|integer|min:0',
+            // Baggage
+            'dress_code_id' => 'nullable|exists:dress_codes,id',
+            'large_luggage' => 'nullable|integer|min:0',
+            'medium_luggage' => 'nullable|integer|min:0',
+            'small_luggage' => 'nullable|integer|min:0',
+            'baby_seat_infant' => 'nullable|integer|min:0',
+            'baby_seat_standard' => 'nullable|integer|min:0',
+            'baby_seat_booster' => 'nullable|integer|min:0',
+            // Service plan
+            'pickup_datetime' => 'required|date|after:now',
+            'pickup_location' => 'required|string|max:255',
+            'pickup_address' => 'required|string',
+            'pickup_latitude' => 'nullable|string|max:255',
+            'pickup_longitude' => 'nullable|string|max:255',
+            'vehicle_departure_datetime' => 'required|date',
+            'dropoff_datetime' => 'required|date|after:pickup_datetime',
+            'dropoff_location' => 'required|string|max:255',
+            'dropoff_address' => 'required|string',
+            'dropoff_latitude' => 'nullable|string|max:255',
+            'dropoff_longitude' => 'nullable|string|max:255',
+            'vehicle_return_datetime' => 'required|date',
+            // Economics
+            'status_id' => 'required|exists:service_statuses,id',
+            'service_price' => 'nullable|numeric|min:0',
+            'vat_rate' => 'nullable|numeric|min:0|max:100',
+            'card_fees_percentage' => 'nullable|numeric|min:0|max:100',
+            'deposit_percentage' => 'nullable|numeric|min:0|max:100',
+            'deposit_amount' => 'nullable|numeric|min:0',
+            'balance_taxable' => 'nullable|numeric|min:0',
+            'balance_handling_fees' => 'nullable|numeric|min:0',
+            'balance_card_fees' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
-            'total_amount' => 'nullable|numeric|min:0',
-            'vat_amount' => 'nullable|numeric|min:0',
         ]);
 
+        // Extract passengers and driver_ids
+        $passengers = $validated['passengers'];
+        $driverIds = $validated['driver_ids'];
+        unset($validated['passengers'], $validated['driver_ids']);
+
+        // Create service
         $service = Service::create($validated);
+
+        // Attach drivers (many-to-many)
+        $service->drivers()->attach($driverIds);
+
+        // Create passengers (one-to-many)
+        foreach ($passengers as $passengerData) {
+            $service->passengers()->create($passengerData);
+        }
 
         return response()->json($service->load([
             'vehicle',
@@ -121,11 +186,14 @@ class ServiceController extends Controller
             'supplier',
             'dressCode',
             'status',
-            'drivers',
+            'drivers.driverProfile',
             'passengers',
             'stops',
             'payments',
             'costs',
+            'activities.activityType',
+            'activities.supplier',
+            'accountingTransactions',
             'company'
         ]), 201);
     }
@@ -142,11 +210,14 @@ class ServiceController extends Controller
             'supplier',
             'dressCode',
             'status',
-            'drivers',
+            'drivers.driverProfile',
             'passengers',
             'stops',
             'payments',
             'costs',
+            'activities.activityType',
+            'activities.supplier',
+            'accountingTransactions',
             'company'
         ]));
     }
@@ -163,26 +234,92 @@ class ServiceController extends Controller
 
         $validated = $request->validate([
             'company_id' => 'sometimes|exists:companies,id',
-            'vehicle_id' => 'sometimes|exists:vehicles,id',
+            'reference_number' => 'sometimes|string|max:255',
+            'service_type' => 'sometimes|string|max:255',
+            'passenger_count' => 'sometimes|integer|min:1',
+            'contact_name' => 'nullable|string|max:255',
+            'contact_phone' => 'nullable|string|max:255',
+            // Passengers array
+            'passengers' => 'sometimes|array|min:1',
+            'passengers.*.id' => 'sometimes|exists:service_passengers,id',
+            'passengers.*.surname' => 'required|string|max:255',
+            'passengers.*.name' => 'required|string|max:255',
+            'passengers.*.phone' => 'nullable|string|max:255',
+            'passengers.*.email' => 'nullable|email|max:255',
+            'passengers.*.nationality' => 'nullable|string|max:255',
+            'passengers.*.origin' => 'nullable|string|max:255',
+            'passengers.*.carrier_reference' => 'nullable|string|max:255',
+            // Counterparts
             'client_id' => 'sometimes|exists:users,id',
             'intermediary_id' => 'nullable|exists:users,id',
             'supplier_id' => 'nullable|exists:users,id',
-            'dress_code_id' => 'nullable|exists:dress_codes,id',
-            'status_id' => 'sometimes|exists:service_statuses,id',
-            'pickup_location' => 'sometimes|string',
-            'pickup_datetime' => 'sometimes|date_format:Y-m-d H:i:s',
-            'dropoff_location' => 'sometimes|string',
-            'dropoff_datetime' => 'sometimes|date_format:Y-m-d H:i:s',
-            'passenger_count' => 'sometimes|integer|min:1',
+            // Vehicle
+            'vehicle_id' => 'sometimes|exists:vehicles,id',
             'vehicle_not_replaceable' => 'boolean',
+            // Drivers
+            'driver_ids' => 'sometimes|array|min:1',
+            'driver_ids.*' => 'exists:users,id',
+            'external_driver_name' => 'nullable|string|max:255',
+            'external_driver_phone' => 'nullable|string|max:255',
             'driver_not_replaceable' => 'boolean',
-            'bagagli' => 'nullable|integer|min:0',
-            'baby_seat' => 'nullable|integer|min:0',
+            // Baggage
+            'dress_code_id' => 'nullable|exists:dress_codes,id',
+            'large_luggage' => 'nullable|integer|min:0',
+            'medium_luggage' => 'nullable|integer|min:0',
+            'small_luggage' => 'nullable|integer|min:0',
+            'baby_seat_infant' => 'nullable|integer|min:0',
+            'baby_seat_standard' => 'nullable|integer|min:0',
+            'baby_seat_booster' => 'nullable|integer|min:0',
+            // Service plan
+            'pickup_datetime' => 'sometimes|date',
+            'pickup_location' => 'sometimes|string|max:255',
+            'pickup_address' => 'sometimes|string',
+            'pickup_latitude' => 'nullable|string|max:255',
+            'pickup_longitude' => 'nullable|string|max:255',
+            'vehicle_departure_datetime' => 'sometimes|date',
+            'dropoff_datetime' => 'sometimes|date',
+            'dropoff_location' => 'sometimes|string|max:255',
+            'dropoff_address' => 'sometimes|string',
+            'dropoff_latitude' => 'nullable|string|max:255',
+            'dropoff_longitude' => 'nullable|string|max:255',
+            'vehicle_return_datetime' => 'sometimes|date',
+            // Economics
+            'status_id' => 'sometimes|exists:service_statuses,id',
+            'service_price' => 'nullable|numeric|min:0',
+            'vat_rate' => 'nullable|numeric|min:0|max:100',
+            'card_fees_percentage' => 'nullable|numeric|min:0|max:100',
+            'deposit_percentage' => 'nullable|numeric|min:0|max:100',
+            'deposit_amount' => 'nullable|numeric|min:0',
+            'balance_taxable' => 'nullable|numeric|min:0',
+            'balance_handling_fees' => 'nullable|numeric|min:0',
+            'balance_card_fees' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
-            'total_amount' => 'nullable|numeric|min:0',
-            'vat_amount' => 'nullable|numeric|min:0',
         ]);
 
+        // Handle passengers update
+        if (isset($validated['passengers'])) {
+            $passengers = $validated['passengers'];
+            unset($validated['passengers']);
+
+            // Delete existing passengers and create new ones
+            $service->passengers()->delete();
+            foreach ($passengers as $passengerData) {
+                // Remove id if present (not needed for creation)
+                unset($passengerData['id']);
+                $service->passengers()->create($passengerData);
+            }
+        }
+
+        // Handle driver_ids update
+        if (isset($validated['driver_ids'])) {
+            $driverIds = $validated['driver_ids'];
+            unset($validated['driver_ids']);
+
+            // Sync drivers (many-to-many)
+            $service->drivers()->sync($driverIds);
+        }
+
+        // Update service
         $service->update($validated);
 
         return response()->json($service->load([
@@ -192,11 +329,14 @@ class ServiceController extends Controller
             'supplier',
             'dressCode',
             'status',
-            'drivers',
+            'drivers.driverProfile',
             'passengers',
             'stops',
             'payments',
             'costs',
+            'activities.activityType',
+            'activities.supplier',
+            'accountingTransactions',
             'company'
         ]));
     }

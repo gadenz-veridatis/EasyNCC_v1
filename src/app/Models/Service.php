@@ -16,36 +16,83 @@ class Service extends Model
 
     protected $fillable = [
         'company_id',
-        'vehicle_id',
+        'reference_number',
         'client_id',
         'intermediary_id',
         'supplier_id',
-        'dress_code_id',
-        'status_id',
-        'pickup_location',
-        'pickup_datetime',
-        'dropoff_location',
-        'dropoff_datetime',
         'passenger_count',
+        'contact_name',
+        'contact_phone',
+        'service_type',
+        'vehicle_type',
+        'vehicle_id',
         'vehicle_not_replaceable',
+        'external_driver_name',
+        'external_driver_phone',
         'driver_not_replaceable',
-        'bagagli',
-        'baby_seat',
+        'dress_code_id',
+        'large_luggage',
+        'medium_luggage',
+        'small_luggage',
+        'baby_seat_infant',
+        'baby_seat_standard',
+        'baby_seat_booster',
+        'pickup_datetime',
+        'pickup_location',
+        'pickup_address',
+        'pickup_latitude',
+        'pickup_longitude',
+        'vehicle_departure_datetime',
+        'dropoff_datetime',
+        'dropoff_location',
+        'dropoff_address',
+        'dropoff_latitude',
+        'dropoff_longitude',
+        'vehicle_return_datetime',
+        'status_id',
+        'service_price',
+        'vat_rate',
+        'card_fees_percentage',
+        'deposit_percentage',
+        'deposit_amount',
+        'balance_taxable',
+        'balance_handling_fees',
+        'balance_card_fees',
+        'driver_compensation',
+        'intermediary_commission',
+        'expenses',
         'notes',
-        'total_amount',
-        'vat_amount',
     ];
 
     protected $casts = [
         'pickup_datetime' => 'datetime',
+        'vehicle_departure_datetime' => 'datetime',
         'dropoff_datetime' => 'datetime',
+        'vehicle_return_datetime' => 'datetime',
         'passenger_count' => 'integer',
         'vehicle_not_replaceable' => 'boolean',
         'driver_not_replaceable' => 'boolean',
-        'bagagli' => 'integer',
-        'baby_seat' => 'integer',
-        'total_amount' => 'decimal:2',
-        'vat_amount' => 'decimal:2',
+        'large_luggage' => 'integer',
+        'medium_luggage' => 'integer',
+        'small_luggage' => 'integer',
+        'baby_seat_infant' => 'integer',
+        'baby_seat_standard' => 'integer',
+        'baby_seat_booster' => 'integer',
+        'pickup_latitude' => 'decimal:8',
+        'pickup_longitude' => 'decimal:8',
+        'dropoff_latitude' => 'decimal:8',
+        'dropoff_longitude' => 'decimal:8',
+        'service_price' => 'decimal:2',
+        'vat_rate' => 'decimal:2',
+        'card_fees_percentage' => 'decimal:2',
+        'deposit_percentage' => 'decimal:2',
+        'deposit_amount' => 'decimal:2',
+        'balance_taxable' => 'decimal:2',
+        'balance_handling_fees' => 'decimal:2',
+        'balance_card_fees' => 'decimal:2',
+        'driver_compensation' => 'decimal:2',
+        'intermediary_commission' => 'decimal:2',
+        'expenses' => 'decimal:2',
     ];
 
     // Relationships
@@ -102,5 +149,20 @@ class Service extends Model
     public function costs(): HasMany
     {
         return $this->hasMany(ServiceCost::class);
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(Activity::class);
+    }
+
+    public function accountingTransactions(): HasMany
+    {
+        return $this->hasMany(AccountingTransaction::class);
+    }
+
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(Task::class);
     }
 }

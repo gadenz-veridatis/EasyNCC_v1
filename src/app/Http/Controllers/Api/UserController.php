@@ -15,31 +15,64 @@ class UserController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = User::with(['company', 'driverProfile', 'clientProfile', 'intermediaryProfile', 'supplierProfile']);
+        // For list view, load company, clientProfile for collaboratore users, and driverProfile for drivers
+        $query = User::with(['company:id,name', 'clientProfile:user_id,is_committente,is_fornitore', 'driverProfile:user_id,color,allow_overlapping']);
 
-        // Filter by role
-        if ($request->has('role')) {
+        // Multi-tenancy: Filter by company
+        // Super-admin can see all companies or filter by company_id
+        if ($request->user()->isSuperAdmin()) {
+            if ($request->filled('company_id')) {
+                $query->where('company_id', $request->company_id);
+            }
+            // If no company_id specified, show all users
+        } else {
+            // Other users see only their company's users
+            $query->where('company_id', $request->user()->company_id);
+        }
+
+        // Filter by role (only if not empty)
+        if ($request->filled('role')) {
             $query->where('role', $request->role);
         }
 
-        // Filter by active status
-        if ($request->has('is_active')) {
+        // Filter by active status (only if not empty)
+        if ($request->filled('is_active')) {
             $query->where('is_active', $request->boolean('is_active'));
         }
 
-        // Search on name, surname, email
-        if ($request->has('search')) {
+        // Filter by is_intermediario (only if not empty)
+        if ($request->filled('is_intermediario')) {
+            $query->where('is_intermediario', $request->boolean('is_intermediario'));
+        }
+
+        // Filter by is_committente (for collaboratore role)
+        if ($request->filled('is_committente')) {
+            $query->whereHas('clientProfile', function($q) use ($request) {
+                $q->where('is_committente', $request->boolean('is_committente'));
+            });
+        }
+
+        // Filter by is_fornitore (for collaboratore role)
+        if ($request->filled('is_fornitore')) {
+            $query->whereHas('clientProfile', function($q) use ($request) {
+                $q->where('is_fornitore', $request->boolean('is_fornitore'));
+            });
+        }
+
+        // Search on name, surname, email, username (only if not empty)
+        if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('name', 'ilike', "%{$search}%")
                   ->orWhere('surname', 'ilike', "%{$search}%")
-                  ->orWhere('email', 'ilike', "%{$search}%");
+                  ->orWhere('email', 'ilike', "%{$search}%")
+                  ->orWhere('username', 'ilike', "%{$search}%");
             });
         }
 
-        // Sorting
+        // Sorting - support both sort_order and sort_direction for compatibility
         $sortBy = $request->get('sort_by', 'created_at');
-        $sortOrder = $request->get('sort_order', 'desc');
+        $sortOrder = $request->get('sort_direction', $request->get('sort_order', 'desc'));
         $query->orderBy($sortBy, $sortOrder);
 
         // Pagination
@@ -56,11 +89,12 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
-            'role' => 'required|in:super-admin,admin,operator,driver,committente,intermediario,fornitore,passeggero',
+            'role' => 'required|in:super-admin,admin,operator,driver,collaboratore,contabilita',
             'name' => 'required|string',
             'surname' => 'required|string',
             'nickname' => 'nullable|string',
             'email' => 'required|email|unique:users,email',
+            'username' => 'required|string|unique:users,username',
             'password' => ['required', Password::defaults()],
             'address' => 'nullable|string',
             'postal_code' => 'nullable|string',
@@ -69,11 +103,23 @@ class UserController extends Controller
             'country' => 'nullable|string',
             'phone' => 'nullable|string',
             'is_active' => 'boolean',
+            'is_intermediario' => 'boolean',
+            'percentuale_commissione' => 'nullable|numeric|min:0|max:100',
+            'profile' => 'nullable|array',
         ]);
+
+        // Extract profile data
+        $profileData = $validated['profile'] ?? null;
+        unset($validated['profile']);
 
         $user = User::create($validated);
 
-        return response()->json($user->load(['company', 'driverProfile', 'clientProfile', 'intermediaryProfile', 'supplierProfile']), 201);
+        // Create role-specific profile if data provided
+        if ($profileData && $this->hasProfile($user->role)) {
+            $this->createOrUpdateProfile($user, $profileData);
+        }
+
+        return response()->json($user->load(['company', 'driverProfile', 'clientProfile', 'operatorProfile']), 201);
     }
 
     /**
@@ -86,12 +132,11 @@ class UserController extends Controller
         // Load role-specific profiles
         if ($user->isDriver()) {
             $relations[] = 'driverProfile';
+            $relations[] = 'driverAttachments';
         } elseif ($user->isClient()) {
-            $relations[] = 'clientProfile';
-        } elseif ($user->isIntermediary()) {
-            $relations[] = 'intermediaryProfile';
-        } elseif ($user->isSupplier()) {
-            $relations[] = 'supplierProfile';
+            $relations[] = 'clientProfile.businessContacts';
+        } elseif ($user->isOperator()) {
+            $relations[] = 'operatorProfile';
         }
 
         // Load services based on role
@@ -99,10 +144,6 @@ class UserController extends Controller
             $relations[] = 'driverServices';
         } elseif ($user->isClient()) {
             $relations[] = 'clientServices';
-        } elseif ($user->isIntermediary()) {
-            $relations[] = 'intermediaryServices';
-        } elseif ($user->isSupplier()) {
-            $relations[] = 'supplierServices';
         }
 
         return response()->json($user->load($relations));
@@ -115,11 +156,12 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'sometimes|exists:companies,id',
-            'role' => 'sometimes|in:super-admin,admin,operator,driver,committente,intermediario,fornitore,passeggero',
+            'role' => 'sometimes|in:super-admin,admin,operator,driver,collaboratore,contabilita',
             'name' => 'sometimes|string',
             'surname' => 'sometimes|string',
             'nickname' => 'nullable|string',
             'email' => 'sometimes|email|unique:users,email,' . $user->id,
+            'username' => 'sometimes|string|unique:users,username,' . $user->id,
             'password' => ['nullable', Password::defaults()],
             'address' => 'nullable|string',
             'postal_code' => 'nullable|string',
@@ -128,7 +170,14 @@ class UserController extends Controller
             'country' => 'nullable|string',
             'phone' => 'nullable|string',
             'is_active' => 'boolean',
+            'is_intermediario' => 'boolean',
+            'percentuale_commissione' => 'nullable|numeric|min:0|max:100',
+            'profile' => 'nullable|array',
         ]);
+
+        // Extract profile data
+        $profileData = $validated['profile'] ?? null;
+        unset($validated['profile']);
 
         // Remove null password from update
         if (isset($validated['password']) && is_null($validated['password'])) {
@@ -137,7 +186,12 @@ class UserController extends Controller
 
         $user->update($validated);
 
-        return response()->json($user->load(['company', 'driverProfile', 'clientProfile', 'intermediaryProfile', 'supplierProfile']));
+        // Update role-specific profile if data provided
+        if ($profileData && $this->hasProfile($user->role)) {
+            $this->createOrUpdateProfile($user, $profileData);
+        }
+
+        return response()->json($user->load(['company', 'driverProfile', 'clientProfile', 'operatorProfile']));
     }
 
     /**
@@ -148,5 +202,60 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'User deleted successfully'], 200);
+    }
+
+    /**
+     * Check if role has a profile
+     */
+    private function hasProfile(string $role): bool
+    {
+        return in_array($role, ['driver', 'collaboratore', 'operator']);
+    }
+
+    /**
+     * Create or update user profile based on role
+     */
+    private function createOrUpdateProfile(User $user, array $profileData): void
+    {
+        switch ($user->role) {
+            case 'driver':
+                $user->driverProfile()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    array_filter($profileData, fn($value) => $value !== null)
+                );
+                break;
+
+            case 'collaboratore':
+                // Extract business_contacts from profile data
+                $businessContacts = $profileData['business_contacts'] ?? [];
+                unset($profileData['business_contacts']);
+
+                // Update or create client profile
+                $profile = $user->clientProfile()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    array_filter($profileData, fn($value) => $value !== null)
+                );
+
+                // Sync business contacts
+                if (!empty($businessContacts)) {
+                    // Delete existing contacts
+                    $profile->businessContacts()->delete();
+
+                    // Create new contacts
+                    foreach ($businessContacts as $contact) {
+                        if (!empty($contact['name']) || !empty($contact['phone']) || !empty($contact['email'])) {
+                            $profile->businessContacts()->create($contact);
+                        }
+                    }
+                }
+                break;
+
+            case 'operator':
+                $user->operatorProfile()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    array_filter($profileData, fn($value) => $value !== null)
+                );
+                break;
+        }
     }
 }

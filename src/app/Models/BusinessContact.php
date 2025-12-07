@@ -13,9 +13,18 @@ class BusinessContact extends Model
     protected $fillable = [
         'contactable_type',
         'contactable_id',
-        'type',
-        'value',
-        'notes',
+        'name',
+        'phone',
+        'email',
+    ];
+
+    // Hide these fields when serializing to array/JSON
+    protected $hidden = [
+        'id',
+        'contactable_type',
+        'contactable_id',
+        'created_at',
+        'updated_at'
     ];
 
     // Relationships

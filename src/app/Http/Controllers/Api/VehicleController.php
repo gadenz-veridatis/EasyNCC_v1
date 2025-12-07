@@ -14,14 +14,28 @@ class VehicleController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Vehicle::with(['company', 'assignedDrivers']);
+        // For list view, load essential relationships including attachments and unavailabilities
+        $query = Vehicle::with(['company:id,name', 'vehicleAttachments', 'unavailabilities']);
 
-        // Filtri
-        if ($request->has('status')) {
+        // Multi-tenancy: Filter by company
+        // Super-admin can see all companies or filter by company_id
+        if ($request->user()->isSuperAdmin()) {
+            if ($request->filled('company_id')) {
+                $query->where('company_id', $request->company_id);
+            }
+            // If no company_id specified, show all vehicles
+        } else {
+            // Other users see only their company's vehicles
+            $query->where('company_id', $request->user()->company_id);
+        }
+
+        // Filter by status (only if not empty)
+        if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        if ($request->has('search')) {
+        // Search on license_plate, brand, model (only if not empty)
+        if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('license_plate', 'ilike', "%{$search}%")

@@ -166,7 +166,7 @@ const loadServices = async () => {
         const response = await axios.get('/api/services', {
             params: filters.value
         });
-        services.value = response.data;
+        services.value = response.data.data || [];
     } catch (err) {
         error.value = 'Errore nel caricamento dei servizi';
         console.error('Error loading services:', err);

@@ -12,11 +12,13 @@ class ServicePassenger extends Model
 
     protected $fillable = [
         'service_id',
-        'name',
         'surname',
-        'email',
+        'name',
         'phone',
-        'notes',
+        'email',
+        'nationality',
+        'origin',
+        'carrier_reference',
     ];
 
     // Relationships

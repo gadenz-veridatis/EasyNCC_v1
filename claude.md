@@ -51,12 +51,11 @@ L’entità USERS raccoglie le informazioni relative agli utenti di sistema.
 Gli utenti sono diversificati in base ai ruoli seguenti:
 ●	super-admin: ha pieno accesso a tutte le aree e funzionalità dell’applicazione
 ●	admin: accede e ha la gestione completa della sola dell’azienda cui appartiene
-●	operator: accede e ha la gestione operativa della sola azienda cui appartiene, può visualizzare tutte le pagine, modificare i dati degli utenti driver, committenti, intermediario, fornitore, passeggero.
+●	operatore: accede e ha la gestione operativa della sola azienda cui appartiene, può visualizzare tutte le pagine, modificare i dati degli utenti driver, committenti, intermediario, fornitore.
 ●	driver: accede in visualizzazione alla propria scheda descrittiva e ai servizi che gli sono stati assegnati, può visualizzare il calendario semplificato di tutti i servizi
-●	committenti: accedono in visualizzazione alla propria scheda descrittiva e ai servizi da lui acquistati
-●	intermediario: accedono in visualizzazione alla propria scheda descrittiva e ai servizi da lui intermediati
-●	fornitore: accedono in visualizzazione alla propria scheda descrittiva e ai servizi da lui acquistati
-●	passeggero: accedono in visualizzazione ai servizi di cui è passeggero
+●	collaboratori: accedono in visualizzazione alla propria scheda descrittiva e ai servizi da lui acquistati
+●	contabilità: accedono in modalità gestione all'area contabilità
+
 Ogni utente appartiene ad una sola azienda, ad esclusione degli utenti con ruolo super-admin che possono amministrare ogni azienda.
 
 Ogni utente può accedere all’applicazione facendo login con email/password
@@ -65,8 +64,9 @@ Ogni utente ha uno stato attivo/non attivo, se lo stato + impostato a non attivo
 
 Le  informazioni descrittive comuni per gli utenti di ogni ruolo sono: 
 ●	identificativo utente assegnato dal sistema in automatico, 
-●	nome (obbligatorio)
-●	cognome (obbligatorio)
+●	username (obbligatorio)
+●	nome 
+●	cognome 
 ●	nickname
 ●	indirizzo
 ●	codice postale
@@ -76,6 +76,8 @@ Le  informazioni descrittive comuni per gli utenti di ogni ruolo sono:
 ●	telefono
 ●	email (obbligatorio).
 ●	password (obbligatorio)
+●	intermediario (booleano)
+●	percentuale commissioni
 
 In base al ruolo gli utenti sono descritti da una serie di informazioni specifiche per quel ruolo, come descritto di seguito.
 
@@ -99,11 +101,13 @@ Inoltre, per ogni utente di tipo driver:
 ●	deve essere possibile allegare i documenti del conducente in formato digitale
 ●	per ogni documento allegato indicare il tipo di documento facendo riferimento a un dizionario dei documenti allegabili per i driver, secondo una lista di documenti contenuti in un dizionario come descritto nel paragrafo dal titolo Tipologia allegati driver
 
-3.2.2.3.	Utenti con ruolo COMMITTENTE
+3.2.2.3.	Utenti con ruolo COLLABORATORE
 
-Per utenti che hanno ruolo COMMITTENTE è necessario raccogliere anche le seguenti informazioni aggiuntive rispetto alla base comune a tutti gli utenti:
+Per utenti che hanno ruolo COLLABORATORE è necessario raccogliere anche le seguenti informazioni aggiuntive rispetto alla base comune a tutti gli utenti:
 ●	ragione sociale, 
-●	denominazione (alias), 
+●	denominazione (alias),
+●	committente (booleano), 
+●	fornitore (booleano),  
 ●	partita iva,  
 ●	codice fiscale
 ●	sdi
@@ -122,61 +126,6 @@ Per utenti che hanno ruolo COMMITTENTE è necessario raccogliere anche le seguen
 ●	referente aziendale + di uno
 ●	numero del referente aziendale
 ●	email referente aziendale
-
-3.2.2.4.	Utenti con ruolo INTERMEDIARIO
-
-Per utenti che hanno ruolo INTERMEDIARIO è necessario raccogliere anche le seguenti informazioni aggiuntive rispetto alla base comune a tutti gli utenti:
-●	ragione sociale, 
-●	denominazione (alias), 
-●	partita iva,  
-●	codice fiscale
-●	sdi
-●	pec
-●	indirizzo
-●	cap
-●	comune
-●	provincia
-●	nazione
-●	logo
-●	email amministrativa
-●	email operativa
-●	telefono
-●	sito web
-●	commissione
-●	referente aziendale + di uno
-●	numero del referente aziendale
-●	email referente aziendale
-
-3.2.2.5.	Utenti con ruolo FORNITORE
-
-Per utenti che hanno ruolo FORNITORE è necessario raccogliere anche le seguenti informazioni aggiuntive rispetto alla base comune a tutti gli utenti:
-●	ragione sociale, 
-●	denominazione (alias), 
-●	partita iva,  
-●	codice fiscale
-●	sdi
-●	pec
-●	indirizzo
-●	cap
-●	comune
-●	provincia
-●	nazione
-●	logo
-●	email amministrativa
-●	email operativa
-●	telefono
-●	sito web
-●	referente aziendale
-●	numero del referente aziendale
-●	email referente aziendale
-●	commissioni
-●	banca
-●	iban
-●	modalità di pagamento
-
-3.2.2.6.	Utenti con ruolo PASSEGGERO
-
-Per utenti che hanno ruolo INTERMEDIARIO non è necessario aggiungere nessun dato aggiuntivo rispetto ai dati comuni a tutti gli utenti
 
 3.2.3.	Veicoli (Mezzi)
 L’entità VEICOLI raccoglie le informazioni relative ai mezzi utilizzati dall’azienda per erogare i servizi e raccoglie le seguenti informazioni relativamente a ogni veicolo:
@@ -240,8 +189,8 @@ o	Costo
 ●	Deve essere possibile inserire nuove voci nel dizionario, cambiare quelle esistenti o cancellare una voce
 
 3.2.11.	Services (Servizi)
-L’entità SERVICES raccoglie le informazioni relative ai servizi di noleggio con conducente da erogare e raccoglie le seguenti informazioni relativamente a ogni veicolo:
-●	identificativo veicolo assegnato dal sistema in automatico
+L’entità SERVICES raccoglie le informazioni relative ai servizi di noleggio con conducente da erogare e raccoglie le seguenti informazioni relativamente a ogni servizio:
+●	identificativo servizio assegnato dal sistema in automatico
 ●	numero di passeggeri (obbligatorio)
 ●	dati dei passeggeri ( uno o più) (obbligatorio): 
 o	nome, 
@@ -307,6 +256,20 @@ o	iban fornitore (da anagrafica ma modificabile)
 ●	commissioni intermediario
 ●	spese vive
 ●	Note 
+
+3.2.12.	Activities (Attività)
+L’entità ACTIVITES raccoglie le informazioni relative alle attività erogate durante i servizi o tour, con i seguenti campi:
+●	identificativo veicolo assegnato dal sistema in automatico
+●	tipologia (proveniente dal dizionario tipologie di attività), 
+●	nome dell'attività, 
+●	fornitore (dalla lista di collaboratori con flag is_fornitore impostato a vero)
+●	ora inizio
+●	ora fine (successiva a ora inizio)
+●	costo
+●	costo per persona
+●	tipologia di pagamento (tra queste voci: INCLUSO, CLIENTE, AGENZIA, NESSUNO)
+●	note
+
 4.	Validazioni critiche
 Conflitti Temporali Quando si crea/modifica un servizio, il sistema DEVE verificare che:
 ●	Il veicolo non sia già impegnato in servizi con orari sovrapposti

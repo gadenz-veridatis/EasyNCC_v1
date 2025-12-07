@@ -18,10 +18,12 @@ class Ztl extends Model
         'city',
         'duration',
         'cost',
+        'is_active',
     ];
 
     protected $casts = [
-        'duration' => 'integer',
+        'duration' => 'float',
         'cost' => 'decimal:2',
+        'is_active' => 'boolean',
     ];
 }

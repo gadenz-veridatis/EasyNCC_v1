@@ -13,13 +13,46 @@ class ClientProfile extends Model
 
     protected $fillable = [
         'user_id',
+        'business_name',
+        'trade_name',
+        'vat_number',
+        'fiscal_code',
+        'sdi',
+        'pec',
+        'address',
+        'postal_code',
+        'city',
+        'province',
+        'country',
+        'logo',
+        'admin_email',
+        'operational_email',
+        'phone',
+        'website',
         'commission',
-        'notes',
+        'is_committente',
+        'is_fornitore',
     ];
 
     protected $casts = [
         'commission' => 'decimal:2',
+        'is_committente' => 'boolean',
+        'is_fornitore' => 'boolean',
     ];
+
+    protected $appends = ['business_contacts'];
+
+    // Accessor for business_contacts to include them in array/JSON serialization
+    public function getBusinessContactsAttribute()
+    {
+        // If the relation is already loaded, return it
+        if ($this->relationLoaded('businessContacts')) {
+            return $this->getRelation('businessContacts');
+        }
+
+        // Otherwise, load and return it
+        return $this->businessContacts()->get();
+    }
 
     // Relationships
     public function user(): BelongsTo

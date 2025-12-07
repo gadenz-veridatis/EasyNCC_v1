@@ -6,7 +6,7 @@ use Illuminate\Database\Seeder;
 use App\Models\DressCode;
 use App\Models\ServiceStatus;
 use App\Models\PaymentType;
-use App\Models\LuggageType;
+// use App\Models\LuggageType; // Not implemented yet
 use App\Models\DriverAttachmentType;
 use App\Models\VehicleAttachmentType;
 use App\Models\Ztl;
@@ -34,8 +34,9 @@ class DictionarySeeder extends Seeder
             PaymentType::create(['company_id' => $company->id, 'name' => 'Carta di Credito']);
             PaymentType::create(['company_id' => $company->id, 'name' => 'Contanti']);
 
-            LuggageType::create(['company_id' => $company->id, 'name' => 'Bagagli', 'code' => 'BAG']);
-            LuggageType::create(['company_id' => $company->id, 'name' => 'Disposizione', 'code' => 'DISPO']);
+            // LuggageType table not implemented yet
+            // LuggageType::create(['company_id' => $company->id, 'name' => 'Bagagli', 'code' => 'BAG']);
+            // LuggageType::create(['company_id' => $company->id, 'name' => 'Disposizione', 'code' => 'DISPO']);
 
             DriverAttachmentType::create(['company_id' => $company->id, 'name' => 'Antincendio']);
             DriverAttachmentType::create(['company_id' => $company->id, 'name' => 'Codice Fiscale']);

@@ -30,6 +30,7 @@ class User extends Authenticatable // implements MustVerifyEmail
         'surname',
         'nickname',
         'email',
+        'username',
         'password',
         'address',
         'postal_code',
@@ -38,6 +39,8 @@ class User extends Authenticatable // implements MustVerifyEmail
         'country',
         'phone',
         'is_active',
+        'is_intermediario',
+        'percentuale_commissione',
     ];
 
     /**
@@ -60,6 +63,8 @@ class User extends Authenticatable // implements MustVerifyEmail
     protected $casts = [
         'email_verified_at' => 'datetime',
         'is_active' => 'boolean',
+        'is_intermediario' => 'boolean',
+        'percentuale_commissione' => 'decimal:2',
         'password' => 'hashed',
     ];
 
@@ -88,32 +93,20 @@ class User extends Authenticatable // implements MustVerifyEmail
         return $this->hasOne(ClientProfile::class);
     }
 
-    public function intermediaryProfile()
+    public function operatorProfile()
     {
-        return $this->hasOne(IntermediaryProfile::class);
+        return $this->hasOne(OperatorProfile::class);
     }
 
-    public function supplierProfile()
+    public function driverAttachments()
     {
-        return $this->hasOne(SupplierProfile::class);
+        return $this->hasMany(DriverAttachment::class);
     }
 
     // Services where user is client
     public function clientServices()
     {
         return $this->hasMany(Service::class, 'client_id');
-    }
-
-    // Services where user is intermediary
-    public function intermediaryServices()
-    {
-        return $this->hasMany(Service::class, 'intermediary_id');
-    }
-
-    // Services where user is supplier
-    public function supplierServices()
-    {
-        return $this->hasMany(Service::class, 'supplier_id');
     }
 
     // Services where user is driver (many-to-many)
@@ -145,22 +138,12 @@ class User extends Authenticatable // implements MustVerifyEmail
 
     public function isClient(): bool
     {
-        return $this->role === 'committente';
+        return $this->role === 'collaboratore';
     }
 
-    public function isIntermediary(): bool
+    public function isContabilita(): bool
     {
-        return $this->role === 'intermediario';
-    }
-
-    public function isSupplier(): bool
-    {
-        return $this->role === 'fornitore';
-    }
-
-    public function isPassenger(): bool
-    {
-        return $this->role === 'passeggero';
+        return $this->role === 'contabilita';
     }
 
     public function hasRole(string $role): bool
