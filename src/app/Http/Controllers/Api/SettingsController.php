@@ -43,6 +43,8 @@ class SettingsController extends Controller
                     'deposit_reason' => null,
                     'balance_accounting_entry_id' => null,
                     'balance_reason' => null,
+                    'activity_confirmation_text' => null,
+                    'activity_confirmation_role' => null,
                 ]
             ]);
         }
@@ -65,6 +67,8 @@ class SettingsController extends Controller
             'deposit_reason' => 'nullable|string|max:255',
             'balance_accounting_entry_id' => 'nullable|exists:accounting_entries,id',
             'balance_reason' => 'nullable|string|max:255',
+            'activity_confirmation_text' => 'nullable|string',
+            'activity_confirmation_role' => 'nullable|string|in:super-admin,admin,operator,driver,collaboratore,contabilita',
         ]);
 
         $user = Auth::user();
@@ -86,6 +90,8 @@ class SettingsController extends Controller
                 'deposit_reason' => $validated['deposit_reason'] ?? null,
                 'balance_accounting_entry_id' => $validated['balance_accounting_entry_id'] ?? null,
                 'balance_reason' => $validated['balance_reason'] ?? null,
+                'activity_confirmation_text' => $validated['activity_confirmation_text'] ?? null,
+                'activity_confirmation_role' => $validated['activity_confirmation_role'] ?? null,
             ]
         );
 

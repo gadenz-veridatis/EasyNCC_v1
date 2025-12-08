@@ -169,6 +169,53 @@
                                     </BRow>
                                 </fieldset>
 
+                                <!-- Sezione Esperienze -->
+                                <fieldset class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-map-pin-line me-2"></i>Esperienze
+                                    </legend>
+
+                                    <BRow>
+                                        <!-- Testo Conferma Prenotazione Esperienza -->
+                                        <BCol md="12" class="mb-3">
+                                            <label class="form-label">
+                                                Testo Conferma Prenotazione Esperienza
+                                            </label>
+                                            <textarea
+                                                v-model="form.activity_confirmation_text"
+                                                class="form-control"
+                                                rows="3"
+                                                placeholder="Es. Confermare prenotazione {$fornitore$} per servizio {$servizio$}"
+                                            ></textarea>
+                                            <small class="text-muted">
+                                                Testo utilizzato nel Nome del Task. Segnaposto disponibili: <code>{$fornitore$}</code> e <code>{$servizio$}</code>
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+
+                                    <BRow>
+                                        <!-- Ruolo Assegnatari -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Assegna a Ruolo</label>
+                                            <select
+                                                v-model="form.activity_confirmation_role"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">Seleziona ruolo</option>
+                                                <option value="super-admin">Super Admin</option>
+                                                <option value="admin">Admin</option>
+                                                <option value="operator">Operatore</option>
+                                                <option value="driver">Driver</option>
+                                                <option value="collaboratore">Collaboratore</option>
+                                                <option value="contabilita">Contabilità</option>
+                                            </select>
+                                            <small class="text-muted">
+                                                Ruolo degli utenti a cui saranno assegnati i task di conferma prenotazione esperienza
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+                                </fieldset>
+
                                 <!-- Alert per errori -->
                                 <div v-if="errors.length > 0" class="alert alert-danger">
                                     <ul class="mb-0">
@@ -232,6 +279,8 @@ export default {
                 deposit_reason: null,
                 balance_accounting_entry_id: null,
                 balance_reason: null,
+                activity_confirmation_text: null,
+                activity_confirmation_role: null,
             },
         };
     },
@@ -286,6 +335,8 @@ export default {
                     deposit_reason: data.deposit_reason || null,
                     balance_accounting_entry_id: data.balance_accounting_entry_id || null,
                     balance_reason: data.balance_reason || null,
+                    activity_confirmation_text: data.activity_confirmation_text || null,
+                    activity_confirmation_role: data.activity_confirmation_role || null,
                 };
 
                 await this.loadAccountingEntries();

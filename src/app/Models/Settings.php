@@ -19,6 +19,8 @@ class Settings extends Model
         'deposit_reason',
         'balance_accounting_entry_id',
         'balance_reason',
+        'activity_confirmation_text',
+        'activity_confirmation_role',
     ];
 
     protected $casts = [

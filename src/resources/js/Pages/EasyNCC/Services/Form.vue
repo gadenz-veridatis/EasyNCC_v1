@@ -288,6 +288,7 @@
                                                 v-model="form.vehicle_id"
                                                 class="form-select"
                                                 required
+                                                :disabled="form.vehicle_not_replaceable"
                                             >
                                                 <option value="">Seleziona veicolo</option>
                                                 <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
@@ -339,6 +340,7 @@
                                                 id="driver_select"
                                                 class="form-select mb-3"
                                                 @change="addDriver"
+                                                :disabled="form.driver_not_replaceable"
                                             >
                                                 <option value="">Seleziona un driver da aggiungere...</option>
                                                 <option
@@ -379,6 +381,7 @@
                                                             style="font-size: 0.7rem;"
                                                             @click="removeDriver(driver.id)"
                                                             :title="`Rimuovi ${driver.name} ${driver.surname}`"
+                                                            :disabled="form.driver_not_replaceable"
                                                         ></button>
                                                     </div>
                                                 </div>
@@ -734,7 +737,7 @@
                                             </div>
 
                                             <!-- Add Activity Button -->
-                                            <div class="text-end">
+                                            <div class="text-end mb-3">
                                                 <button
                                                     type="button"
                                                     class="btn btn-sm btn-primary"
@@ -743,6 +746,27 @@
                                                     <i class="ri-add-line me-1"></i>Aggiungi Esperienza
                                                 </button>
                                             </div>
+
+                                            <!-- Conferma Prenotazioni Toggle -->
+                                            <BRow>
+                                                <BCol md="12">
+                                                    <div class="form-check form-switch">
+                                                        <input
+                                                            id="activity_confirmation_enabled"
+                                                            v-model="activityConfirmationEnabled"
+                                                            type="checkbox"
+                                                            class="form-check-input"
+                                                            @change="toggleActivityConfirmation"
+                                                        />
+                                                        <label class="form-check-label" for="activity_confirmation_enabled">
+                                                            <strong>Conferma prenotazioni</strong>
+                                                        </label>
+                                                        <small class="d-block text-muted">
+                                                            Quando attivo, crea automaticamente un task di conferma per ogni esperienza
+                                                        </small>
+                                                    </div>
+                                                </BCol>
+                                            </BRow>
                                         </div>
                                     </fieldset>
                                 </fieldset>
@@ -920,24 +944,36 @@
                                         </BCol>
                                     </BRow>
 
-                                    <!-- Bottoni Calcola Corrispettivi e Contabilizza -->
-                                    <BRow>
+                                    <!-- Bottone Calcola Corrispettivi -->
+                                    <BRow class="mb-3">
                                         <BCol md="12" class="text-end">
                                             <button
                                                 type="button"
-                                                class="btn btn-soft-success me-2"
+                                                class="btn btn-soft-success"
                                                 @click="calculateTotals"
                                             >
                                                 <i class="ri-calculator-line me-1"></i>Calcola Corrispettivi
                                             </button>
-                                            <button
-                                                type="button"
-                                                class="btn btn-soft-primary"
-                                                @click="contabilizza"
-                                                :disabled="!canContabilizza"
-                                            >
-                                                <i class="ri-file-list-line me-1"></i>Contabilizza
-                                            </button>
+                                        </BCol>
+                                    </BRow>
+
+                                    <!-- Interruttore Contabilizza il servizio -->
+                                    <BRow>
+                                        <BCol md="12">
+                                            <div class="form-check form-switch">
+                                                <input
+                                                    id="accounting_enabled"
+                                                    v-model="accountingEnabled"
+                                                    type="checkbox"
+                                                    class="form-check-input"
+                                                />
+                                                <label class="form-check-label" for="accounting_enabled">
+                                                    <strong>Contabilizza il servizio</strong>
+                                                </label>
+                                                <small class="d-block text-muted">
+                                                    Quando attivo, crea/aggiorna automaticamente i movimenti contabili di vendita (acconto e saldo) al salvataggio del servizio
+                                                </small>
+                                            </div>
                                         </BCol>
                                     </BRow>
                                 </fieldset>
@@ -1376,11 +1412,18 @@
                                 <Link :href="route('easyncc.services.index')" class="btn btn-secondary">
                                     <i class="ri-arrow-left-line me-1"></i>Annulla
                                 </Link>
-                                <button type="submit" class="btn btn-primary" :disabled="submitting">
-                                    <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                                    <i v-else class="ri-save-line me-1"></i>
-                                    {{ isEdit ? 'Aggiorna Servizio' : 'Crea Servizio' }}
-                                </button>
+                                <div>
+                                    <button type="button" class="btn btn-success me-2" :disabled="submitting" @click="saveAndStay">
+                                        <span v-if="submitting && !exitAfterSave" class="spinner-border spinner-border-sm me-2"></span>
+                                        <i v-else class="ri-save-line me-1"></i>
+                                        Salva
+                                    </button>
+                                    <button type="submit" class="btn btn-primary" :disabled="submitting">
+                                        <span v-if="submitting && exitAfterSave" class="spinner-border spinner-border-sm me-2"></span>
+                                        <i v-else class="ri-save-line me-1"></i>
+                                        Salva ed Esci
+                                    </button>
+                                </div>
                             </div>
                         </BCardFooter>
                     </BCard>
@@ -1984,6 +2027,7 @@ const props = defineProps({
 const isEdit = computed(() => !!props.service);
 const loading = ref(false);
 const submitting = ref(false);
+const exitAfterSave = ref(true); // Default: Salva ed Esci
 const showActivityModal = ref(false);
 const showTransactionModal = ref(false);
 const showTaskModal = ref(false);
@@ -2008,6 +2052,8 @@ const serviceTasks = ref([]);
 const taskAssignableUsers = ref([]);
 const taskSaving = ref(false);
 const taskErrors = ref([]);
+const activityConfirmationEnabled = ref(false);
+const accountingEnabled = ref(false);
 
 // Combined list for counterparts in transactions
 const allCounterparts = computed(() => {
@@ -2703,6 +2749,7 @@ const saveActivity = async () => {
 
     try {
         const payload = {
+            company_id: form.value.company_id,
             service_id: props.service.id,
             name: activityForm.value.name,
             activity_type_id: activityForm.value.activity_type_id || null,
@@ -3417,6 +3464,227 @@ const deleteTask = async (taskId) => {
     }
 };
 
+// Activity Confirmation Tasks Management
+// Toggle only changes the state, actual creation/deletion happens on save
+const toggleActivityConfirmation = () => {
+    // Nothing happens here - changes will be applied on save
+};
+
+const createActivityConfirmationTasks = async () => {
+    // Validate settings
+    if (!settings.value || !settings.value.activity_confirmation_text || !settings.value.activity_confirmation_role) {
+        console.warn('Activity confirmation settings not configured');
+        return false;
+    }
+
+    // Validate activities exist
+    if (!form.value.activities || form.value.activities.length === 0) {
+        console.warn('No activities to create confirmation tasks for');
+        return false;
+    }
+
+    try {
+        // Get users with the specified role for this company
+        const response = await axios.get('/api/users', {
+            params: {
+                role: settings.value.activity_confirmation_role,
+                company_id: form.value.company_id,
+                per_page: 100
+            }
+        });
+
+        const assignableUsers = response.data.data || [];
+        if (assignableUsers.length === 0) {
+            console.warn(`No users with role "${settings.value.activity_confirmation_role}" found`);
+            return false;
+        }
+
+        const userIds = assignableUsers.map(u => u.id);
+
+        // Calculate due date (day before pickup)
+        const pickupDate = moment(form.value.pickup_datetime);
+        const dueDate = pickupDate.subtract(1, 'days').format('YYYY-MM-DD');
+
+        // Create a task for each activity
+        for (const activity of form.value.activities) {
+            // Get supplier name
+            const supplier = activity.supplier
+                ? `${activity.supplier.name} ${activity.supplier.surname || ''}`.trim()
+                : 'Fornitore non specificato';
+
+            // Get service reference
+            const serviceRef = form.value.reference_number || `Servizio #${props.service.id}`;
+
+            // Replace placeholders in confirmation text
+            let taskName = settings.value.activity_confirmation_text
+                .replace('{$fornitore$}', supplier)
+                .replace('{$servizio$}', serviceRef);
+
+            // Create task
+            await axios.post('/api/tasks', {
+                company_id: form.value.company_id,
+                name: taskName,
+                service_id: props.service.id,
+                due_date: dueDate,
+                assigned_users: userIds,
+                status: 'to_complete',
+                notes: `Task di conferma automatico per l'esperienza: ${activity.name}`
+            });
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error creating activity confirmation tasks:', error);
+        return false;
+    }
+};
+
+const removeActivityConfirmationTasks = async () => {
+    try {
+        // Find all tasks that are activity confirmation tasks
+        // They contain the note "Task di conferma automatico per l'esperienza:"
+        const confirmationTasks = serviceTasks.value.filter(task =>
+            task.notes && task.notes.includes('Task di conferma automatico per l\'esperienza:')
+        );
+
+        if (confirmationTasks.length === 0) {
+            console.warn('No confirmation tasks to remove');
+            return false;
+        }
+
+        // Delete all confirmation tasks
+        for (const task of confirmationTasks) {
+            await axios.delete(`/api/tasks/${task.id}`);
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error removing activity confirmation tasks:', error);
+        return false;
+    }
+};
+
+// Process accounting transactions (create or update)
+const processAccountingTransactions = async () => {
+    if (!form.value.client_id) {
+        console.warn('No client selected for accounting');
+        return false;
+    }
+
+    if (!settings.value) {
+        console.warn('Settings not available for accounting');
+        return false;
+    }
+
+    try {
+        const today = moment().format('YYYY-MM-DD');
+        const clientId = form.value.client_id;
+        const serviceId = props.service.id;
+
+        // Handle Acconto (deposit)
+        if (form.value.deposit_amount && form.value.deposit_amount > 0) {
+            const existingAcconto = form.value.accounting_transactions.find(
+                t => t.transaction_type === 'sale' && t.installment === 'deposit'
+            );
+
+            const accontoPayload = {
+                service_id: serviceId,
+                transaction_date: today,
+                amount: form.value.deposit_amount,
+                transaction_type: 'sale',
+                installment: 'deposit',
+                accounting_entry_id: settings.value.deposit_accounting_entry_id,
+                counterpart_id: clientId,
+                document_number: null,
+                document_due_date: null,
+                payment_date: null,
+                payment_type: 'carta_di_credito',
+                payment_reason: settings.value.deposit_reason,
+                iban: null,
+                status: 'to_collect',
+                notes: null
+            };
+
+            if (existingAcconto) {
+                // Update existing acconto
+                await axios.put(`/api/accounting-transactions/${existingAcconto.id}`, accontoPayload);
+            } else {
+                // Create new acconto
+                await axios.post('/api/accounting-transactions', accontoPayload);
+            }
+        }
+
+        // Handle Saldo (balance)
+        if (form.value.balance_taxable && form.value.balance_taxable > 0) {
+            const existingSaldo = form.value.accounting_transactions.find(
+                t => t.transaction_type === 'sale' && t.installment === 'balance'
+            );
+
+            const saldoPayload = {
+                service_id: serviceId,
+                transaction_date: today,
+                amount: form.value.balance_taxable,
+                transaction_type: 'sale',
+                installment: 'balance',
+                accounting_entry_id: settings.value.balance_accounting_entry_id,
+                counterpart_id: clientId,
+                document_number: null,
+                document_due_date: null,
+                payment_date: null,
+                payment_type: 'contanti',
+                payment_reason: settings.value.balance_reason,
+                iban: null,
+                status: 'to_collect',
+                notes: null
+            };
+
+            if (existingSaldo) {
+                // Update existing saldo
+                await axios.put(`/api/accounting-transactions/${existingSaldo.id}`, saldoPayload);
+            } else {
+                // Create new saldo
+                await axios.post('/api/accounting-transactions', saldoPayload);
+            }
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error processing accounting transactions:', error);
+        return false;
+    }
+};
+
+// Remove sale accounting transactions (deposit and balance)
+const removeAccountingTransactions = async () => {
+    try {
+        // Find sale transactions (deposit and balance)
+        const saleTransactions = form.value.accounting_transactions.filter(
+            t => t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance')
+        );
+
+        if (saleTransactions.length === 0) {
+            console.warn('No sale transactions to remove');
+            return false;
+        }
+
+        // Delete all sale transactions
+        for (const transaction of saleTransactions) {
+            await axios.delete(`/api/accounting-transactions/${transaction.id}`);
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error removing accounting transactions:', error);
+        return false;
+    }
+};
+
+// Function to handle "Salva" button (save and stay)
+const saveAndStay = async () => {
+    exitAfterSave.value = false;
+    await submitForm();
+};
+
 const submitForm = async () => {
     submitting.value = true;
     try {
@@ -3424,8 +3692,54 @@ const submitForm = async () => {
         const url = isEdit.value ? `/api/services/${props.service.id}` : '/api/services';
         const method = isEdit.value ? 'put' : 'post';
 
-        await axios[method](url, payload);
-        router.visit(route('easyncc.services.index'));
+        const response = await axios[method](url, payload);
+        const savedServiceId = response.data.data?.id || props.service?.id;
+
+        // Handle activity confirmation tasks after successful save (only for edit mode)
+        if (isEdit.value && props.service) {
+            // Check if confirmation tasks already exist
+            const hasConfirmationTasks = serviceTasks.value.some(task =>
+                task.notes && task.notes.includes('Task di conferma automatico per l\'esperienza:')
+            );
+
+            if (activityConfirmationEnabled.value && !hasConfirmationTasks) {
+                // Toggle is ON and no tasks exist - create them
+                await createActivityConfirmationTasks();
+            } else if (!activityConfirmationEnabled.value && hasConfirmationTasks) {
+                // Toggle is OFF and tasks exist - delete them
+                await removeActivityConfirmationTasks();
+            }
+
+            // Handle accounting transactions after successful save
+            const hasSaleTransactions = form.value.accounting_transactions.some(
+                t => t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance')
+            );
+
+            if (accountingEnabled.value && !hasSaleTransactions) {
+                // Toggle is ON and no sale transactions exist - create them
+                await processAccountingTransactions();
+            } else if (accountingEnabled.value && hasSaleTransactions) {
+                // Toggle is ON and sale transactions exist - update them
+                await processAccountingTransactions();
+            } else if (!accountingEnabled.value && hasSaleTransactions) {
+                // Toggle is OFF and sale transactions exist - delete them
+                await removeAccountingTransactions();
+            }
+        }
+
+        // Decide where to go based on exitAfterSave flag
+        if (exitAfterSave.value) {
+            // Salva ed Esci: go to services list
+            router.visit(route('easyncc.services.index'));
+        } else {
+            // Salva: reload current page
+            if (isEdit.value) {
+                router.visit(route('easyncc.services.edit', savedServiceId));
+            } else {
+                // If creating new service, redirect to edit page
+                router.visit(route('easyncc.services.edit', savedServiceId));
+            }
+        }
     } catch (error) {
         console.error('Error submitting form:', error);
 
@@ -3449,6 +3763,7 @@ const submitForm = async () => {
         }
     } finally {
         submitting.value = false;
+        exitAfterSave.value = true; // Reset to default for next save
     }
 };
 
