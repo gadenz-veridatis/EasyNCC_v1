@@ -15,6 +15,12 @@ localStorage.setItem('hoverd', false);
  */
 export default {
   components: { NavBar, RightBar, Footer, simplebar, Menu, Link },
+  props: {
+    collapsedSidebar: {
+      type: Boolean,
+      default: false
+    }
+  },
   data() {
     return {
       isMenuCondensed: false,
@@ -82,7 +88,11 @@ export default {
 
   },
   mounted() {
-    if (localStorage.getItem('hoverd') == 'true') {
+    // Se collapsedSidebar è true, imposta il menu come collassato
+    if (this.collapsedSidebar) {
+      document.documentElement.setAttribute('data-sidebar-size', 'sm-hover');
+      document.body.classList.add('vertical-collpsed');
+    } else if (localStorage.getItem('hoverd') == 'true') {
       document.documentElement.setAttribute('data-sidebar-size', 'sm-hover-active');
     }
 

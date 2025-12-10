@@ -15,14 +15,38 @@ class ServiceController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        // For list view, only load essential relationships with minimal fields
-        // This significantly reduces query time and memory usage
-        $query = Service::with([
+        // For list view, load essential relationships with minimal fields
+        // If with_counts is requested, load additional relationships for counts
+        $relationships = [
             'vehicle:id,license_plate,brand,model',
             'client:id,name,surname,email',
+            'intermediary:id,name,surname,email',
             'status:id,name',
-            'company:id,name'
-        ]);
+            'company:id,name',
+            'drivers.driverProfile:user_id,color',
+            'dressCode:id,name'
+        ];
+
+        if ($request->filled('with_counts') && $request->with_counts) {
+            $relationships[] = 'accountingTransactions:id,service_id';
+            $relationships[] = 'tasks:id,service_id,status';
+            $relationships[] = 'activities.activityType:id,name';
+            $relationships[] = 'activities.supplier:id,name';
+            $relationships[] = 'passengers:id,service_id,name,surname';
+        }
+
+        $query = Service::with($relationships);
+
+        // Add counts for notifications
+        if ($request->filled('with_counts') && $request->with_counts) {
+            $query->withCount([
+                'accountingTransactions',
+                'tasks',
+                'tasks as incomplete_tasks_count' => function ($query) {
+                    $query->where('status', '!=', 'completed');
+                }
+            ]);
+        }
 
         // Multi-tenancy: Filter by company
         // Super-admin can see all companies or filter by company_id
@@ -37,28 +61,43 @@ class ServiceController extends Controller
         }
 
         // Filter by status
-        if ($request->has('status_id')) {
+        if ($request->filled('status_id')) {
             $query->where('status_id', $request->status_id);
         }
 
         // Filter by vehicle
-        if ($request->has('vehicle_id')) {
+        if ($request->filled('vehicle_id')) {
             $query->where('vehicle_id', $request->vehicle_id);
         }
 
         // Filter by client
-        if ($request->has('client_id')) {
+        if ($request->filled('client_id')) {
             $query->where('client_id', $request->client_id);
         }
 
+        // Filter by intermediary
+        if ($request->filled('intermediary_id')) {
+            $query->where('intermediary_id', $request->intermediary_id);
+        }
+
+        // Filter by service type (stored as string)
+        if ($request->filled('service_type_id')) {
+            $query->where('service_type', $request->service_type_id);
+        }
+
         // Filter by driver (many-to-many)
-        if ($request->has('driver_id')) {
-            $query->whereHas('drivers', function($q) {
-                $q->where('service_driver.user_id', request('driver_id'));
+        if ($request->filled('driver_id')) {
+            $query->whereHas('drivers', function($q) use ($request) {
+                $q->where('service_driver.user_id', $request->driver_id);
             });
         }
 
-        // Filter by date range
+        // Filter by reference name (contact_name)
+        if ($request->filled('reference_name')) {
+            $query->where('contact_name', 'ilike', '%' . $request->reference_name . '%');
+        }
+
+        // Filter by pickup date range
         if ($request->filled('pickup_date_from') && $request->filled('pickup_date_to')) {
             $query->whereBetween('pickup_datetime', [
                 $request->pickup_date_from . ' 00:00:00',
@@ -70,8 +109,20 @@ class ServiceController extends Controller
             $query->where('pickup_datetime', '<=', $request->pickup_date_to . ' 23:59:59');
         }
 
+        // Filter by dropoff date range
+        if ($request->filled('dropoff_date_from') && $request->filled('dropoff_date_to')) {
+            $query->whereBetween('dropoff_datetime', [
+                $request->dropoff_date_from . ' 00:00:00',
+                $request->dropoff_date_to . ' 23:59:59'
+            ]);
+        } elseif ($request->filled('dropoff_date_from')) {
+            $query->where('dropoff_datetime', '>=', $request->dropoff_date_from . ' 00:00:00');
+        } elseif ($request->filled('dropoff_date_to')) {
+            $query->where('dropoff_datetime', '<=', $request->dropoff_date_to . ' 23:59:59');
+        }
+
         // Search
-        if ($request->has('search')) {
+        if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('pickup_address', 'ilike', "%{$search}%")
