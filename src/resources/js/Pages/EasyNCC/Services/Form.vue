@@ -164,11 +164,15 @@
                                             </BCol>
                                             <BCol md="4" class="mb-2">
                                                 <label class="form-label">Nazionalità</label>
-                                                <input
+                                                <select
                                                     v-model="passenger.nationality"
-                                                    type="text"
-                                                    class="form-control form-control-sm"
-                                                />
+                                                    class="form-select form-select-sm"
+                                                >
+                                                    <option value="">Seleziona nazionalità</option>
+                                                    <option v-for="country in countries" :key="country.code" :value="country.name">
+                                                        {{ country.flag }} {{ country.name }}
+                                                    </option>
+                                                </select>
                                             </BCol>
                                             <BCol md="4" class="mb-2">
                                                 <label class="form-label">Provenienza</label>
@@ -2046,6 +2050,64 @@ const dressCodes = ref([]);
 const serviceStatuses = ref([]);
 const serviceTypes = ref([]);
 const activityTypes = ref([]);
+
+// Countries list with flags for nationality selector
+const countries = ref([
+    { code: 'IT', name: 'Italia', flag: '🇮🇹' },
+    { code: 'US', name: 'Stati Uniti', flag: '🇺🇸' },
+    { code: 'GB', name: 'Regno Unito', flag: '🇬🇧' },
+    { code: 'DE', name: 'Germania', flag: '🇩🇪' },
+    { code: 'FR', name: 'Francia', flag: '🇫🇷' },
+    { code: 'ES', name: 'Spagna', flag: '🇪🇸' },
+    { code: 'PT', name: 'Portogallo', flag: '🇵🇹' },
+    { code: 'NL', name: 'Paesi Bassi', flag: '🇳🇱' },
+    { code: 'BE', name: 'Belgio', flag: '🇧🇪' },
+    { code: 'CH', name: 'Svizzera', flag: '🇨🇭' },
+    { code: 'AT', name: 'Austria', flag: '🇦🇹' },
+    { code: 'PL', name: 'Polonia', flag: '🇵🇱' },
+    { code: 'SE', name: 'Svezia', flag: '🇸🇪' },
+    { code: 'NO', name: 'Norvegia', flag: '🇳🇴' },
+    { code: 'DK', name: 'Danimarca', flag: '🇩🇰' },
+    { code: 'FI', name: 'Finlandia', flag: '🇫🇮' },
+    { code: 'IE', name: 'Irlanda', flag: '🇮🇪' },
+    { code: 'GR', name: 'Grecia', flag: '🇬🇷' },
+    { code: 'CZ', name: 'Repubblica Ceca', flag: '🇨🇿' },
+    { code: 'HU', name: 'Ungheria', flag: '🇭🇺' },
+    { code: 'RO', name: 'Romania', flag: '🇷🇴' },
+    { code: 'BG', name: 'Bulgaria', flag: '🇧🇬' },
+    { code: 'HR', name: 'Croazia', flag: '🇭🇷' },
+    { code: 'SK', name: 'Slovacchia', flag: '🇸🇰' },
+    { code: 'SI', name: 'Slovenia', flag: '🇸🇮' },
+    { code: 'LT', name: 'Lituania', flag: '🇱🇹' },
+    { code: 'LV', name: 'Lettonia', flag: '🇱🇻' },
+    { code: 'EE', name: 'Estonia', flag: '🇪🇪' },
+    { code: 'JP', name: 'Giappone', flag: '🇯🇵' },
+    { code: 'CN', name: 'Cina', flag: '🇨🇳' },
+    { code: 'KR', name: 'Corea del Sud', flag: '🇰🇷' },
+    { code: 'IN', name: 'India', flag: '🇮🇳' },
+    { code: 'BR', name: 'Brasile', flag: '🇧🇷' },
+    { code: 'AR', name: 'Argentina', flag: '🇦🇷' },
+    { code: 'MX', name: 'Messico', flag: '🇲🇽' },
+    { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+    { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+    { code: 'NZ', name: 'Nuova Zelanda', flag: '🇳🇿' },
+    { code: 'ZA', name: 'Sudafrica', flag: '🇿🇦' },
+    { code: 'RU', name: 'Russia', flag: '🇷🇺' },
+    { code: 'TR', name: 'Turchia', flag: '🇹🇷' },
+    { code: 'SA', name: 'Arabia Saudita', flag: '🇸🇦' },
+    { code: 'AE', name: 'Emirati Arabi Uniti', flag: '🇦🇪' },
+    { code: 'IL', name: 'Israele', flag: '🇮🇱' },
+    { code: 'EG', name: 'Egitto', flag: '🇪🇬' },
+    { code: 'MA', name: 'Marocco', flag: '🇲🇦' },
+    { code: 'NG', name: 'Nigeria', flag: '🇳🇬' },
+    { code: 'KE', name: 'Kenya', flag: '🇰🇪' },
+    { code: 'TH', name: 'Tailandia', flag: '🇹🇭' },
+    { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
+    { code: 'MY', name: 'Malesia', flag: '🇲🇾' },
+    { code: 'ID', name: 'Indonesia', flag: '🇮🇩' },
+    { code: 'PH', name: 'Filippine', flag: '🇵🇭' },
+    { code: 'VN', name: 'Vietnam', flag: '🇻🇳' },
+]);
 
 // Tasks
 const serviceTasks = ref([]);

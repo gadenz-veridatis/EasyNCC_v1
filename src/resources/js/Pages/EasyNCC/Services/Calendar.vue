@@ -43,9 +43,7 @@
             :style="hoverPopoverStyle"
         >
             <div class="hover-popover-content">
-                <div class="fw-bold">{{ formatTime(hoverService.pickup_datetime) }} - {{ hoverService.contact_name }}</div>
-                <div class="small">{{ hoverService.passenger_count }} pax</div>
-                <div class="small" v-if="hoverService.client">{{ hoverService.client.name }} {{ hoverService.client.surname }}</div>
+                <div class="fw-bold">{{ getHoverEventTitle(hoverService) }}</div>
             </div>
         </div>
 
@@ -209,15 +207,24 @@ const initializeCalendar = async () => {
             const contactName = service.contact_name || '';
             const passengerCount = service.passenger_count || 0;
             const clientName = service.client ? `${service.client.name || ''} ${service.client.surname || ''}`.trim() : '';
+            const serviceType = service.service_type || '';
 
-            // Costruisci il titolo dell'evento multilinea
-            const titleLines = [
-                `${pickupTime} - ${contactName}`,
+            // Capitalizza la prima parola del nome di riferimento
+            const capitalizedContactName = contactName ?
+                contactName.split(' ').map((word, index) =>
+                    index === 0 ? word.toUpperCase() : word
+                ).join(' ') : '';
+
+            // Costruisci il titolo dell'evento: ORA | TIPO | PAX | NOME | COMMITTENTE
+            const titleParts = [
+                pickupTime,
+                serviceType,
                 `${passengerCount} pax`,
+                capitalizedContactName,
                 clientName
-            ].filter(line => line.trim() && line !== 'pax' && line !== '0 pax');
+            ].filter(part => part && part.trim());
 
-            const title = titleLines.join('\n');
+            const title = titleParts.join(' | ');
 
             // Gestisci i colori per i driver
             let backgroundColor, borderColor;
@@ -421,6 +428,31 @@ const formatCurrency = (value) => {
     return value ? parseFloat(value).toFixed(2) : '0.00';
 };
 
+const getHoverEventTitle = (service) => {
+    const pickupTime = moment(service.pickup_datetime).format('HH:mm');
+    const contactName = service.contact_name || '';
+    const passengerCount = service.passenger_count || 0;
+    const clientName = service.client ? `${service.client.name || ''} ${service.client.surname || ''}`.trim() : '';
+    const serviceType = service.service_type || '';
+
+    // Capitalizza la prima parola del nome di riferimento
+    const capitalizedContactName = contactName ?
+        contactName.split(' ').map((word, index) =>
+            index === 0 ? word.toUpperCase() : word
+        ).join(' ') : '';
+
+    // Costruisci il titolo: ORA | TIPO | PAX | NOME | COMMITTENTE
+    const titleParts = [
+        pickupTime,
+        serviceType,
+        `${passengerCount} pax`,
+        capitalizedContactName,
+        clientName
+    ].filter(part => part && part.trim());
+
+    return titleParts.join(' | ');
+};
+
 // Chiudi il popover quando si clicca fuori
 const handleClickOutside = (event) => {
     if (showDetailPopover.value && popoverEl.value && !popoverEl.value.contains(event.target)) {
@@ -515,8 +547,8 @@ onUnmounted(() => {
 /* Hover Popover */
 .hover-popover {
     width: 250px;
-    background: rgba(64, 81, 137, 0.95);
-    color: #fff;
+    background: rgba(220, 220, 220, 0.95);
+    color: #333;
     border-radius: 0.375rem;
     box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.2);
     pointer-events: none;

@@ -19,8 +19,9 @@ class ServiceController extends Controller
         // If with_counts is requested, load additional relationships for counts
         $relationships = [
             'vehicle:id,license_plate,brand,model',
-            'client:id,name,surname,email',
-            'intermediary:id,name,surname,email',
+            'client:id,name,surname,email,phone',
+            'intermediary:id,name,surname,email,phone',
+            'supplier:id,name,surname',
             'status:id,name',
             'company:id,name',
             'drivers.driverProfile:user_id,color',
@@ -32,7 +33,7 @@ class ServiceController extends Controller
             $relationships[] = 'tasks:id,service_id,status';
             $relationships[] = 'activities.activityType:id,name';
             $relationships[] = 'activities.supplier:id,name';
-            $relationships[] = 'passengers:id,service_id,name,surname';
+            $relationships[] = 'passengers:id,service_id,name,surname,phone,origin,nationality';
         }
 
         $query = Service::with($relationships);
@@ -60,9 +61,13 @@ class ServiceController extends Controller
             $query->where('company_id', $request->user()->company_id);
         }
 
-        // Filter by status
+        // Filter by status (by ID or by name)
         if ($request->filled('status_id')) {
             $query->where('status_id', $request->status_id);
+        } elseif ($request->filled('status')) {
+            $query->whereHas('status', function($q) use ($request) {
+                $q->where('name', $request->status);
+            });
         }
 
         // Filter by vehicle
@@ -269,6 +274,7 @@ class ServiceController extends Controller
             'activities.activityType',
             'activities.supplier',
             'accountingTransactions',
+            'tasks.assignedUsers',
             'company'
         ]));
     }

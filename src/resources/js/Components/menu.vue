@@ -179,8 +179,9 @@ export default {
 
     <template v-if="layoutType === 'vertical' || layoutType === 'semibox'">
       <ul class="navbar-nav h-100" id="navbar-nav">
+        <!-- SERVIZI -->
         <li class="menu-title">
-          <span data-key="t-menu">Menu</span>
+          <span data-key="t-menu">Servizi</span>
         </li>
 
         <!-- Dashboard -->
@@ -191,20 +192,22 @@ export default {
           </Link>
         </li>
 
-        <!-- Utenti -->
+        <!-- Lista Servizi -->
         <li class="nav-item">
-          <Link href="/easyncc/users" class="nav-link menu-link">
-            <i class="ri-user-line"></i>
-            <span>Utenti</span>
+          <Link href="/easyncc/services" class="nav-link menu-link">
+            <i class="ri-list-check"></i>
+            <span>Lista</span>
           </Link>
         </li>
-        <!-- Veicoli -->
+
+        <!-- Calendario -->
         <li class="nav-item">
-          <Link href="/easyncc/vehicles" class="nav-link menu-link">
-            <i class="ri-car-line"></i>
-            <span>Veicoli</span>
+          <Link href="/easyncc/services/calendar" class="nav-link menu-link">
+            <i class="ri-calendar-line"></i>
+            <span>Calendario</span>
           </Link>
         </li>
+
         <!-- Esperienze -->
         <li class="nav-item">
           <Link href="/easyncc/activities" class="nav-link menu-link">
@@ -212,35 +215,19 @@ export default {
             <span>Esperienze</span>
           </Link>
         </li>
+
+        <!-- AMMINISTRAZIONE -->
+        <li class="menu-title">
+          <i class="ri-more-fill"></i>
+          <span data-key="t-administration">Amministrazione</span>
+        </li>
+
         <!-- Task -->
         <li class="nav-item">
           <Link href="/easyncc/tasks" class="nav-link menu-link">
             <i class="ri-task-line"></i>
             <span>Task</span>
           </Link>
-        </li>
-
-        <!-- Servizi -->
-        <li class="nav-item">
-          <a class="nav-link menu-link" href="#sidebarServices" data-bs-toggle="collapse" role="button" aria-expanded="false"
-            aria-controls="sidebarServices">
-            <i class="ri-service-line"></i>
-            <span>Servizi</span>
-          </a>
-          <div class="collapse menu-dropdown" id="sidebarServices">
-            <ul class="nav nav-sm flex-column">
-              <li class="nav-item">
-                <Link href="/easyncc/services" class="nav-link">
-                  Lista Servizi
-                </Link>
-              </li>
-              <li class="nav-item">
-                <Link href="/easyncc/services/calendar" class="nav-link">
-                  Calendario
-                </Link>
-              </li>
-            </ul>
-          </div>
         </li>
 
         <!-- Contabilità -->
@@ -251,17 +238,40 @@ export default {
           </Link>
         </li>
 
+        <!-- ANAGRAFICHE -->
         <li class="menu-title">
           <i class="ri-more-fill"></i>
-          <span>Configurazione</span>
+          <span data-key="t-registries">Anagrafiche</span>
         </li>
 
-        <!-- Settings (solo per admin e super-admin) -->
-        <li class="nav-item" v-if="$page.props.auth?.user?.role === 'admin' || $page.props.auth?.user?.role === 'super-admin'">
-          <Link href="/easyncc/settings" class="nav-link menu-link">
-            <i class="ri-settings-3-line"></i>
-            <span>Impostazioni</span>
+        <!-- Utenti -->
+        <li class="nav-item">
+          <Link href="/easyncc/users" class="nav-link menu-link">
+            <i class="ri-user-line"></i>
+            <span>Utenti</span>
           </Link>
+        </li>
+
+        <!-- Veicoli -->
+        <li class="nav-item">
+          <Link href="/easyncc/vehicles" class="nav-link menu-link">
+            <i class="ri-car-line"></i>
+            <span>Veicoli</span>
+          </Link>
+        </li>
+
+        <!-- Aziende (solo per super-admin) -->
+        <li class="nav-item" v-if="$page.props.auth?.user?.role === 'super-admin'">
+          <Link href="/easyncc/companies" class="nav-link menu-link">
+            <i class="ri-building-line"></i>
+            <span>Aziende</span>
+          </Link>
+        </li>
+
+        <!-- CONFIGURAZIONE -->
+        <li class="menu-title">
+          <i class="ri-more-fill"></i>
+          <span data-key="t-configuration">Configurazione</span>
         </li>
 
         <!-- Dizionari -->
@@ -322,11 +332,11 @@ export default {
           </div>
         </li>
 
-        <!-- Aziende (solo per super-admin) -->
-        <li class="nav-item">
-          <Link href="/easyncc/companies" class="nav-link menu-link">
-            <i class="ri-building-line"></i>
-            <span>Aziende</span>
+        <!-- Impostazioni (solo per admin e super-admin) -->
+        <li class="nav-item" v-if="$page.props.auth?.user?.role === 'admin' || $page.props.auth?.user?.role === 'super-admin'">
+          <Link href="/easyncc/settings" class="nav-link menu-link">
+            <i class="ri-settings-3-line"></i>
+            <span>Impostazioni</span>
           </Link>
         </li>
     </ul>
