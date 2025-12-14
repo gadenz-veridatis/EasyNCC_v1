@@ -66,12 +66,31 @@
                                 <p class="text-muted mb-0">{{ user.phone || '-' }}</p>
                             </div>
                             <div class="col-md-3 mb-3">
+                                <label class="form-label fw-semibold">Nickname</label>
+                                <p class="text-muted mb-0">{{ user.nickname || '-' }}</p>
+                            </div>
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label fw-semibold">Stato</label>
                                 <p class="mb-0">
                                     <span :class="user.is_active ? 'badge bg-success' : 'badge bg-danger'">
                                         {{ user.is_active ? 'Attivo' : 'Non Attivo' }}
                                     </span>
                                 </p>
+                            </div>
+                        </div>
+
+                        <!-- User Photo -->
+                        <div v-if="user.user_photo" class="row mb-4 pt-3 border-top">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3">Fotografia Profilo</h6>
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <img
+                                    :src="`/storage/${user.user_photo}`"
+                                    alt="Foto profilo"
+                                    class="img-thumbnail"
+                                    style="max-width: 300px; max-height: 300px;"
+                                />
                             </div>
                         </div>
 
@@ -99,6 +118,33 @@
                             <div class="col-md-3 mb-3">
                                 <label class="form-label fw-semibold">Nazione</label>
                                 <p class="text-muted mb-0">{{ user.country || '-' }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Intermediazione Info -->
+                        <div v-if="user.is_intermediario" class="row mb-4 pt-3 border-top">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3">Informazioni Intermediazione</h6>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-semibold">È Intermediario</label>
+                                <p class="mb-0">
+                                    <span class="badge bg-success">Sì</span>
+                                </p>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-semibold">Percentuale Commissione</label>
+                                <p class="text-muted mb-0">{{ user.percentuale_commissione || '-' }}%</p>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div v-if="user.notes" class="row mb-4 pt-3 border-top">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3">Note</h6>
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <p class="text-muted mb-0">{{ user.notes }}</p>
                             </div>
                         </div>
 
@@ -132,6 +178,17 @@
                             <div class="col-md-4 mb-3">
                                 <label class="form-label fw-semibold">IBAN</label>
                                 <p class="text-muted mb-0">{{ user.driver_profile.iban || '-' }}</p>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-semibold">Veicolo Assegnato</label>
+                                <p class="text-muted mb-0">
+                                    <span v-if="user.driver_profile.assigned_vehicle">
+                                        {{ user.driver_profile.assigned_vehicle.plate }} -
+                                        {{ user.driver_profile.assigned_vehicle.brand }}
+                                        {{ user.driver_profile.assigned_vehicle.model }}
+                                    </span>
+                                    <span v-else>-</span>
+                                </p>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="form-label fw-semibold">Colore Identificativo</label>
@@ -199,7 +256,20 @@
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label class="form-label fw-semibold">Commissione %</label>
-                                <p class="text-muted mb-0">{{ user.client_profile.commission || '-' }}</p>
+                                <p class="text-muted mb-0">{{ user.client_profile.commission ? user.client_profile.commission + '%' : '-' }}</p>
+                            </div>
+
+                            <!-- Logo -->
+                            <div v-if="user.client_profile.logo" class="col-md-12 mb-3">
+                                <label class="form-label fw-semibold">Logo Aziendale</label>
+                                <div>
+                                    <img
+                                        :src="`/storage/${user.client_profile.logo}`"
+                                        alt="Logo aziendale"
+                                        class="img-thumbnail"
+                                        style="max-width: 200px; max-height: 200px;"
+                                    />
+                                </div>
                             </div>
 
                             <!-- Business Contacts -->

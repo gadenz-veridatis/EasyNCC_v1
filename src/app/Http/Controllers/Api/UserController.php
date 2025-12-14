@@ -87,6 +87,12 @@ class UserController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // Convert boolean fields before validation
+        $request->merge([
+            'is_active' => $request->boolean('is_active', true),
+            'is_intermediario' => $request->boolean('is_intermediario', false),
+        ]);
+
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
             'role' => 'required|in:super-admin,admin,operator,driver,collaboratore,contabilita',
@@ -102,17 +108,35 @@ class UserController extends Controller
             'province' => 'nullable|string',
             'country' => 'nullable|string',
             'phone' => 'nullable|string',
-            'is_active' => 'boolean',
-            'is_intermediario' => 'boolean',
+            'is_active' => 'required|boolean',
+            'is_intermediario' => 'required|boolean',
             'percentuale_commissione' => 'nullable|numeric|min:0|max:100',
+            'notes' => 'nullable|string',
+            'user_photo' => 'nullable|image|max:2048',
             'profile' => 'nullable|array',
+            'logo' => 'nullable|image|max:2048',
         ]);
 
-        // Extract profile data
+        // Handle user photo upload
+        if ($request->hasFile('user_photo')) {
+            $validated['user_photo'] = $request->file('user_photo')->store('user_photos', 'public');
+        }
+
+        // Extract profile data and logo
         $profileData = $validated['profile'] ?? null;
-        unset($validated['profile']);
+        $logoFile = $request->file('logo');
+        unset($validated['profile'], $validated['logo']);
 
         $user = User::create($validated);
+
+        // Handle logo upload for collaboratore profile
+        if ($logoFile && $user->role === 'collaboratore') {
+            $logoPath = $logoFile->store('logos', 'public');
+            if (!$profileData) {
+                $profileData = [];
+            }
+            $profileData['logo'] = $logoPath;
+        }
 
         // Create role-specific profile if data provided
         if ($profileData && $this->hasProfile($user->role)) {
@@ -131,7 +155,7 @@ class UserController extends Controller
 
         // Load role-specific profiles
         if ($user->isDriver()) {
-            $relations[] = 'driverProfile';
+            $relations[] = 'driverProfile.assignedVehicle';
             $relations[] = 'driverAttachments';
         } elseif ($user->isClient()) {
             $relations[] = 'clientProfile.businessContacts';
@@ -154,6 +178,14 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user): JsonResponse
     {
+        // Convert boolean fields before validation if present
+        if ($request->has('is_active')) {
+            $request->merge(['is_active' => $request->boolean('is_active')]);
+        }
+        if ($request->has('is_intermediario')) {
+            $request->merge(['is_intermediario' => $request->boolean('is_intermediario')]);
+        }
+
         $validated = $request->validate([
             'company_id' => 'sometimes|exists:companies,id',
             'role' => 'sometimes|in:super-admin,admin,operator,driver,collaboratore,contabilita',
@@ -169,15 +201,28 @@ class UserController extends Controller
             'province' => 'nullable|string',
             'country' => 'nullable|string',
             'phone' => 'nullable|string',
-            'is_active' => 'boolean',
-            'is_intermediario' => 'boolean',
+            'is_active' => 'sometimes|boolean',
+            'is_intermediario' => 'sometimes|boolean',
             'percentuale_commissione' => 'nullable|numeric|min:0|max:100',
+            'notes' => 'nullable|string',
+            'user_photo' => 'nullable|image|max:2048',
             'profile' => 'nullable|array',
+            'logo' => 'nullable|image|max:2048',
         ]);
 
-        // Extract profile data
+        // Handle user photo upload
+        if ($request->hasFile('user_photo')) {
+            // Delete old photo if exists
+            if ($user->user_photo) {
+                \Storage::disk('public')->delete($user->user_photo);
+            }
+            $validated['user_photo'] = $request->file('user_photo')->store('user_photos', 'public');
+        }
+
+        // Extract profile data and logo
         $profileData = $validated['profile'] ?? null;
-        unset($validated['profile']);
+        $logoFile = $request->file('logo');
+        unset($validated['profile'], $validated['logo']);
 
         // Remove null password from update
         if (isset($validated['password']) && is_null($validated['password'])) {
@@ -185,6 +230,19 @@ class UserController extends Controller
         }
 
         $user->update($validated);
+
+        // Handle logo upload for collaboratore profile
+        if ($logoFile && $user->role === 'collaboratore') {
+            // Delete old logo if exists
+            if ($user->clientProfile && $user->clientProfile->logo) {
+                \Storage::disk('public')->delete($user->clientProfile->logo);
+            }
+            $logoPath = $logoFile->store('logos', 'public');
+            if (!$profileData) {
+                $profileData = [];
+            }
+            $profileData['logo'] = $logoPath;
+        }
 
         // Update role-specific profile if data provided
         if ($profileData && $this->hasProfile($user->role)) {

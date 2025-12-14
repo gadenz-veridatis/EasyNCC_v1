@@ -156,6 +156,20 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
             Route::get('/', function () {
                 return inertia('EasyNCC/Companies/Index');
             })->name('index');
+
+            Route::get('/create', function () {
+                return inertia('EasyNCC/Companies/Form');
+            })->name('create');
+
+            Route::get('/{id}', function ($id) {
+                $company = \App\Models\Company::findOrFail($id);
+                return inertia('EasyNCC/Companies/Show', ['company' => $company]);
+            })->name('show');
+
+            Route::get('/{id}/edit', function ($id) {
+                $company = \App\Models\Company::findOrFail($id);
+                return inertia('EasyNCC/Companies/Form', ['company' => $company]);
+            })->name('edit');
         });
     });
 

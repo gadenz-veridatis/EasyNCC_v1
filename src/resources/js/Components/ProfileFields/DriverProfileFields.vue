@@ -100,6 +100,25 @@
                 </small>
             </BCol>
 
+            <!-- Assigned Vehicle -->
+            <BCol md="6" class="mb-3">
+                <label for="assigned_vehicle_id" class="form-label">Veicolo Assegnato</label>
+                <select
+                    id="assigned_vehicle_id"
+                    v-model="localProfile.assigned_vehicle_id"
+                    class="form-select"
+                    :class="{ 'is-invalid': errors.assigned_vehicle_id }"
+                >
+                    <option value="">Nessun veicolo assegnato</option>
+                    <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
+                        {{ vehicle.plate }} - {{ vehicle.brand }} {{ vehicle.model }}
+                    </option>
+                </select>
+                <small v-if="errors.assigned_vehicle_id" class="text-danger d-block mt-1">
+                    {{ errors.assigned_vehicle_id[0] }}
+                </small>
+            </BCol>
+
             <!-- Color Picker -->
             <BCol md="6" class="mb-3">
                 <label for="color" class="form-label">Colore Identificativo</label>
@@ -151,7 +170,8 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted } from 'vue';
+import axios from 'axios';
 
 const props = defineProps({
     modelValue: {
@@ -163,6 +183,7 @@ const props = defineProps({
             hourly_rate: null,
             bank_name: '',
             iban: '',
+            assigned_vehicle_id: '',
             color: '#3788d8',
             allow_overlapping: false,
             notes: ''
@@ -177,9 +198,25 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue']);
 
 const localProfile = ref({ ...props.modelValue });
+const vehicles = ref([]);
+
+// Load vehicles for the dropdown
+const loadVehicles = async () => {
+    try {
+        const response = await axios.get('/api/vehicles', { params: { per_page: 1000 } });
+        vehicles.value = response.data.data || [];
+    } catch (err) {
+        console.error('Error loading vehicles:', err);
+        vehicles.value = [];
+    }
+};
 
 // Watch for changes and emit to parent
 watch(localProfile, (newValue) => {
     emit('update:modelValue', newValue);
 }, { deep: true });
+
+onMounted(() => {
+    loadVehicles();
+});
 </script>

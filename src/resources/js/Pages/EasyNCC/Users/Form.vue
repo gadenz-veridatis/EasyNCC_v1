@@ -233,6 +233,139 @@
                                             {{ errors.phone[0] }}
                                         </small>
                                     </BCol>
+
+                                    <!-- Nickname -->
+                                    <BCol md="6" class="mb-3">
+                                        <label for="nickname" class="form-label">Nickname</label>
+                                        <input
+                                            id="nickname"
+                                            v-model="form.nickname"
+                                            type="text"
+                                            class="form-control"
+                                            :class="{ 'is-invalid': errors.nickname }"
+                                            placeholder="Nickname o soprannome"
+                                        />
+                                        <small v-if="errors.nickname" class="text-danger d-block mt-1">
+                                            {{ errors.nickname[0] }}
+                                        </small>
+                                    </BCol>
+
+                                    <!-- Address -->
+                                    <BCol md="12" class="mb-3">
+                                        <label for="address" class="form-label">Indirizzo</label>
+                                        <textarea
+                                            id="address"
+                                            v-model="form.address"
+                                            class="form-control"
+                                            :class="{ 'is-invalid': errors.address }"
+                                            rows="2"
+                                            placeholder="Via/Piazza e numero civico"
+                                        ></textarea>
+                                        <small v-if="errors.address" class="text-danger d-block mt-1">
+                                            {{ errors.address[0] }}
+                                        </small>
+                                    </BCol>
+
+                                    <!-- Postal Code -->
+                                    <BCol md="3" class="mb-3">
+                                        <label for="postal_code" class="form-label">CAP</label>
+                                        <input
+                                            id="postal_code"
+                                            v-model="form.postal_code"
+                                            type="text"
+                                            class="form-control"
+                                            :class="{ 'is-invalid': errors.postal_code }"
+                                            placeholder="00100"
+                                        />
+                                        <small v-if="errors.postal_code" class="text-danger d-block mt-1">
+                                            {{ errors.postal_code[0] }}
+                                        </small>
+                                    </BCol>
+
+                                    <!-- City -->
+                                    <BCol md="4" class="mb-3">
+                                        <label for="city" class="form-label">Comune</label>
+                                        <input
+                                            id="city"
+                                            v-model="form.city"
+                                            type="text"
+                                            class="form-control"
+                                            :class="{ 'is-invalid': errors.city }"
+                                            placeholder="Roma"
+                                        />
+                                        <small v-if="errors.city" class="text-danger d-block mt-1">
+                                            {{ errors.city[0] }}
+                                        </small>
+                                    </BCol>
+
+                                    <!-- Province -->
+                                    <BCol md="2" class="mb-3">
+                                        <label for="province" class="form-label">Provincia</label>
+                                        <input
+                                            id="province"
+                                            v-model="form.province"
+                                            type="text"
+                                            class="form-control"
+                                            :class="{ 'is-invalid': errors.province }"
+                                            placeholder="RM"
+                                            maxlength="2"
+                                        />
+                                        <small v-if="errors.province" class="text-danger d-block mt-1">
+                                            {{ errors.province[0] }}
+                                        </small>
+                                    </BCol>
+
+                                    <!-- Country -->
+                                    <BCol md="3" class="mb-3">
+                                        <label for="country" class="form-label">Nazione</label>
+                                        <input
+                                            id="country"
+                                            v-model="form.country"
+                                            type="text"
+                                            class="form-control"
+                                            :class="{ 'is-invalid': errors.country }"
+                                            placeholder="Italia"
+                                        />
+                                        <small v-if="errors.country" class="text-danger d-block mt-1">
+                                            {{ errors.country[0] }}
+                                        </small>
+                                    </BCol>
+
+                                    <!-- User Photo -->
+                                    <BCol md="12" class="mb-3">
+                                        <label for="user_photo" class="form-label">Fotografia Profilo</label>
+                                        <input
+                                            id="user_photo"
+                                            type="file"
+                                            class="form-control"
+                                            :class="{ 'is-invalid': errors.user_photo }"
+                                            accept="image/*"
+                                            @change="handleUserPhotoUpload"
+                                        />
+                                        <small class="text-muted d-block mt-1">
+                                            Formati supportati: JPG, PNG, GIF. Dimensione massima: 2MB
+                                        </small>
+                                        <small v-if="errors.user_photo" class="text-danger d-block mt-1">
+                                            {{ errors.user_photo[0] }}
+                                        </small>
+                                        <!-- Preview existing photo -->
+                                        <div v-if="userPhotoPreview || (isEdit && props.user?.user_photo)" class="mt-2">
+                                            <img
+                                                :src="userPhotoPreview || `/storage/${props.user.user_photo}`"
+                                                alt="Anteprima foto"
+                                                class="img-thumbnail"
+                                                style="max-width: 200px; max-height: 200px;"
+                                            />
+                                            <button
+                                                v-if="userPhotoPreview"
+                                                type="button"
+                                                class="btn btn-sm btn-danger ms-2"
+                                                @click="removeUserPhoto"
+                                            >
+                                                <i class="ri-delete-bin-line"></i> Rimuovi
+                                            </button>
+                                        </div>
+                                    </BCol>
                                 </BRow>
                             </fieldset>
 
@@ -309,6 +442,7 @@
                                     v-model="profileData"
                                     :role="form.role"
                                     :errors="profileErrors"
+                                    @logo-file-change="handleLogoFileChange"
                                 />
                                 <OperatorProfileFields
                                     v-if="form.role === 'operator'"
@@ -378,6 +512,9 @@ const profileErrors = ref({});
 const companies = ref([]);
 const showPassword = ref(false);
 const showPasswordConfirmation = ref(false);
+const userPhotoPreview = ref(null);
+const userPhotoFile = ref(null);
+const logoFile = ref(null);
 
 // In create mode (no props.user), all fields should be empty
 // In edit mode (props.user exists), populate with existing data
@@ -392,6 +529,12 @@ const form = ref({
     is_intermediario: isEdit.value ? (props.user?.is_intermediario || false) : false,
     percentuale_commissione: isEdit.value ? (props.user?.percentuale_commissione || null) : null,
     phone: isEdit.value ? (props.user?.phone || '') : '',
+    nickname: isEdit.value ? (props.user?.nickname || '') : '',
+    address: isEdit.value ? (props.user?.address || '') : '',
+    postal_code: isEdit.value ? (props.user?.postal_code || '') : '',
+    city: isEdit.value ? (props.user?.city || '') : '',
+    province: isEdit.value ? (props.user?.province || '') : '',
+    country: isEdit.value ? (props.user?.country || 'Italia') : 'Italia',
     notes: isEdit.value ? (props.user?.notes || '') : '',
     password: '',
     password_confirmation: ''
@@ -448,6 +591,32 @@ const loadCompanies = async () => {
     }
 };
 
+const handleUserPhotoUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        userPhotoFile.value = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            userPhotoPreview.value = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+};
+
+const removeUserPhoto = () => {
+    userPhotoFile.value = null;
+    userPhotoPreview.value = null;
+    // Reset file input
+    const fileInput = document.getElementById('user_photo');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+};
+
+const handleLogoFileChange = (file) => {
+    logoFile.value = file;
+};
+
 const submitForm = async () => {
     submitting.value = true;
     error.value = '';
@@ -458,19 +627,67 @@ const submitForm = async () => {
         const url = isEdit.value ? `/api/users/${props.user.id}` : '/api/users';
         const method = isEdit.value ? 'put' : 'post';
 
-        // Remove empty password fields for edit mode
-        const dataToSubmit = { ...form.value };
-        if (isEdit.value && !dataToSubmit.password) {
-            delete dataToSubmit.password;
-            delete dataToSubmit.password_confirmation;
+        // Use FormData if there's a file to upload
+        let dataToSubmit;
+        let headers = {};
+
+        if (userPhotoFile.value || logoFile.value) {
+            dataToSubmit = new FormData();
+
+            // Add all form fields
+            Object.keys(form.value).forEach(key => {
+                if (form.value[key] !== null && form.value[key] !== '') {
+                    // Skip password fields if empty in edit mode
+                    if (isEdit.value && (key === 'password' || key === 'password_confirmation') && !form.value[key]) {
+                        return;
+                    }
+                    dataToSubmit.append(key, form.value[key]);
+                }
+            });
+
+            // Add user photo file if present
+            if (userPhotoFile.value) {
+                dataToSubmit.append('user_photo', userPhotoFile.value);
+            }
+
+            // Add profile data if present
+            if (showProfileFields.value && Object.keys(profileData.value).length > 0) {
+                dataToSubmit.append('profile', JSON.stringify(profileData.value));
+            }
+
+            // Add logo file if present (for collaboratore role)
+            if (logoFile.value) {
+                dataToSubmit.append('logo', logoFile.value);
+            }
+
+            // For PUT requests via FormData, we need to use POST with _method
+            if (isEdit.value) {
+                dataToSubmit.append('_method', 'PUT');
+            }
+
+            headers = { 'Content-Type': 'multipart/form-data' };
+        } else {
+            // No file upload, use regular JSON
+            dataToSubmit = { ...form.value };
+
+            // Remove empty password fields for edit mode
+            if (isEdit.value && !dataToSubmit.password) {
+                delete dataToSubmit.password;
+                delete dataToSubmit.password_confirmation;
+            }
+
+            // Add profile data if present
+            if (showProfileFields.value && Object.keys(profileData.value).length > 0) {
+                dataToSubmit.profile = profileData.value;
+            }
         }
 
-        // Add profile data if present
-        if (showProfileFields.value && Object.keys(profileData.value).length > 0) {
-            dataToSubmit.profile = profileData.value;
-        }
-
-        const response = await axios[method](url, dataToSubmit);
+        const response = await axios({
+            method: (userPhotoFile.value || logoFile.value) && isEdit.value ? 'post' : method,
+            url,
+            data: dataToSubmit,
+            headers
+        });
 
         // If creating a new driver, redirect to edit page to allow uploading attachments
         if (!isEdit.value && form.value.role === 'driver' && response.data?.id) {
@@ -479,6 +696,10 @@ const submitForm = async () => {
             router.visit(route('easyncc.users.index'));
         }
     } catch (err) {
+        console.error('Error submitting form:', err);
+        console.error('Error response:', err.response);
+        console.error('Error data:', err.response?.data);
+
         if (err.response?.status === 422) {
             const responseErrors = err.response.data.errors || {};
 
@@ -494,10 +715,12 @@ const submitForm = async () => {
                     errors.value[key] = responseErrors[key];
                 }
             });
+
+            // Show error message with details
+            error.value = 'Errori di validazione: ' + Object.keys(responseErrors).join(', ');
         } else {
-            error.value = 'Errore nel salvataggio dell\'utente';
+            error.value = 'Errore nel salvataggio dell\'utente: ' + (err.response?.data?.message || err.message);
         }
-        console.error('Error submitting form:', err);
     } finally {
         submitting.value = false;
     }

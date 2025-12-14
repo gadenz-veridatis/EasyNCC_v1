@@ -281,6 +281,64 @@
                     {{ errors.website[0] }}
                 </small>
             </BCol>
+
+            <!-- Commission -->
+            <BCol md="6" class="mb-3">
+                <label for="commission" class="form-label">Commissione (%)</label>
+                <input
+                    id="commission"
+                    v-model.number="localProfile.commission"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    class="form-control"
+                    :class="{ 'is-invalid': errors.commission }"
+                    placeholder="0.00"
+                />
+                <small class="text-muted d-block mt-1">
+                    Percentuale di commissione applicata per questo collaboratore
+                </small>
+                <small v-if="errors.commission" class="text-danger d-block mt-1">
+                    {{ errors.commission[0] }}
+                </small>
+            </BCol>
+
+            <!-- Logo -->
+            <BCol md="12" class="mb-3">
+                <label for="logo" class="form-label">Logo Aziendale</label>
+                <input
+                    id="logo"
+                    type="file"
+                    class="form-control"
+                    :class="{ 'is-invalid': errors.logo }"
+                    accept="image/*"
+                    @change="handleLogoUpload"
+                />
+                <small class="text-muted d-block mt-1">
+                    Formati supportati: JPG, PNG, GIF. Dimensione massima: 2MB
+                </small>
+                <small v-if="errors.logo" class="text-danger d-block mt-1">
+                    {{ errors.logo[0] }}
+                </small>
+                <!-- Preview existing logo -->
+                <div v-if="logoPreview || localProfile.logo" class="mt-2">
+                    <img
+                        :src="logoPreview || `/storage/${localProfile.logo}`"
+                        alt="Logo aziendale"
+                        class="img-thumbnail"
+                        style="max-width: 200px; max-height: 200px;"
+                    />
+                    <button
+                        v-if="logoPreview"
+                        type="button"
+                        class="btn btn-sm btn-danger ms-2"
+                        @click="removeLogo"
+                    >
+                        <i class="ri-delete-bin-line"></i> Rimuovi
+                    </button>
+                </div>
+            </BCol>
         </BRow>
 
         <!-- Business Contacts Section -->
@@ -365,10 +423,12 @@ const props = defineProps({
             city: '',
             province: '',
             country: '',
+            logo: '',
             admin_email: '',
             operational_email: '',
             phone: '',
             website: '',
+            commission: null,
             business_contacts: []
         })
     },
@@ -378,7 +438,7 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue', 'logoFileChange']);
 
 // Initialize localProfile with proper defaults for boolean fields
 const initializeProfile = (value) => {
@@ -416,6 +476,8 @@ const initializeProfile = (value) => {
 
 const localProfile = ref(initializeProfile(props.modelValue));
 const businessContacts = ref(localProfile.value.business_contacts || []);
+const logoPreview = ref(null);
+const logoFile = ref(null);
 
 // Watch for changes in modelValue to sync data (only when prop reference changes, not nested properties)
 watch(() => props.modelValue, (newValue, oldValue) => {
@@ -448,6 +510,32 @@ const removeContact = (index) => {
     businessContacts.value.splice(index, 1);
     // Directly update localProfile and emit
     localProfile.value.business_contacts = [...businessContacts.value];
+};
+
+const handleLogoUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        logoFile.value = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            logoPreview.value = e.target.result;
+        };
+        reader.readAsDataURL(file);
+        // Emit the file to parent component
+        emit('logoFileChange', file);
+    }
+};
+
+const removeLogo = () => {
+    logoFile.value = null;
+    logoPreview.value = null;
+    // Reset file input
+    const fileInput = document.getElementById('logo');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+    // Emit null to parent
+    emit('logoFileChange', null);
 };
 
 // Watch for changes in businessContacts (for when user types in contact fields)

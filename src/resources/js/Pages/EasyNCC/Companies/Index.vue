@@ -82,29 +82,27 @@
                       </BBadge>
                     </td>
                     <td>
-                      <div class="hstack gap-3 flex-wrap">
-                        <a
-                          href="javascript:void(0)"
-                          class="link-success"
-                          @click="$inertia.visit(`/easyncc/companies/${company.id}`)"
-                        >
-                          <i class="ri-eye-line"></i>
-                        </a>
-                        <a
-                          href="javascript:void(0)"
-                          class="link-primary"
-                          @click="$inertia.visit(`/easyncc/companies/${company.id}/edit`)"
-                        >
-                          <i class="ri-pencil-line"></i>
-                        </a>
-                        <a
-                          href="javascript:void(0)"
-                          class="link-danger"
-                          @click="deleteCompany(company)"
-                        >
-                          <i class="ri-delete-bin-line"></i>
-                        </a>
-                      </div>
+                      <button
+                        class="btn btn-sm btn-soft-info me-1"
+                        @click="$inertia.visit(`/easyncc/companies/${company.id}`)"
+                        title="Visualizza Dettagli"
+                      >
+                        <i class="bx bx-show"></i>
+                      </button>
+                      <button
+                        class="btn btn-sm btn-soft-primary me-1"
+                        @click="$inertia.visit(`/easyncc/companies/${company.id}/edit`)"
+                        title="Modifica"
+                      >
+                        <i class="bx bx-edit"></i>
+                      </button>
+                      <button
+                        class="btn btn-sm btn-soft-danger"
+                        @click="deleteCompany(company)"
+                        title="Elimina"
+                      >
+                        <i class="bx bx-trash"></i>
+                      </button>
                     </td>
                   </tr>
                 </tbody>

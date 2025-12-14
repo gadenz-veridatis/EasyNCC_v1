@@ -778,8 +778,13 @@ const loadUsers = async () => {
         const response = await axios.get('/api/users', { params });
         users.value = response.data.data || [];
 
-        // Handle pagination metadata
-        if (response.data.meta) {
+        // Handle pagination metadata - Laravel paginate() returns meta directly in response.data
+        if (response.data.last_page !== undefined) {
+            totalPages.value = response.data.last_page || 1;
+            totalRecords.value = response.data.total || 0;
+            currentPage.value = response.data.current_page || 1;
+        } else if (response.data.meta) {
+            // Alternative structure with meta object
             totalPages.value = response.data.meta.last_page || 1;
             totalRecords.value = response.data.meta.total || 0;
             currentPage.value = response.data.meta.current_page || 1;
