@@ -22,21 +22,21 @@ class VehicleWebController extends Controller
 
     public function show(Request $request, string $id): Response
     {
-        $vehicle = Vehicle::with(['company', 'assignedDrivers'])
+        $vehicle = Vehicle::with(['company', 'assignedDrivers', 'creator', 'updater'])
             ->findOrFail($id);
 
         // Check if user can edit
         $canEdit = $request->user()->hasAnyRole(['super-admin', 'admin', 'operator']);
 
         return Inertia::render('EasyNCC/Vehicles/Show', [
-            'vehicle' => $vehicle->toArray(),
+            'vehicle' => $vehicle,
             'canEdit' => $canEdit
         ]);
     }
 
     public function edit(string $id): Response
     {
-        $vehicle = Vehicle::with(['company', 'assignedDrivers'])
+        $vehicle = Vehicle::with(['company', 'assignedDrivers', 'creator', 'updater'])
             ->findOrFail($id);
 
         return Inertia::render('EasyNCC/Vehicles/Form', ['vehicle' => $vehicle]);

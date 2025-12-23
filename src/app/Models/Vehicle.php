@@ -21,10 +21,13 @@ class Vehicle extends Model
         'passenger_capacity',
         'purchase_date',
         'ncc_license_number',
+        'telepass_license_number',
         'license_city',
         'allow_overlapping',
         'status',
         'notes',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -52,5 +55,16 @@ class Vehicle extends Model
     public function unavailabilities(): HasMany
     {
         return $this->hasMany(VehicleUnavailability::class);
+    }
+
+    // Audit relationships
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 }

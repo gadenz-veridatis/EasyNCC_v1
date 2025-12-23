@@ -21,6 +21,25 @@
                         <!-- Form -->
                         <form v-else @submit.prevent="submitForm">
                             <BRow>
+                                <!-- Company (only for super-admin) -->
+                                <BCol v-if="isSuperAdmin" md="12" class="mb-3">
+                                    <label for="company_id" class="form-label">Azienda *</label>
+                                    <select
+                                        id="company_id"
+                                        v-model="form.company_id"
+                                        class="form-select"
+                                        :class="{ 'is-invalid': errors.company_id }"
+                                    >
+                                        <option value="">Seleziona un'azienda</option>
+                                        <option v-for="company in companies" :key="company.id" :value="company.id">
+                                            {{ company.name }}
+                                        </option>
+                                    </select>
+                                    <small v-if="errors.company_id" class="text-danger d-block mt-1">
+                                        {{ errors.company_id[0] }}
+                                    </small>
+                                </BCol>
+
                                 <!-- License Plate -->
                                 <BCol md="6" class="mb-3">
                                     <label for="license_plate" class="form-label">Targa *</label>
@@ -100,6 +119,21 @@
                                     </small>
                                 </BCol>
 
+                                <!-- Telepass License Number -->
+                                <BCol md="6" class="mb-3">
+                                    <label for="telepass_license_number" class="form-label">Numero Licenza Telepass</label>
+                                    <input
+                                        id="telepass_license_number"
+                                        v-model="form.telepass_license_number"
+                                        type="text"
+                                        class="form-control"
+                                        :class="{ 'is-invalid': errors.telepass_license_number }"
+                                    />
+                                    <small v-if="errors.telepass_license_number" class="text-danger d-block mt-1">
+                                        {{ errors.telepass_license_number[0] }}
+                                    </small>
+                                </BCol>
+
                                 <!-- NCC License Number -->
                                 <BCol md="6" class="mb-3">
                                     <label for="ncc_license_number" class="form-label">Numero Licenza NCC</label>
@@ -163,23 +197,67 @@
                             </BRow>
                         </form>
 
-                        <!-- Vehicle Attachments (only shown when editing) -->
-                        <VehicleAttachments v-if="isEdit && props.vehicle?.id" :vehicle-id="props.vehicle.id" />
+                        <!-- Vehicle Attachments -->
+                        <div v-if="isEdit && props.vehicle?.id">
+                            <VehicleAttachments :vehicle-id="props.vehicle.id" />
+                        </div>
+                        <div v-else class="mt-4 pt-4 border-top">
+                            <h6 class="text-muted mb-3">
+                                <i class="ri-attachment-2 me-2"></i>Allegati Veicolo
+                            </h6>
+                            <div class="alert alert-info mb-0">
+                                <i class="ri-information-line me-2"></i>
+                                La sezione allegati sarà disponibile dopo aver creato il veicolo.
+                            </div>
+                        </div>
 
-                        <!-- Vehicle Unavailabilities (only shown when editing) -->
-                        <VehicleUnavailabilities v-if="isEdit && props.vehicle?.id" :vehicle-id="props.vehicle.id" />
+                        <!-- Vehicle Unavailabilities -->
+                        <div v-if="isEdit && props.vehicle?.id">
+                            <VehicleUnavailabilities :vehicle-id="props.vehicle.id" />
+                        </div>
+                        <div v-else class="mt-4 pt-4 border-top">
+                            <h6 class="text-muted mb-3">
+                                <i class="ri-calendar-close-line me-2"></i>Periodi di Non Disponibilità
+                            </h6>
+                            <div class="alert alert-info mb-0">
+                                <i class="ri-information-line me-2"></i>
+                                La sezione periodi di non disponibilità sarà disponibile dopo aver creato il veicolo.
+                            </div>
+                        </div>
 
                         <!-- Buttons -->
                         <div class="mt-4">
-                            <button
-                                @click="submitForm"
-                                type="button"
-                                class="btn btn-primary"
-                                :disabled="submitting"
-                            >
-                                <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                                {{ isEdit ? 'Aggiorna' : 'Crea' }}
-                            </button>
+                            <template v-if="isEdit">
+                                <button
+                                    @click="submitForm(false)"
+                                    type="button"
+                                    class="btn btn-primary"
+                                    :disabled="submitting"
+                                >
+                                    <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                                    Aggiorna
+                                </button>
+                            </template>
+                            <template v-else>
+                                <button
+                                    @click="submitForm(true)"
+                                    type="button"
+                                    class="btn btn-primary"
+                                    :disabled="submitting"
+                                >
+                                    <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                                    Crea
+                                </button>
+                                <button
+                                    @click="submitForm(false)"
+                                    type="button"
+                                    class="btn btn-success ms-2"
+                                    :disabled="submitting"
+                                >
+                                    <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                                    Crea ed Esci
+                                </button>
+                            </template>
                             <Link :href="route('easyncc.vehicles.index')" class="btn btn-secondary ms-2">
                                 Annulla
                             </Link>
@@ -197,8 +275,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { ref, onMounted, computed } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import VehicleAttachments from '@/Components/ProfileFields/VehicleAttachments.vue';
@@ -212,25 +290,33 @@ const props = defineProps({
     }
 });
 
+const page = usePage();
+const authUser = computed(() => page.props.auth?.user);
+const isSuperAdmin = computed(() => authUser.value?.role === 'super-admin');
+
 const isEdit = ref(!!props.vehicle);
-const loading = ref(!!props.vehicle ? false : false);
+const loading = ref(false);
 const submitting = ref(false);
 const error = ref('');
 const errors = ref({});
+const companies = ref([]);
 
 const form = ref({
+    company_id: props.vehicle?.company_id || '',
     license_plate: props.vehicle?.license_plate || '',
     brand: props.vehicle?.brand || '',
     model: props.vehicle?.model || '',
     passenger_capacity: props.vehicle?.passenger_capacity || '',
     purchase_date: props.vehicle?.purchase_date || '',
     ncc_license_number: props.vehicle?.ncc_license_number || '',
+    telepass_license_number: props.vehicle?.telepass_license_number || '',
     license_city: props.vehicle?.license_city || '',
     allow_overlapping: props.vehicle?.allow_overlapping || false,
+    status: props.vehicle?.status || 'in_service',
     notes: props.vehicle?.notes || ''
 });
 
-const submitForm = async () => {
+const submitForm = async (stayOnPage = false) => {
     submitting.value = true;
     error.value = '';
     errors.value = {};
@@ -239,9 +325,21 @@ const submitForm = async () => {
         const url = isEdit.value ? `/api/vehicles/${props.vehicle.id}` : '/api/vehicles';
         const method = isEdit.value ? 'put' : 'post';
 
-        await axios[method](url, form.value);
+        const response = await axios[method](url, form.value);
 
-        router.visit(route('easyncc.vehicles.index'));
+        if (isEdit.value) {
+            // Always go to index after update
+            router.visit(route('easyncc.vehicles.index'));
+        } else {
+            // For new creation
+            if (stayOnPage && response.data?.id) {
+                // Redirect to edit page
+                router.visit(route('easyncc.vehicles.edit', response.data.id));
+            } else {
+                // Redirect to index
+                router.visit(route('easyncc.vehicles.index'));
+            }
+        }
     } catch (err) {
         if (err.response?.status === 422) {
             errors.value = err.response.data.errors || {};
@@ -254,7 +352,19 @@ const submitForm = async () => {
     }
 };
 
+const loadCompanies = async () => {
+    if (!isSuperAdmin.value) return;
+
+    try {
+        const response = await axios.get('/api/companies');
+        companies.value = response.data.data || response.data;
+    } catch (err) {
+        console.error('Error loading companies:', err);
+    }
+};
+
 onMounted(() => {
     loading.value = false;
+    loadCompanies();
 });
 </script>

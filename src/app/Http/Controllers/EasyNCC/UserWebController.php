@@ -22,14 +22,20 @@ class UserWebController extends Controller
 
     public function show(Request $request, string $id): Response
     {
-        $user = User::with(['company', 'driverProfile', 'clientProfile.businessContacts', 'operatorProfile'])
-            ->findOrFail($id);
+        $user = User::with([
+            'company',
+            'driverProfile',
+            'clientProfile.businessContacts',
+            'operatorProfile',
+            'creator',
+            'updater'
+        ])->findOrFail($id);
 
         // Check if user can edit
         $canEdit = $request->user()->hasAnyRole(['super-admin', 'admin', 'operator']);
 
         return Inertia::render('EasyNCC/Users/Show', [
-            'user' => $user->toArray(),
+            'user' => $user,
             'canEdit' => $canEdit
         ]);
     }

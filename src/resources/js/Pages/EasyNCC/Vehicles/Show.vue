@@ -50,6 +50,10 @@
                                 <p class="text-muted mb-0">{{ formatDate(vehicle.purchase_date) }}</p>
                             </div>
                             <div class="col-md-3 mb-3">
+                                <label class="form-label fw-semibold">Numero Licenza Telepass</label>
+                                <p class="text-muted mb-0">{{ vehicle.telepass_license_number || '-' }}</p>
+                            </div>
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label fw-semibold">Numero Licenza NCC</label>
                                 <p class="text-muted mb-0">{{ vehicle.ncc_license_number || '-' }}</p>
                             </div>
@@ -88,6 +92,27 @@
                         <div class="row pt-3 border-top">
                             <div class="col-12">
                                 <VehicleUnavailabilitiesReadOnly :vehicle-id="vehicle.id" />
+                            </div>
+                        </div>
+
+                        <!-- Audit Information -->
+                        <div class="row mb-4 pt-3 border-top">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3">Informazioni di Sistema</h6>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">Creato da</label>
+                                <p class="text-muted mb-0">
+                                    {{ vehicle.creator ? `${vehicle.creator.name} ${vehicle.creator.surname}` : '-' }}
+                                    {{ vehicle.created_at ? `il ${formatDateTime(vehicle.created_at)}` : '' }}
+                                </p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">Ultimo aggiornamento da</label>
+                                <p class="text-muted mb-0">
+                                    {{ vehicle.updater ? `${vehicle.updater.name} ${vehicle.updater.surname}` : '-' }}
+                                    {{ vehicle.updated_at ? `il ${formatDateTime(vehicle.updated_at)}` : '' }}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -135,5 +160,10 @@ const items = computed(() => [
 const formatDate = (date) => {
     if (!date) return '-';
     return moment(date).format('DD/MM/YYYY');
+};
+
+const formatDateTime = (date) => {
+    if (!date) return '-';
+    return moment(date).format('DD/MM/YYYY HH:mm');
 };
 </script>

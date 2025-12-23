@@ -300,6 +300,27 @@
                         <div v-if="user.role === 'driver' && user.id" class="pt-3 border-top">
                             <DriverAttachmentsReadOnly :user-id="user.id" />
                         </div>
+
+                        <!-- Audit Information -->
+                        <div class="row mb-4 pt-3 border-top">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3">Informazioni di Sistema</h6>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">Creato da</label>
+                                <p class="text-muted mb-0">
+                                    {{ user.creator ? `${user.creator.name} ${user.creator.surname}` : '-' }}
+                                    {{ user.created_at ? `il ${formatDateTime(user.created_at)}` : '' }}
+                                </p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">Ultimo aggiornamento da</label>
+                                <p class="text-muted mb-0">
+                                    {{ user.updater ? `${user.updater.name} ${user.updater.surname}` : '-' }}
+                                    {{ user.updated_at ? `il ${formatDateTime(user.updated_at)}` : '' }}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -359,5 +380,10 @@ const getRoleBadgeClass = (role) => {
 const formatDate = (date) => {
     if (!date) return '-';
     return moment(date).format('DD/MM/YYYY');
+};
+
+const formatDateTime = (date) => {
+    if (!date) return '-';
+    return moment(date).format('DD/MM/YYYY HH:mm');
 };
 </script>

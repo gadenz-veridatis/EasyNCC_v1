@@ -127,6 +127,10 @@ class UserController extends Controller
         $logoFile = $request->file('logo');
         unset($validated['profile'], $validated['logo']);
 
+        // Set audit fields
+        $validated['created_by'] = $request->user()->id;
+        $validated['updated_by'] = $request->user()->id;
+
         $user = User::create($validated);
 
         // Handle logo upload for collaboratore profile
@@ -151,7 +155,7 @@ class UserController extends Controller
      */
     public function show(User $user): JsonResponse
     {
-        $relations = ['company'];
+        $relations = ['company', 'creator', 'updater'];
 
         // Load role-specific profiles
         if ($user->isDriver()) {
@@ -228,6 +232,9 @@ class UserController extends Controller
         if (isset($validated['password']) && is_null($validated['password'])) {
             unset($validated['password']);
         }
+
+        // Set audit field
+        $validated['updated_by'] = $request->user()->id;
 
         $user->update($validated);
 

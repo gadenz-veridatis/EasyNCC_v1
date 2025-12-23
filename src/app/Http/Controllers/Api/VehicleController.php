@@ -62,21 +62,32 @@ class VehicleController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'company_id' => $request->user()->isSuperAdmin() ? 'required|exists:companies,id' : 'nullable',
             'license_plate' => 'required|string|unique:vehicles,license_plate',
             'brand' => 'required|string',
             'model' => 'required|string',
             'passenger_capacity' => 'required|integer|min:1',
             'purchase_date' => 'nullable|date',
             'ncc_license_number' => 'nullable|string',
+            'telepass_license_number' => 'nullable|string',
             'license_city' => 'nullable|string',
             'allow_overlapping' => 'boolean',
             'status' => 'required|in:in_service,maintenance,out_of_service',
             'notes' => 'nullable|string',
         ]);
 
+        // Set company_id if not super-admin
+        if (!$request->user()->isSuperAdmin()) {
+            $validated['company_id'] = $request->user()->company_id;
+        }
+
+        // Set audit fields
+        $validated['created_by'] = $request->user()->id;
+        $validated['updated_by'] = $request->user()->id;
+
         $vehicle = Vehicle::create($validated);
 
-        return response()->json($vehicle->load('company'), 201);
+        return response()->json($vehicle->load(['company', 'creator', 'updater']), 201);
     }
 
     /**
@@ -84,7 +95,7 @@ class VehicleController extends Controller
      */
     public function show(Vehicle $vehicle): JsonResponse
     {
-        return response()->json($vehicle->load(['company', 'assignedDrivers', 'services']));
+        return response()->json($vehicle->load(['company', 'assignedDrivers', 'services', 'creator', 'updater']));
     }
 
     /**
@@ -93,21 +104,31 @@ class VehicleController extends Controller
     public function update(Request $request, Vehicle $vehicle): JsonResponse
     {
         $validated = $request->validate([
+            'company_id' => $request->user()->isSuperAdmin() ? 'sometimes|exists:companies,id' : 'nullable',
             'license_plate' => 'sometimes|string|unique:vehicles,license_plate,' . $vehicle->id,
             'brand' => 'sometimes|string',
             'model' => 'sometimes|string',
             'passenger_capacity' => 'sometimes|integer|min:1',
             'purchase_date' => 'nullable|date',
             'ncc_license_number' => 'nullable|string',
+            'telepass_license_number' => 'nullable|string',
             'license_city' => 'nullable|string',
             'allow_overlapping' => 'boolean',
             'status' => 'sometimes|in:in_service,maintenance,out_of_service',
             'notes' => 'nullable|string',
         ]);
 
+        // Don't allow non-super-admin to change company_id
+        if (!$request->user()->isSuperAdmin() && isset($validated['company_id'])) {
+            unset($validated['company_id']);
+        }
+
+        // Set audit field
+        $validated['updated_by'] = $request->user()->id;
+
         $vehicle->update($validated);
 
-        return response()->json($vehicle->load('company'));
+        return response()->json($vehicle->load(['company', 'creator', 'updater']));
     }
 
     /**

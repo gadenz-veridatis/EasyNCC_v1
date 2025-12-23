@@ -7,11 +7,53 @@
         <BRow>
             <BCol lg="12">
                 <form @submit.prevent="submitForm">
-                    <BCard no-body>
+                    <BCard no-body class="service-form-card">
                         <BCardHeader>
-                            <h5 class="card-title mb-0">{{ isEdit ? 'Modifica Servizio' : 'Nuovo Servizio' }}</h5>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">{{ isEdit ? 'Modifica Servizio' : 'Nuovo Servizio' }}</h5>
+
+                                <!-- Quick Navigation - Compact Icon-only Style -->
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="text-muted small me-2" title="Navigazione Rapida">
+                                        <i class="ri-navigation-line"></i>
+                                    </span>
+                                    <a href="#section-identificativi" class="btn btn-sm btn-soft-primary px-2 py-1" title="Identificativi">
+                                        <i class="ri-file-list-3-line"></i>
+                                    </a>
+                                    <a href="#section-passeggeri" class="btn btn-sm btn-soft-primary px-2 py-1" title="Passeggeri">
+                                        <i class="ri-user-3-line"></i>
+                                    </a>
+                                    <a href="#section-committenti" class="btn btn-sm btn-soft-primary px-2 py-1" title="Committenti">
+                                        <i class="ri-building-line"></i>
+                                    </a>
+                                    <a href="#section-veicolo" class="btn btn-sm btn-soft-primary px-2 py-1" title="Veicolo">
+                                        <i class="ri-car-line"></i>
+                                    </a>
+                                    <a href="#section-driver" class="btn btn-sm btn-soft-primary px-2 py-1" title="Driver">
+                                        <i class="ri-user-settings-line"></i>
+                                    </a>
+                                    <a href="#section-bagagli" class="btn btn-sm btn-soft-primary px-2 py-1" title="Bagagli">
+                                        <i class="ri-suitcase-line"></i>
+                                    </a>
+                                    <a href="#section-piano" class="btn btn-sm btn-soft-primary px-2 py-1" title="Piano Servizio">
+                                        <i class="ri-map-pin-line"></i>
+                                    </a>
+                                    <a href="#section-note" class="btn btn-sm btn-soft-primary px-2 py-1" title="Note">
+                                        <i class="ri-file-text-line"></i>
+                                    </a>
+                                    <a href="#section-prezzi" class="btn btn-sm btn-soft-primary px-2 py-1" title="Prezzi">
+                                        <i class="ri-money-euro-circle-line"></i>
+                                    </a>
+                                    <a href="#section-contabilita" class="btn btn-sm btn-soft-primary px-2 py-1" title="Contabilità">
+                                        <i class="ri-calculator-line"></i>
+                                    </a>
+                                    <a href="#section-tasks" class="btn btn-sm btn-soft-primary px-2 py-1" title="Tasks">
+                                        <i class="ri-task-line"></i>
+                                    </a>
+                                </div>
+                            </div>
                         </BCardHeader>
-                        <BCardBody>
+                        <BCardBody class="service-form-body">
                             <!-- Loading State -->
                             <div v-if="loading" class="text-center py-5">
                                 <div class="spinner-border text-primary" role="status">
@@ -42,7 +84,7 @@
                                 </div>
 
                                 <!-- FIELDSET 1: DATI IDENTIFICATIVI -->
-                                <fieldset class="border rounded p-3 mb-4">
+                                <fieldset id="section-identificativi" class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
                                         <i class="ri-file-list-3-line me-2"></i>Dati Identificativi
                                     </legend>
@@ -111,7 +153,7 @@
                                 </fieldset>
 
                                 <!-- FIELDSET 2: PASSEGGERI -->
-                                <fieldset class="border rounded p-3 mb-4">
+                                <fieldset id="section-passeggeri" class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
                                         <i class="ri-user-3-line me-2"></i>Passeggeri
                                     </legend>
@@ -198,7 +240,7 @@
                                 </fieldset>
 
                                 <!-- FIELDSET 3: COMMITTENTI/INTERMEDIARI -->
-                                <fieldset class="border rounded p-3 mb-4">
+                                <fieldset id="section-committenti" class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
                                         <i class="ri-building-line me-2"></i>Committenti/Intermediari
                                     </legend>
@@ -256,7 +298,7 @@
                                 </fieldset>
 
                                 <!-- FIELDSET 4: VEICOLO -->
-                                <fieldset class="border rounded p-3 mb-4">
+                                <fieldset id="section-veicolo" class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
                                         <i class="ri-car-line me-2"></i>Veicolo
                                     </legend>
@@ -318,7 +360,7 @@
                                 </fieldset>
 
                                 <!-- FIELDSET 5: DRIVER -->
-                                <fieldset class="border rounded p-3 mb-4">
+                                <fieldset id="section-driver" class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
                                         <i class="ri-steering-2-line me-2"></i>Driver
                                     </legend>
@@ -434,7 +476,7 @@
                                 </fieldset>
 
                                 <!-- FIELDSET 6: BAGAGLI -->
-                                <fieldset class="border rounded p-3 mb-4">
+                                <fieldset id="section-bagagli" class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
                                         <i class="ri-luggage-cart-line me-2"></i>Bagagli
                                     </legend>
@@ -503,7 +545,7 @@
                                 </fieldset>
 
                                 <!-- FIELDSET 7: PIANO DI SERVIZIO -->
-                                <fieldset class="border rounded p-3 mb-4">
+                                <fieldset id="section-piano" class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
                                         <i class="ri-map-pin-line me-2"></i>Piano di Servizio
                                     </legend>
@@ -776,7 +818,7 @@
                                 </fieldset>
 
                                 <!-- FIELDSET 8: NOTE -->
-                                <fieldset class="border rounded p-3 mb-4">
+                                <fieldset id="section-note" class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
                                         <i class="ri-file-text-line me-2"></i>Note
                                     </legend>
@@ -794,7 +836,7 @@
                                 </fieldset>
 
                                 <!-- FIELDSET 9: PREZZI -->
-                                <fieldset class="border rounded p-3 mb-4">
+                                <fieldset id="section-prezzi" class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
                                         <i class="ri-price-tag-3-line me-2"></i>Prezzi
                                     </legend>
@@ -983,7 +1025,7 @@
                                 </fieldset>
 
                                 <!-- FIELDSET 10: CONTABILITÀ -->
-                                <fieldset class="border rounded p-3 mb-4">
+                                <fieldset id="section-contabilita" class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
                                         <i class="ri-file-list-3-line me-2"></i>Contabilità
                                     </legend>
@@ -1328,7 +1370,7 @@
                                 </fieldset>
 
                                 <!-- FIELDSET 11: TASKS -->
-                                <fieldset class="border rounded p-3 mb-4">
+                                <fieldset id="section-tasks" class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
                                         <i class="ri-task-line me-2"></i>Task
                                     </legend>
@@ -1411,8 +1453,8 @@
                                 </fieldset>
                             </div>
                         </BCardBody>
-                        <BCardFooter>
-                            <div class="d-flex justify-content-between">
+                        <BCardFooter class="service-form-footer">
+                            <div class="d-flex justify-content-between align-items-center">
                                 <Link :href="route('easyncc.services.index')" class="btn btn-secondary">
                                     <i class="ri-arrow-left-line me-1"></i>Annulla
                                 </Link>
@@ -3931,5 +3973,37 @@ onMounted(async () => {
 <style scoped>
 .cursor-pointer {
     cursor: pointer;
+}
+
+/* Service Form Card - Fixed Footer Layout */
+.service-form-card {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 180px); /* Adjust based on header/page padding */
+}
+
+.service-form-body {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 1rem;
+}
+
+.service-form-footer {
+    position: sticky;
+    bottom: 0;
+    background-color: #fff;
+    border-top: 2px solid #dee2e6;
+    z-index: 10;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Smooth scroll behavior for anchor links */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Fieldset scroll padding for better anchor positioning */
+fieldset[id^="section-"] {
+    scroll-margin-top: 20px;
 }
 </style>

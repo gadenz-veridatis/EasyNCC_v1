@@ -117,6 +117,17 @@ class User extends Authenticatable // implements MustVerifyEmail
         return $this->belongsToMany(Service::class, 'service_driver');
     }
 
+    // Audit relationships
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
     // Helper methods
     public function isSuperAdmin(): bool
     {
