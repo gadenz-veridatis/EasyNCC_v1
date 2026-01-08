@@ -43,6 +43,8 @@ class User extends Authenticatable // implements MustVerifyEmail
         'percentuale_commissione',
         'notes',
         'user_photo',
+        'created_by',
+        'updated_by',
     ];
 
     /**

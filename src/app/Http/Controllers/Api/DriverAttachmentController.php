@@ -54,7 +54,7 @@ class DriverAttachmentController extends Controller
     /**
      * Download the specified attachment.
      */
-    public function download(User $user, DriverAttachment $attachment): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function download(User $user, DriverAttachment $attachment): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         // Verify attachment belongs to user
         if ($attachment->user_id !== $user->id) {

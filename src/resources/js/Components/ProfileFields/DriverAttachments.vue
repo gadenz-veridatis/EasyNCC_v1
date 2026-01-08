@@ -30,7 +30,14 @@
                         <td>{{ attachment.attachment_type }}</td>
                         <td>
                             <i class="ri-file-line me-1"></i>
-                            {{ attachment.file_name }}
+                            <a
+                                href="javascript:void(0)"
+                                class="link-primary"
+                                @click="showAttachmentPreview(attachment)"
+                                title="Visualizza anteprima"
+                            >
+                                {{ attachment.file_name }}
+                            </a>
                             <small class="text-muted d-block">
                                 {{ formatFileSize(attachment.file_size) }}
                             </small>
@@ -242,6 +249,94 @@
                 </div>
             </form>
         </BModal>
+
+        <!-- Preview Modal -->
+        <BModal
+            v-model="showPreviewModal"
+            :title="previewAttachment ? previewAttachment.file_name : 'Anteprima File'"
+            size="xl"
+            hide-footer
+        >
+            <div v-if="previewAttachment" class="preview-container">
+                <!-- Loading State -->
+                <div v-if="loadingPreview" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Caricamento anteprima...</span>
+                    </div>
+                </div>
+
+                <!-- Preview Content -->
+                <div v-else>
+                    <!-- PDF Preview -->
+                    <div v-if="isPDF(previewAttachment)" class="pdf-preview">
+                        <iframe
+                            :src="previewUrl"
+                            style="width: 100%; height: 70vh; border: 1px solid #ddd;"
+                            frameborder="0"
+                        ></iframe>
+                    </div>
+
+                    <!-- Image Preview -->
+                    <div v-else-if="isImage(previewAttachment)" class="image-preview text-center">
+                        <img
+                            :src="previewUrl"
+                            :alt="previewAttachment.file_name"
+                            class="img-fluid"
+                            style="max-height: 70vh; border: 1px solid #ddd;"
+                        />
+                    </div>
+
+                    <!-- Unsupported File Type -->
+                    <div v-else class="alert alert-info">
+                        <i class="ri-information-line me-2"></i>
+                        <strong>Anteprima non disponibile</strong><br>
+                        <small>
+                            L'anteprima non è disponibile per questo tipo di file ({{ previewAttachment.file_mime_type }}).
+                            Puoi scaricarlo usando il pulsante qui sotto.
+                        </small>
+                    </div>
+
+                    <!-- File Info -->
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <strong>Tipo:</strong> {{ previewAttachment.attachment_type }}
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Dimensione:</strong> {{ formatFileSize(previewAttachment.file_size) }}
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Formato:</strong> {{ previewAttachment.file_mime_type }}
+                            </div>
+                        </div>
+                        <div v-if="previewAttachment.expiration_date" class="row mt-2">
+                            <div class="col-12">
+                                <strong>Scadenza:</strong>
+                                <span :class="getExpirationClass(previewAttachment.expiration_date)">
+                                    {{ formatDate(previewAttachment.expiration_date) }}
+                                </span>
+                            </div>
+                        </div>
+                        <div v-if="previewAttachment.notes" class="row mt-2">
+                            <div class="col-12">
+                                <strong>Note:</strong> {{ previewAttachment.notes }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button type="button" class="btn btn-light" @click="closePreviewModal">
+                            Chiudi
+                        </button>
+                        <button type="button" class="btn btn-primary" @click="downloadAttachment(previewAttachment)">
+                            <i class="ri-download-line me-1"></i>
+                            Scarica File
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </BModal>
     </div>
 </template>
 
@@ -254,6 +349,10 @@ const props = defineProps({
     userId: {
         type: Number,
         required: true
+    },
+    companyId: {
+        type: Number,
+        required: false
     }
 });
 
@@ -261,10 +360,14 @@ const attachments = ref([]);
 const attachmentTypes = ref([]);
 const showAddModal = ref(false);
 const showEditModal = ref(false);
+const showPreviewModal = ref(false);
 const uploading = ref(false);
+const loadingPreview = ref(false);
 const formErrors = ref({});
 const selectedFile = ref(null);
 const editingAttachment = ref(null);
+const previewAttachment = ref(null);
+const previewUrl = ref('');
 
 const formData = ref({
     attachment_type: '',
@@ -289,7 +392,13 @@ const loadAttachments = async () => {
 
 const loadAttachmentTypes = async () => {
     try {
-        const response = await axios.get('/api/dictionaries/driver-attachment-types');
+        const params = {};
+        // If companyId is provided, filter by company
+        if (props.companyId) {
+            params.company_id = props.companyId;
+        }
+
+        const response = await axios.get('/api/dictionaries/driver-attachment-types', { params });
         // response.data has structure { success: true, data: [...] }
         const items = response.data.data || response.data;
 
@@ -416,6 +525,51 @@ const deleteAttachment = async (attachment) => {
         console.error('Error deleting attachment:', error);
         alert('Errore durante l\'eliminazione dell\'allegato');
     }
+};
+
+const showAttachmentPreview = async (attachment) => {
+    previewAttachment.value = attachment;
+    showPreviewModal.value = true;
+    loadingPreview.value = true;
+
+    try {
+        // Fetch the file as blob for preview
+        const response = await axios.get(
+            `/api/users/${props.userId}/attachments/${attachment.id}/download`,
+            { responseType: 'blob' }
+        );
+
+        // Create blob URL for preview
+        const blob = new Blob([response.data], { type: attachment.file_mime_type });
+        previewUrl.value = window.URL.createObjectURL(blob);
+    } catch (error) {
+        console.error('Error loading preview:', error);
+        alert('Errore durante il caricamento dell\'anteprima');
+        showPreviewModal.value = false;
+    } finally {
+        loadingPreview.value = false;
+    }
+};
+
+const closePreviewModal = () => {
+    showPreviewModal.value = false;
+    // Revoke the blob URL to free memory
+    if (previewUrl.value) {
+        window.URL.revokeObjectURL(previewUrl.value);
+        previewUrl.value = '';
+    }
+    previewAttachment.value = null;
+};
+
+const isPDF = (attachment) => {
+    return attachment.file_mime_type === 'application/pdf' ||
+           attachment.file_name.toLowerCase().endsWith('.pdf');
+};
+
+const isImage = (attachment) => {
+    const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    return imageTypes.includes(attachment.file_mime_type) ||
+           /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(attachment.file_name);
 };
 
 const closeModal = () => {

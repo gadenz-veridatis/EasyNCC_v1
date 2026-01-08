@@ -128,8 +128,13 @@ class UserController extends Controller
         unset($validated['profile'], $validated['logo']);
 
         // Set audit fields
-        $validated['created_by'] = $request->user()->id;
-        $validated['updated_by'] = $request->user()->id;
+        $currentUser = $request->user();
+        if (!$currentUser) {
+            \Log::error('UserController@store: No authenticated user found when creating user');
+            throw new \Exception('Authentication required to create user');
+        }
+        $validated['created_by'] = $currentUser->id;
+        $validated['updated_by'] = $currentUser->id;
 
         $user = User::create($validated);
 
@@ -147,7 +152,7 @@ class UserController extends Controller
             $this->createOrUpdateProfile($user, $profileData);
         }
 
-        return response()->json($user->load(['company', 'driverProfile', 'clientProfile', 'operatorProfile']), 201);
+        return response()->json($user->load(['company', 'driverProfile', 'clientProfile', 'operatorProfile', 'creator', 'updater']), 201);
     }
 
     /**
@@ -234,9 +239,31 @@ class UserController extends Controller
         }
 
         // Set audit field
-        $validated['updated_by'] = $request->user()->id;
+        $currentUser = $request->user();
+        if (!$currentUser) {
+            \Log::error('UserController@update: No authenticated user found when updating user');
+            throw new \Exception('Authentication required to update user');
+        }
+
+        \Log::info('UserController@update: Setting updated_by', [
+            'current_user_id' => $currentUser->id,
+            'current_user_name' => $currentUser->name . ' ' . $currentUser->surname,
+            'updating_user_id' => $user->id,
+            'updating_user_name' => $user->name . ' ' . $user->surname
+        ]);
+
+        $validated['updated_by'] = $currentUser->id;
 
         $user->update($validated);
+
+        // Refresh the user model to get the latest data
+        $user->refresh();
+
+        \Log::info('UserController@update: After update', [
+            'user_id' => $user->id,
+            'updated_by_in_db' => $user->updated_by,
+            'updated_at' => $user->updated_at
+        ]);
 
         // Handle logo upload for collaboratore profile
         if ($logoFile && $user->role === 'collaboratore') {
@@ -256,7 +283,7 @@ class UserController extends Controller
             $this->createOrUpdateProfile($user, $profileData);
         }
 
-        return response()->json($user->load(['company', 'driverProfile', 'clientProfile', 'operatorProfile']));
+        return response()->json($user->load(['company', 'driverProfile', 'clientProfile', 'operatorProfile', 'creator', 'updater']));
     }
 
     /**

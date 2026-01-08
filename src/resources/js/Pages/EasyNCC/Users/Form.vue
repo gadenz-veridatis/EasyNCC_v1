@@ -26,7 +26,26 @@
                             <fieldset class="border rounded p-3 mb-3">
                                 <legend class="float-none w-auto px-2 fs-6 text-muted">Dati Identificativi</legend>
                                 <BRow>
-                                    <!-- Username -->
+                                    <!-- 1. Company (only for super-admin) - Full width -->
+                                    <BCol md="12" class="mb-3" v-if="isSuperAdmin">
+                                        <label for="company_id" class="form-label">Azienda *</label>
+                                        <select
+                                            id="company_id"
+                                            v-model="form.company_id"
+                                            class="form-select"
+                                            :class="{ 'is-invalid': errors.company_id }"
+                                        >
+                                            <option value="">Seleziona un'azienda</option>
+                                            <option v-for="company in companies" :key="company.id" :value="company.id">
+                                                {{ company.name }}
+                                            </option>
+                                        </select>
+                                        <small v-if="errors.company_id" class="text-danger d-block mt-1">
+                                            {{ errors.company_id[0] }}
+                                        </small>
+                                    </BCol>
+
+                                    <!-- 2. Username -->
                                     <BCol md="6" class="mb-3">
                                         <label for="username" class="form-label">Username *</label>
                                         <input
@@ -42,7 +61,7 @@
                                         </small>
                                     </BCol>
 
-                                    <!-- Role -->
+                                    <!-- 3. Role -->
                                     <BCol md="6" class="mb-3">
                                         <label for="role" class="form-label">Ruolo *</label>
                                         <select
@@ -64,44 +83,7 @@
                                         </small>
                                     </BCol>
 
-                                    <!-- Company -->
-                                    <BCol md="6" class="mb-3">
-                                        <label for="company_id" class="form-label">Azienda *</label>
-                                        <select
-                                            id="company_id"
-                                            v-model="form.company_id"
-                                            class="form-select"
-                                            :class="{ 'is-invalid': errors.company_id }"
-                                        >
-                                            <option value="">Seleziona un'azienda</option>
-                                            <option v-for="company in companies" :key="company.id" :value="company.id">
-                                                {{ company.name }}
-                                            </option>
-                                        </select>
-                                        <small v-if="errors.company_id" class="text-danger d-block mt-1">
-                                            {{ errors.company_id[0] }}
-                                        </small>
-                                    </BCol>
-
-                                    <!-- Is Active -->
-                                    <BCol md="6" class="mb-3">
-                                        <div class="form-check form-switch" style="padding-top: 2.2rem;">
-                                            <input
-                                                id="is_active"
-                                                v-model="form.is_active"
-                                                type="checkbox"
-                                                class="form-check-input"
-                                            />
-                                            <label for="is_active" class="form-check-label">
-                                                Utente Attivo
-                                            </label>
-                                        </div>
-                                        <small class="text-muted d-block mt-1">
-                                            Se attivo, l'utente può accedere all'applicazione
-                                        </small>
-                                    </BCol>
-
-                                    <!-- Password -->
+                                    <!-- 4. Password -->
                                     <BCol md="6" class="mb-3">
                                         <label for="password" class="form-label">
                                             Password {{ !isEdit ? '*' : '' }}
@@ -132,7 +114,7 @@
                                         </small>
                                     </BCol>
 
-                                    <!-- Password Confirmation -->
+                                    <!-- 5. Password Confirmation -->
                                     <BCol md="6" class="mb-3">
                                         <label for="password_confirmation" class="form-label">
                                             Conferma Password {{ !isEdit ? '*' : '' }}
@@ -160,6 +142,24 @@
                                         </small>
                                         <small v-else-if="isEdit" class="text-muted d-block mt-1">
                                             Conferma la nuova password se vuoi modificarla
+                                        </small>
+                                    </BCol>
+
+                                    <!-- 6. Is Active -->
+                                    <BCol md="6" class="mb-3">
+                                        <div class="form-check form-switch" style="padding-top: 2.2rem;">
+                                            <input
+                                                id="is_active"
+                                                v-model="form.is_active"
+                                                type="checkbox"
+                                                class="form-check-input"
+                                            />
+                                            <label for="is_active" class="form-check-label">
+                                                Utente Attivo
+                                            </label>
+                                        </div>
+                                        <small class="text-muted d-block mt-1">
+                                            Se attivo, l'utente può accedere all'applicazione
                                         </small>
                                     </BCol>
                                 </BRow>
@@ -453,21 +453,76 @@
 
                             <!-- Driver Attachments (only in edit mode for driver role) -->
                             <div v-if="isEdit && form.role === 'driver' && props.user?.id">
-                                <DriverAttachments :user-id="props.user.id" />
+                                <DriverAttachments :user-id="props.user.id" :company-id="form.company_id" />
+                            </div>
+
+                            <!-- Info for driver attachments in create mode -->
+                            <div v-if="!isEdit && form.role === 'driver'" class="mt-4 pt-4 border-top">
+                                <h6 class="text-muted mb-3">
+                                    <i class="ri-attachment-2 me-2"></i>Allegati Conducente
+                                </h6>
+                                <div class="alert alert-info mb-0">
+                                    <i class="ri-information-line me-2"></i>
+                                    La sezione allegati sarà disponibile dopo aver creato l'utente.
+                                </div>
+                            </div>
+
+                            <!-- Audit Information -->
+                            <div v-if="isEdit && props.user" class="row mb-4 pt-3 border-top">
+                                <div class="col-12">
+                                    <h6 class="text-muted mb-3">Informazioni di Sistema</h6>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-semibold">Creato da</label>
+                                    <p class="text-muted mb-0">
+                                        {{ props.user.creator ? `${props.user.creator.name} ${props.user.creator.surname}` : '-' }}
+                                        {{ props.user.created_at ? `il ${formatDateTime(props.user.created_at)}` : '' }}
+                                    </p>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-semibold">Ultimo aggiornamento da</label>
+                                    <p class="text-muted mb-0">
+                                        {{ props.user.updater ? `${props.user.updater.name} ${props.user.updater.surname}` : '-' }}
+                                        {{ props.user.updated_at ? `il ${formatDateTime(props.user.updated_at)}` : '' }}
+                                    </p>
+                                </div>
                             </div>
 
                             <!-- Buttons -->
                             <div class="mt-4">
-                                <button
-                                    type="submit"
-                                    class="btn btn-primary"
-                                    :disabled="submitting"
-                                >
-                                    <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                                    {{ isEdit ? 'Aggiorna' : 'Crea' }}
-                                </button>
+                                <template v-if="isEdit">
+                                    <button
+                                        @click="submitForm(false)"
+                                        type="button"
+                                        class="btn btn-primary"
+                                        :disabled="submitting"
+                                    >
+                                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                                        Salva
+                                    </button>
+                                </template>
+                                <template v-else>
+                                    <button
+                                        @click="submitForm(true)"
+                                        type="button"
+                                        class="btn btn-primary"
+                                        :disabled="submitting"
+                                    >
+                                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                                        Crea
+                                    </button>
+                                    <button
+                                        @click="submitForm(false)"
+                                        type="button"
+                                        class="btn btn-success ms-2"
+                                        :disabled="submitting"
+                                    >
+                                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                                        Crea ed Esci
+                                    </button>
+                                </template>
                                 <Link :href="route('easyncc.users.index')" class="btn btn-secondary ms-2">
-                                    Annulla
+                                    Esci
                                 </Link>
                             </div>
 
@@ -485,7 +540,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import DriverProfileFields from '@/Components/ProfileFields/DriverProfileFields.vue';
@@ -493,6 +548,7 @@ import BusinessProfileFields from '@/Components/ProfileFields/BusinessProfileFie
 import OperatorProfileFields from '@/Components/ProfileFields/OperatorProfileFields.vue';
 import DriverAttachments from '@/Components/ProfileFields/DriverAttachments.vue';
 import axios from 'axios';
+import moment from 'moment';
 
 const props = defineProps({
     user: {
@@ -500,6 +556,12 @@ const props = defineProps({
         default: null
     }
 });
+
+// Get current user from Inertia page props
+const page = usePage();
+const currentUser = computed(() => page.props.auth?.user);
+const isSuperAdmin = computed(() => currentUser.value?.role === 'super-admin');
+const isAdmin = computed(() => currentUser.value?.role === 'admin');
 
 // Check if we're in edit mode - props.user must exist AND have an id
 const isEdit = ref(!!(props.user && props.user.id));
@@ -524,7 +586,8 @@ const form = ref({
     email: isEdit.value ? (props.user?.email || '') : '',
     username: isEdit.value ? (props.user?.username || '') : '',
     role: isEdit.value ? (props.user?.role || '') : '',
-    company_id: isEdit.value ? (props.user?.company_id || '') : '',
+    // For admin users in create mode, set company_id to their own company
+    company_id: isEdit.value ? (props.user?.company_id || '') : (isAdmin.value ? currentUser.value?.company_id || '' : ''),
     is_active: isEdit.value ? (props.user?.is_active !== undefined ? props.user.is_active : true) : true,
     is_intermediario: isEdit.value ? (props.user?.is_intermediario || false) : false,
     percentuale_commissione: isEdit.value ? (props.user?.percentuale_commissione || null) : null,
@@ -542,28 +605,37 @@ const form = ref({
 
 // Initialize profile data based on existing user profile
 const getInitialProfileData = () => {
-    // Only load profile data in edit mode
-    if (!isEdit.value || !props.user) return {};
+    // In edit mode, load profile data from user
+    if (isEdit.value && props.user) {
+        let profile = null;
+        // Check both camelCase and snake_case due to Laravel serialization
+        if (props.user.driverProfile || props.user.driver_profile) {
+            profile = props.user.driverProfile || props.user.driver_profile;
+        } else if (props.user.clientProfile || props.user.client_profile) {
+            profile = props.user.clientProfile || props.user.client_profile;
+        } else if (props.user.operatorProfile || props.user.operator_profile) {
+            profile = props.user.operatorProfile || props.user.operator_profile;
+        }
 
-    let profile = null;
-    // Check both camelCase and snake_case due to Laravel serialization
-    if (props.user.driverProfile || props.user.driver_profile) {
-        profile = props.user.driverProfile || props.user.driver_profile;
-    } else if (props.user.clientProfile || props.user.client_profile) {
-        profile = props.user.clientProfile || props.user.client_profile;
-    } else if (props.user.operatorProfile || props.user.operator_profile) {
-        profile = props.user.operatorProfile || props.user.operator_profile;
+        if (!profile) return {};
+
+        // Filter out system fields (id, user_id, created_at, updated_at, etc.)
+        const { id, user_id, created_at, updated_at, ...cleanProfile } = profile;
+
+        // Format birth_date for date input (YYYY-MM-DD format)
+        if (cleanProfile.birth_date) {
+            // Extract only the date part from ISO 8601 format (YYYY-MM-DDTHH:MM:SS.ssssssZ)
+            cleanProfile.birth_date = cleanProfile.birth_date.split('T')[0];
+        }
+
+        // business_contacts are already cleaned by the backend (BusinessContact model has $hidden)
+        // so we just need to pass them through as-is
+
+        return cleanProfile;
     }
 
-    if (!profile) return {};
-
-    // Filter out system fields (id, user_id, created_at, updated_at, etc.)
-    const { id, user_id, created_at, updated_at, ...cleanProfile } = profile;
-
-    // business_contacts are already cleaned by the backend (BusinessContact model has $hidden)
-    // so we just need to pass them through as-is
-
-    return cleanProfile;
+    // In create mode, return empty object (will be populated by watch when role changes)
+    return {};
 };
 
 const profileData = ref(getInitialProfileData());
@@ -574,10 +646,26 @@ const showProfileFields = computed(() => {
     return rolesWithProfiles.includes(form.value.role);
 });
 
-// Watch role changes to reset profile data
+// Watch role changes to reset profile data with proper defaults
 watch(() => form.value.role, (newRole, oldRole) => {
     if (newRole !== oldRole) {
-        profileData.value = {};
+        // Reset profile data with role-specific defaults
+        if (newRole === 'driver') {
+            profileData.value = {
+                birth_date: '',
+                fiscal_code: '',
+                vat_number: '',
+                hourly_rate: null,
+                bank_name: '',
+                iban: '',
+                assigned_vehicle_id: '',
+                color: '#3788d8',
+                allow_overlapping: false,
+                notes: ''
+            };
+        } else {
+            profileData.value = {};
+        }
     }
 });
 
@@ -617,7 +705,7 @@ const handleLogoFileChange = (file) => {
     logoFile.value = file;
 };
 
-const submitForm = async () => {
+const submitForm = async (stayOnPage = false) => {
     submitting.value = true;
     error.value = '';
     errors.value = {};
@@ -689,11 +777,18 @@ const submitForm = async () => {
             headers
         });
 
-        // If creating a new driver, redirect to edit page to allow uploading attachments
-        if (!isEdit.value && form.value.role === 'driver' && response.data?.id) {
-            router.visit(route('easyncc.users.edit', response.data.id));
-        } else {
+        if (isEdit.value) {
+            // After editing, return to the users list
             router.visit(route('easyncc.users.index'));
+        } else {
+            // For new creation
+            if (stayOnPage && response.data?.id) {
+                // Redirect to edit page
+                router.visit(route('easyncc.users.edit', response.data.id));
+            } else {
+                // Redirect to index
+                router.visit(route('easyncc.users.index'));
+            }
         }
     } catch (err) {
         console.error('Error submitting form:', err);
@@ -731,5 +826,27 @@ onMounted(() => {
     loadCompanies().then(() => {
         loading.value = false;
     });
+
+    // Initialize profile data for driver role in create mode
+    if (!isEdit.value && form.value.role === 'driver' && Object.keys(profileData.value).length === 0) {
+        profileData.value = {
+            birth_date: '',
+            fiscal_code: '',
+            vat_number: '',
+            hourly_rate: null,
+            bank_name: '',
+            iban: '',
+            assigned_vehicle_id: '',
+            color: '#3788d8',
+            allow_overlapping: false,
+            notes: ''
+        };
+    }
 });
+
+// Utility function for formatting datetime
+const formatDateTime = (date) => {
+    if (!date) return '-';
+    return moment(date).format('DD/MM/YYYY HH:mm');
+};
 </script>

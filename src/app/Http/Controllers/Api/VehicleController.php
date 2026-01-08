@@ -82,8 +82,13 @@ class VehicleController extends Controller
         }
 
         // Set audit fields
-        $validated['created_by'] = $request->user()->id;
-        $validated['updated_by'] = $request->user()->id;
+        $currentUser = $request->user();
+        if (!$currentUser) {
+            \Log::error('VehicleController@store: No authenticated user found when creating vehicle');
+            throw new \Exception('Authentication required to create vehicle');
+        }
+        $validated['created_by'] = $currentUser->id;
+        $validated['updated_by'] = $currentUser->id;
 
         $vehicle = Vehicle::create($validated);
 
@@ -124,9 +129,17 @@ class VehicleController extends Controller
         }
 
         // Set audit field
-        $validated['updated_by'] = $request->user()->id;
+        $currentUser = $request->user();
+        if (!$currentUser) {
+            \Log::error('VehicleController@update: No authenticated user found when updating vehicle');
+            throw new \Exception('Authentication required to update vehicle');
+        }
+        $validated['updated_by'] = $currentUser->id;
 
         $vehicle->update($validated);
+
+        // Force update of updated_at timestamp
+        $vehicle->touch();
 
         return response()->json($vehicle->load(['company', 'creator', 'updater']));
     }

@@ -10,7 +10,7 @@
                 <h5 class="card-title mb-0">{{ pageTitle }}</h5>
               </BCol>
               <BCol cols="auto">
-                <BButton variant="primary" @click="showModal = true">
+                <BButton variant="primary" @click="addNewItem">
                   <i class="ri-add-line align-bottom me-1"></i> Aggiungi
                 </BButton>
               </BCol>
@@ -40,16 +40,16 @@
             </BRow>
 
             <div class="table-responsive">
-              <table class="table table-borderless table-nowrap align-middle mb-0">
+              <table class="table table-borderless align-middle mb-0">
                 <thead class="table-light">
                   <tr>
-                    <th scope="col">Nome</th>
+                    <th scope="col" style="white-space: nowrap;">Nome</th>
                     <th scope="col" v-if="hasDescription">Descrizione</th>
-                    <th scope="col" v-if="hasAbbreviation">Sigla</th>
-                    <th scope="col" v-if="hasIsDefault">Default</th>
-                    <th scope="col" v-if="hasIsActive">Stato</th>
-                    <th scope="col" v-if="isSuperAdmin">Azienda</th>
-                    <th scope="col">Azioni</th>
+                    <th scope="col" v-if="hasAbbreviation" style="white-space: nowrap;">Sigla</th>
+                    <th scope="col" v-if="hasIsDefault" style="white-space: nowrap;">Default</th>
+                    <th scope="col" v-if="hasIsActive" style="white-space: nowrap;">Stato</th>
+                    <th scope="col" v-if="isSuperAdmin" style="white-space: nowrap;">Azienda</th>
+                    <th scope="col" style="white-space: nowrap;">Azioni</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -66,21 +66,21 @@
                     </td>
                   </tr>
                   <tr v-for="item in filteredItems" :key="item.id" v-else>
-                    <td>{{ item.name }}</td>
-                    <td v-if="hasDescription">{{ item.description }}</td>
-                    <td v-if="hasAbbreviation">{{ item.abbreviation }}</td>
-                    <td v-if="hasIsDefault">
+                    <td style="white-space: nowrap;">{{ item.name }}</td>
+                    <td v-if="hasDescription" style="max-width: 400px; word-wrap: break-word; white-space: normal;">{{ item.description }}</td>
+                    <td v-if="hasAbbreviation" style="white-space: nowrap;">{{ item.abbreviation }}</td>
+                    <td v-if="hasIsDefault" style="white-space: nowrap;">
                       <BBadge :variant="item.is_default ? 'success' : 'secondary'">
                         {{ item.is_default ? 'Sì' : 'No' }}
                       </BBadge>
                     </td>
-                    <td v-if="hasIsActive">
+                    <td v-if="hasIsActive" style="white-space: nowrap;">
                       <BBadge :variant="item.is_active ? 'success' : 'danger'">
                         {{ item.is_active ? 'Attivo' : 'Inattivo' }}
                       </BBadge>
                     </td>
-                    <td v-if="isSuperAdmin">{{ item.company?.name || '-' }}</td>
-                    <td>
+                    <td v-if="isSuperAdmin" style="white-space: nowrap;">{{ item.company?.name || '-' }}</td>
+                    <td style="white-space: nowrap;">
                       <div class="hstack gap-3 flex-wrap">
                         <a
                           href="javascript:void(0)"
@@ -325,6 +325,11 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    addNewItem() {
+      this.editingId = null;
+      this.form = this.getEmptyForm();
+      this.showModal = true;
     },
     editItem(item) {
       this.editingId = item.id;

@@ -42,7 +42,7 @@ class UserWebController extends Controller
 
     public function edit(string $id): Response
     {
-        $user = User::with(['company', 'driverProfile', 'clientProfile.businessContacts', 'operatorProfile'])
+        $user = User::with(['company', 'driverProfile', 'clientProfile.businessContacts', 'operatorProfile', 'creator', 'updater'])
             ->findOrFail($id);
 
         // Convert to array to ensure proper serialization for Inertia

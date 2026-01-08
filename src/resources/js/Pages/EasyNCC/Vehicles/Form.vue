@@ -225,6 +225,27 @@
                             </div>
                         </div>
 
+                        <!-- Audit Information -->
+                        <div v-if="isEdit && props.vehicle" class="row mb-4 pt-3 border-top">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3">Informazioni di Sistema</h6>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">Creato da</label>
+                                <p class="text-muted mb-0">
+                                    {{ props.vehicle.creator ? `${props.vehicle.creator.name} ${props.vehicle.creator.surname}` : '-' }}
+                                    {{ props.vehicle.created_at ? `il ${formatDateTime(props.vehicle.created_at)}` : '' }}
+                                </p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">Ultimo aggiornamento da</label>
+                                <p class="text-muted mb-0">
+                                    {{ props.vehicle.updater ? `${props.vehicle.updater.name} ${props.vehicle.updater.surname}` : '-' }}
+                                    {{ props.vehicle.updated_at ? `il ${formatDateTime(props.vehicle.updated_at)}` : '' }}
+                                </p>
+                            </div>
+                        </div>
+
                         <!-- Buttons -->
                         <div class="mt-4">
                             <template v-if="isEdit">
@@ -235,7 +256,7 @@
                                     :disabled="submitting"
                                 >
                                     <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                                    Aggiorna
+                                    Salva
                                 </button>
                             </template>
                             <template v-else>
@@ -259,7 +280,7 @@
                                 </button>
                             </template>
                             <Link :href="route('easyncc.vehicles.index')" class="btn btn-secondary ms-2">
-                                Annulla
+                                Esci
                             </Link>
                         </div>
 
@@ -282,6 +303,7 @@ import PageHeader from '@/Components/page-header.vue';
 import VehicleAttachments from '@/Components/ProfileFields/VehicleAttachments.vue';
 import VehicleUnavailabilities from '@/Components/ProfileFields/VehicleUnavailabilities.vue';
 import axios from 'axios';
+import moment from 'moment';
 
 const props = defineProps({
     vehicle: {
@@ -328,7 +350,7 @@ const submitForm = async (stayOnPage = false) => {
         const response = await axios[method](url, form.value);
 
         if (isEdit.value) {
-            // Always go to index after update
+            // After editing, return to the vehicles list
             router.visit(route('easyncc.vehicles.index'));
         } else {
             // For new creation
@@ -367,4 +389,10 @@ onMounted(() => {
     loading.value = false;
     loadCompanies();
 });
+
+// Utility function for formatting datetime
+const formatDateTime = (date) => {
+    if (!date) return '-';
+    return moment(date).format('DD/MM/YYYY HH:mm');
+};
 </script>
