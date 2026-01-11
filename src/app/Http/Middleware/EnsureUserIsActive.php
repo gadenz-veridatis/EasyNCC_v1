@@ -16,7 +16,21 @@ class EnsureUserIsActive
     public function handle(Request $request, Closure $next): Response
     {
         if (auth()->check() && !auth()->user()->is_active) {
-            auth()->logout();
+            $user = auth()->user();
+
+            // Revoke all tokens for Sanctum API authentication
+            // Check if it's a real token (not a TransientToken)
+            $token = $user->currentAccessToken();
+            if ($token && !($token instanceof \Laravel\Sanctum\TransientToken)) {
+                $token->delete();
+            }
+
+            // Logout for web guard (session-based)
+            if (auth()->guard('web')->check()) {
+                auth()->guard('web')->logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
 
             return response()->json([
                 'message' => 'Your account has been deactivated. Please contact your administrator.'

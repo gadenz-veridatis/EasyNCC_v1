@@ -3964,6 +3964,16 @@ onMounted(async () => {
         form.value.vat_rate = 10;
         form.value.card_fees_percentage = 5;
         form.value.deposit_percentage = 30;
+
+        // Generate automatic reference number: SRV-AAAAMMDDhhmmss
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        form.value.reference_number = `SRV-${year}${month}${day}${hours}${minutes}${seconds}`;
     }
 
     loading.value = false;

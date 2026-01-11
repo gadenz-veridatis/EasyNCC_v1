@@ -96,7 +96,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
             'role' => 'required|in:super-admin,admin,operator,driver,collaboratore,contabilita',
-            'name' => 'required|string',
+            'name' => 'nullable|string',
             'surname' => 'required|string',
             'nickname' => 'nullable|string',
             'email' => 'required|email|unique:users,email',
@@ -198,8 +198,8 @@ class UserController extends Controller
         $validated = $request->validate([
             'company_id' => 'sometimes|exists:companies,id',
             'role' => 'sometimes|in:super-admin,admin,operator,driver,collaboratore,contabilita',
-            'name' => 'sometimes|string',
-            'surname' => 'sometimes|string',
+            'name' => 'nullable|string',
+            'surname' => 'sometimes|required|string',
             'nickname' => 'nullable|string',
             'email' => 'sometimes|email|unique:users,email,' . $user->id,
             'username' => 'sometimes|string|unique:users,username,' . $user->id,
@@ -254,7 +254,11 @@ class UserController extends Controller
 
         $validated['updated_by'] = $currentUser->id;
 
+        // Update user data
         $user->update($validated);
+
+        // Force update the timestamp even if no fields changed
+        $user->touch();
 
         // Refresh the user model to get the latest data
         $user->refresh();

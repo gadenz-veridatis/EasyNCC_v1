@@ -1,6 +1,5 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import Checkbox from '@/Components/Checkbox.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -13,14 +12,10 @@ defineProps({
 const form = useForm({
     email: '',
     password: '',
-    remember: false,
 });
 
 const submit = () => {
-    form.transform(data => ({
-        ...data,
-        remember: form.remember ? 'on' : '',
-    })).post(route('login'), {
+    form.post(route('login'), {
         onFinish: () => form.reset('password'),
     });
 };
@@ -57,10 +52,10 @@ export default {
                         <div class="text-center mt-sm-5 mb-4 text-white-50">
                             <div>
                                 <Link href="/" class="d-inline-block auth-logo">
-                                <img src="@assets/images/logo-light.png" alt="" height="20">
+                                <img src="@assets/images/easylight.png" alt="" height="60">
                                 </Link>
                             </div>
-                            <p class="mt-3 fs-15 fw-medium">Premium Admin & Dashboard Template</p>
+                            <p class="mt-3 fs-15 fw-medium">Gestisci le attività NCC in modo semplice</p>
                         </div>
                     </BCol>
                 </BRow>
@@ -72,7 +67,7 @@ export default {
                             <BCardBody class="p-4">
                                 <div class="text-center mt-2">
                                     <h5 class="text-primary">Welcome Back !</h5>
-                                    <p class="text-muted">Sign in to continue to Velzon.</p>
+                                    <p class="text-muted">Accedi a easyNCC</p>
                                 </div>
                                 <div v-if="status" class="alert alert-success text-success">
                                     {{ status }}
@@ -101,26 +96,8 @@ export default {
                                             </div>
                                         </div>
 
-                                        <div class="form-check">
-                                            <Checkbox v-model:checked="form.remember" name="remember" class="form-check-input" id="auth-remember-check" />
-                                            <label class="form-check-label" for="auth-remember-check">Remember
-                                                me</label>
-                                        </div>
-
                                         <div class="mt-4">
                                             <BButton variant="success" class="w-100" type="submit" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">Sign In</BButton>
-                                        </div>
-
-                                        <div class="mt-4 text-center">
-                                            <div class="signin-other-title">
-                                                <h5 class="fs-13 mb-4 title">Sign In with</h5>
-                                            </div>
-                                            <div>
-                                                <BButton type="button" variant="primary" class="btn-icon"><i class="ri-facebook-fill fs-16"></i></BButton>
-                                                <BButton type="button" variant="danger" class="btn-icon ms-1"><i class="ri-google-fill fs-16"></i></BButton>
-                                                <BButton type="button" variant="dark" class="btn-icon ms-1"><i class="ri-github-fill fs-16"></i></BButton>
-                                                <BButton type="button" variant="info" class="btn-icon ms-1"><i class="ri-twitter-fill fs-16"></i></BButton>
-                                            </div>
                                         </div>
                                     </form>
                                 </div>
@@ -143,7 +120,7 @@ export default {
                 <BRow>
                     <BCol lg="12">
                         <div class="text-center">
-                            <p class="mb-0 text-muted">&copy; {{ new Date().getFullYear() }} Velzon. Crafted with <i class="mdi mdi-heart text-danger"></i> by Themesbrand</p>
+                            <p class="mb-0 text-muted">&copy; {{ new Date().getFullYear() }} easyNcc. Made with <i class="mdi mdi-heart text-danger"></i> by www.veridatis.ai</p>
                         </div>
                     </BCol>
                 </BRow>

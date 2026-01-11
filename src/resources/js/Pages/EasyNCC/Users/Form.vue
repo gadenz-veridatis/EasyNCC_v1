@@ -169,9 +169,26 @@
                             <fieldset class="border rounded p-3 mb-3">
                                 <legend class="float-none w-auto px-2 fs-6 text-muted">Dati Anagrafici</legend>
                                 <BRow>
+                                    <!-- Surname -->
+                                    <BCol md="6" class="mb-3">
+                                        <label for="surname" class="form-label">Cognome (o Nome Azienda) *</label>
+                                        <input
+                                            id="surname"
+                                            v-model="form.surname"
+                                            type="text"
+                                            class="form-control"
+                                            :class="{ 'is-invalid': errors.surname }"
+                                            placeholder="Cognome o Nome Azienda"
+                                            required
+                                        />
+                                        <small v-if="errors.surname" class="text-danger d-block mt-1">
+                                            {{ errors.surname[0] }}
+                                        </small>
+                                    </BCol>
+
                                     <!-- Name -->
                                     <BCol md="6" class="mb-3">
-                                        <label for="name" class="form-label">Nome *</label>
+                                        <label for="name" class="form-label">Nome</label>
                                         <input
                                             id="name"
                                             v-model="form.name"
@@ -182,22 +199,6 @@
                                         />
                                         <small v-if="errors.name" class="text-danger d-block mt-1">
                                             {{ errors.name[0] }}
-                                        </small>
-                                    </BCol>
-
-                                    <!-- Surname -->
-                                    <BCol md="6" class="mb-3">
-                                        <label for="surname" class="form-label">Cognome *</label>
-                                        <input
-                                            id="surname"
-                                            v-model="form.surname"
-                                            type="text"
-                                            class="form-control"
-                                            :class="{ 'is-invalid': errors.surname }"
-                                            placeholder="Cognome"
-                                        />
-                                        <small v-if="errors.surname" class="text-danger d-block mt-1">
-                                            {{ errors.surname[0] }}
                                         </small>
                                     </BCol>
 
