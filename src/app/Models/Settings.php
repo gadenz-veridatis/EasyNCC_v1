@@ -21,6 +21,7 @@ class Settings extends Model
         'balance_reason',
         'activity_confirmation_text',
         'activity_confirmation_role',
+        'default_supplier_id',
     ];
 
     protected $casts = [
@@ -42,5 +43,10 @@ class Settings extends Model
     public function balanceAccountingEntry(): BelongsTo
     {
         return $this->belongsTo(AccountingEntry::class, 'balance_accounting_entry_id');
+    }
+
+    public function defaultSupplier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'default_supplier_id');
     }
 }

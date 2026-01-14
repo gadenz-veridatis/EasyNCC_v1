@@ -44,7 +44,9 @@ class ServiceWebController extends Controller
             'accountingTransactions.accountingEntry',
             'accountingTransactions.counterpart',
             'tasks.assignedUsers',
-            'company'
+            'company',
+            'creator',
+            'updater'
         ])->findOrFail($id);
 
         return Inertia::render('EasyNCC/Services/Form', ['service' => $service]);

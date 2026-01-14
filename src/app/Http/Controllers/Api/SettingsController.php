@@ -27,7 +27,8 @@ class SettingsController extends Controller
         $settings = Settings::with([
             'company',
             'depositAccountingEntry',
-            'balanceAccountingEntry'
+            'balanceAccountingEntry',
+            'defaultSupplier'
         ])
         ->where('company_id', $companyId)
         ->first();
@@ -45,6 +46,7 @@ class SettingsController extends Controller
                     'balance_reason' => null,
                     'activity_confirmation_text' => null,
                     'activity_confirmation_role' => null,
+                    'default_supplier_id' => null,
                 ]
             ]);
         }
@@ -69,6 +71,7 @@ class SettingsController extends Controller
             'balance_reason' => 'nullable|string|max:255',
             'activity_confirmation_text' => 'nullable|string',
             'activity_confirmation_role' => 'nullable|string|in:super-admin,admin,operator,driver,collaboratore,contabilita',
+            'default_supplier_id' => 'nullable|exists:users,id',
         ]);
 
         $user = Auth::user();
@@ -92,13 +95,15 @@ class SettingsController extends Controller
                 'balance_reason' => $validated['balance_reason'] ?? null,
                 'activity_confirmation_text' => $validated['activity_confirmation_text'] ?? null,
                 'activity_confirmation_role' => $validated['activity_confirmation_role'] ?? null,
+                'default_supplier_id' => $validated['default_supplier_id'] ?? null,
             ]
         );
 
         $settings->load([
             'company',
             'depositAccountingEntry',
-            'balanceAccountingEntry'
+            'balanceAccountingEntry',
+            'defaultSupplier'
         ]);
 
         return response()->json([

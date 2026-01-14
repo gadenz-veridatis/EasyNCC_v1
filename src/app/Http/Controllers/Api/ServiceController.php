@@ -224,6 +224,10 @@ class ServiceController extends Controller
         $driverIds = $validated['driver_ids'];
         unset($validated['passengers'], $validated['driver_ids']);
 
+        // Add audit fields
+        $validated['created_by'] = $request->user()->id;
+        $validated['updated_by'] = $request->user()->id;
+
         // Create service
         $service = Service::create($validated);
 
@@ -250,7 +254,9 @@ class ServiceController extends Controller
             'activities.activityType',
             'activities.supplier',
             'accountingTransactions',
-            'company'
+            'company',
+            'creator',
+            'updater'
         ]), 201);
     }
 
@@ -275,7 +281,9 @@ class ServiceController extends Controller
             'activities.supplier',
             'accountingTransactions',
             'tasks.assignedUsers',
-            'company'
+            'company',
+            'creator',
+            'updater'
         ]));
     }
 
@@ -376,6 +384,9 @@ class ServiceController extends Controller
             $service->drivers()->sync($driverIds);
         }
 
+        // Add audit field
+        $validated['updated_by'] = $request->user()->id;
+
         // Update service
         $service->update($validated);
 
@@ -394,7 +405,9 @@ class ServiceController extends Controller
             'activities.activityType',
             'activities.supplier',
             'accountingTransactions',
-            'company'
+            'company',
+            'creator',
+            'updater'
         ]));
     }
 

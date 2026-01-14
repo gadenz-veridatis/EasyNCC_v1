@@ -216,6 +216,32 @@
                                     </BRow>
                                 </fieldset>
 
+                                <!-- Sezione Veicoli -->
+                                <fieldset class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-car-line me-2"></i>Veicoli
+                                    </legend>
+
+                                    <BRow>
+                                        <!-- Fornitore Default -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Fornitore Default</label>
+                                            <select
+                                                v-model="form.default_supplier_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">Nessun fornitore di default</option>
+                                                <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
+                                                    {{ supplier.name }} {{ supplier.surname }}
+                                                </option>
+                                            </select>
+                                            <small class="text-muted">
+                                                Fornitore che verrà selezionato automaticamente nei nuovi servizi
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+                                </fieldset>
+
                                 <!-- Alert per errori -->
                                 <div v-if="errors.length > 0" class="alert alert-danger">
                                     <ul class="mb-0">
@@ -272,6 +298,7 @@ export default {
             companies: [],
             selectedCompanyId: '',
             accountingEntries: [],
+            suppliers: [],
             form: {
                 deposit_percentage: 30.00,
                 card_fees_percentage: 5.00,
@@ -281,6 +308,7 @@ export default {
                 balance_reason: null,
                 activity_confirmation_text: null,
                 activity_confirmation_role: null,
+                default_supplier_id: null,
             },
         };
     },
@@ -297,6 +325,7 @@ export default {
             this.selectedCompanyId = this.currentUser.company_id;
             await this.loadSettings();
             await this.loadAccountingEntries();
+            await this.loadSuppliers();
         }
     },
     methods: {
@@ -337,9 +366,11 @@ export default {
                     balance_reason: data.balance_reason || null,
                     activity_confirmation_text: data.activity_confirmation_text || null,
                     activity_confirmation_role: data.activity_confirmation_role || null,
+                    default_supplier_id: data.default_supplier_id || null,
                 };
 
                 await this.loadAccountingEntries();
+                await this.loadSuppliers();
             } catch (error) {
                 console.error('Error loading settings:', error);
                 this.errors = ['Errore durante il caricamento delle impostazioni'];
@@ -356,6 +387,19 @@ export default {
                 this.accountingEntries = response.data.data || [];
             } catch (error) {
                 console.error('Error loading accounting entries:', error);
+            }
+        },
+        async loadSuppliers() {
+            if (!this.selectedCompanyId) return;
+
+            try {
+                const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
+                params.role = 'collaboratore';
+                params.is_fornitore = 1;
+                const response = await axios.get('/api/users', { params });
+                this.suppliers = response.data.data || [];
+            } catch (error) {
+                console.error('Error loading suppliers:', error);
             }
         },
         async saveSettings() {

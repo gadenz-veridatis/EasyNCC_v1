@@ -62,6 +62,8 @@ class Service extends Model
         'intermediary_commission',
         'expenses',
         'notes',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -164,5 +166,15 @@ class Service extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 }

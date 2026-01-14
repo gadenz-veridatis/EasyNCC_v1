@@ -184,8 +184,8 @@
 
                         <!-- Table -->
                         <div v-else-if="services.length > 0" class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
+                            <table class="table table-hover table-bordered align-middle mb-0">
+                                <thead class="table-dark">
                                     <tr>
                                         <th scope="col" style="width: 50px;">
                                             <input type="checkbox" v-model="selectAll" @change="toggleSelectAll" class="form-check-input">
@@ -230,7 +230,59 @@
                                         <td>
                                             <div class="fw-bold">#{{ service.reference_number || service.id }}</div>
                                             <div class="text-muted small" v-if="service.service_type">{{ service.service_type }}</div>
-                                            <div class="fw-bold text-primary mt-1" v-if="service.contact_name">{{ service.contact_name }}</div>
+
+                                            <!-- Contact Name Inline Edit -->
+                                            <div class="mt-1">
+                                                <!-- Display mode -->
+                                                <div
+                                                    v-if="editingContactName !== service.id"
+                                                    class="d-flex align-items-center gap-1"
+                                                >
+                                                    <div class="fw-bold text-primary">
+                                                        {{ service.contact_name || 'Nessun nominativo' }}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        @click="startEditContactName(service)"
+                                                        class="btn btn-link btn-sm p-0 text-muted"
+                                                        title="Modifica nominativo"
+                                                        style="line-height: 1;"
+                                                    >
+                                                        <i class="ri-edit-line" style="font-size: 0.9rem;"></i>
+                                                    </button>
+                                                </div>
+
+                                                <!-- Edit mode -->
+                                                <div v-else class="d-flex gap-2 align-items-center">
+                                                    <input
+                                                        v-model="editingContactNameValue"
+                                                        :ref="el => contactNameInputRefs[service.id] = el"
+                                                        @keydown.enter="saveContactName(service)"
+                                                        @keydown.escape="cancelEditContactName"
+                                                        type="text"
+                                                        class="form-control form-control-sm"
+                                                        placeholder="Inserisci nominativo"
+                                                        style="font-size: 0.85rem; min-width: 150px;"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        @click="saveContactName(service)"
+                                                        class="btn btn-sm btn-success"
+                                                        title="Salva"
+                                                    >
+                                                        <i class="ri-check-line"></i>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        @click="cancelEditContactName"
+                                                        class="btn btn-sm btn-secondary"
+                                                        title="Annulla"
+                                                    >
+                                                        <i class="ri-close-line"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+
                                             <div class="mt-1" v-if="service.status">
                                                 <span class="badge" :class="getStatusBadgeClass(service.status.name)">{{ service.status.name }}</span>
                                             </div>
@@ -291,8 +343,63 @@
                                                         {{ driver.name }} {{ driver.surname }}
                                                     </span>
                                                 </div>
-                                                <div class="small text-muted" v-if="service.dress_code">
-                                                    <i class="ri-shirt-line"></i> {{ service.dress_code.name }}
+                                                <div class="mt-2">
+                                                    <!-- Display mode -->
+                                                    <div
+                                                        v-if="editingDressCode !== service.id"
+                                                        class="d-flex align-items-center gap-1"
+                                                    >
+                                                        <div style="font-size: 0.85rem;">
+                                                            <i class="ri-shirt-line me-1"></i>
+                                                            {{ service.dress_code ? service.dress_code.name : 'Nessun dress code' }}
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            @click="startEditDressCode(service)"
+                                                            class="btn btn-link btn-sm p-0 text-muted"
+                                                            title="Modifica dress code"
+                                                            style="line-height: 1;"
+                                                        >
+                                                            <i class="ri-edit-line" style="font-size: 0.9rem;"></i>
+                                                        </button>
+                                                    </div>
+
+                                                    <!-- Edit mode -->
+                                                    <div v-else class="d-flex gap-2 align-items-center">
+                                                        <select
+                                                            v-model="editingDressCodeValue"
+                                                            :ref="el => dressCodeInputRefs[service.id] = el"
+                                                            @keydown.enter="saveDressCode(service)"
+                                                            @keydown.escape="cancelEditDressCode"
+                                                            class="form-select form-select-sm"
+                                                            style="font-size: 0.75rem; min-width: 150px;"
+                                                        >
+                                                            <option :value="null">Nessun dress code</option>
+                                                            <option
+                                                                v-for="dressCode in dressCodes"
+                                                                :key="dressCode.id"
+                                                                :value="dressCode.id"
+                                                            >
+                                                                {{ dressCode.name }}
+                                                            </option>
+                                                        </select>
+                                                        <button
+                                                            type="button"
+                                                            @click="saveDressCode(service)"
+                                                            class="btn btn-sm btn-success"
+                                                            title="Salva"
+                                                        >
+                                                            <i class="ri-check-line"></i>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            @click="cancelEditDressCode"
+                                                            class="btn btn-sm btn-secondary"
+                                                            title="Annulla"
+                                                        >
+                                                            <i class="ri-close-line"></i>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div v-else class="text-muted">-</div>
@@ -489,7 +596,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
 import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
@@ -502,6 +609,15 @@ const error = ref('');
 const selectedServices = ref([]);
 const selectAll = ref(false);
 
+// Inline editing
+const editingDressCode = ref(null);
+const editingDressCodeValue = ref(null);
+const dressCodeInputRefs = ref({});
+
+const editingContactName = ref(null);
+const editingContactNameValue = ref(null);
+const contactNameInputRefs = ref({});
+
 // Dictionaries
 const serviceTypes = ref([]);
 const clients = ref([]);
@@ -509,6 +625,7 @@ const intermediaries = ref([]);
 const drivers = ref([]);
 const vehicles = ref([]);
 const companies = ref([]);
+const dressCodes = ref([]);
 const currentUser = ref(null);
 
 // Filters
@@ -586,7 +703,8 @@ const loadDictionaries = async () => {
             axios.get('/api/users', { params: { role: 'collaboratore', is_client: true, per_page: 1000 } }),
             axios.get('/api/users', { params: { is_intermediary: true, per_page: 1000 } }),
             axios.get('/api/users', { params: { role: 'driver', per_page: 1000 } }),
-            axios.get('/api/vehicles', { params: { per_page: 1000 } })
+            axios.get('/api/vehicles', { params: { per_page: 1000 } }),
+            axios.get('/api/dictionaries/dress-codes')
         ];
 
         // Se l'utente è super-admin, carica anche le aziende
@@ -602,7 +720,8 @@ const loadDictionaries = async () => {
             intermediaries: responses[2].data,
             drivers: responses[3].data,
             vehicles: responses[4].data,
-            companies: responses[5]?.data
+            dressCodes: responses[5].data,
+            companies: responses[6]?.data
         });
 
         serviceTypes.value = responses[0].data.data || [];
@@ -610,9 +729,10 @@ const loadDictionaries = async () => {
         intermediaries.value = responses[2].data.data || [];
         drivers.value = responses[3].data.data || [];
         vehicles.value = responses[4].data.data || [];
+        dressCodes.value = responses[5].data.data || [];
 
-        if (isSuperAdmin.value && responses[5]) {
-            companies.value = responses[5].data.data || [];
+        if (isSuperAdmin.value && responses[6]) {
+            companies.value = responses[6].data.data || [];
         }
     } catch (err) {
         console.error('Error loading dictionaries:', err);
@@ -681,6 +801,114 @@ const deleteSelected = async () => {
         error.value = 'Errore nell\'eliminazione dei servizi';
         console.error('Error deleting services:', err);
     }
+};
+
+// Inline dress code editing functions
+const startEditDressCode = (service) => {
+    editingDressCode.value = service.id;
+    editingDressCodeValue.value = service.dress_code_id;
+    // Focus select in next tick using dynamic ref
+    nextTick(() => {
+        const select = dressCodeInputRefs.value[service.id];
+        if (select) {
+            select.focus();
+        }
+    });
+};
+
+const saveDressCode = async (service) => {
+    // Prevent duplicate saves
+    if (!editingDressCode.value || editingDressCode.value !== service.id) {
+        return;
+    }
+
+    try {
+        const payload = {
+            dress_code_id: editingDressCodeValue.value
+        };
+
+        await axios.put(`/api/services/${service.id}`, payload);
+
+        // Update local service data
+        const serviceIndex = services.value.findIndex(s => s.id === service.id);
+        if (serviceIndex !== -1) {
+            services.value[serviceIndex].dress_code_id = editingDressCodeValue.value;
+            if (editingDressCodeValue.value) {
+                const dressCode = dressCodes.value.find(dc => dc.id === editingDressCodeValue.value);
+                services.value[serviceIndex].dress_code = dressCode;
+            } else {
+                services.value[serviceIndex].dress_code = null;
+            }
+        }
+
+        // Clear editing state
+        editingDressCode.value = null;
+        editingDressCodeValue.value = null;
+    } catch (err) {
+        error.value = 'Errore nell\'aggiornamento del dress code';
+        console.error('Error updating dress code:', err);
+        // Reload services to revert changes in case of error
+        await loadServices();
+        // Clear editing state even on error
+        editingDressCode.value = null;
+        editingDressCodeValue.value = null;
+    }
+};
+
+const cancelEditDressCode = () => {
+    editingDressCode.value = null;
+    editingDressCodeValue.value = null;
+};
+
+// Inline contact name editing functions
+const startEditContactName = (service) => {
+    editingContactName.value = service.id;
+    editingContactNameValue.value = service.contact_name || '';
+    // Focus input in next tick using dynamic ref
+    nextTick(() => {
+        const input = contactNameInputRefs.value[service.id];
+        if (input) {
+            input.focus();
+        }
+    });
+};
+
+const saveContactName = async (service) => {
+    // Prevent duplicate saves
+    if (!editingContactName.value || editingContactName.value !== service.id) {
+        return;
+    }
+
+    try {
+        const payload = {
+            contact_name: editingContactNameValue.value || null
+        };
+
+        await axios.put(`/api/services/${service.id}`, payload);
+
+        // Update local service data
+        const serviceIndex = services.value.findIndex(s => s.id === service.id);
+        if (serviceIndex !== -1) {
+            services.value[serviceIndex].contact_name = editingContactNameValue.value || null;
+        }
+
+        // Clear editing state
+        editingContactName.value = null;
+        editingContactNameValue.value = null;
+    } catch (err) {
+        error.value = 'Errore nell\'aggiornamento del nominativo';
+        console.error('Error updating contact name:', err);
+        // Reload services to revert changes in case of error
+        await loadServices();
+        // Clear editing state even on error
+        editingContactName.value = null;
+        editingContactNameValue.value = null;
+    }
+};
+
+const cancelEditContactName = () => {
+    editingContactName.value = null;
+    editingContactNameValue.value = null;
 };
 
 const toggleSelectAll = () => {
@@ -903,6 +1131,25 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Cursor pointer for clickable elements */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Bordi leggeri per la tabella */
+.table-bordered {
+    border-color: #e9ecef !important;
+}
+
+.table-bordered > :not(caption) > * {
+    border-width: 1px;
+    border-color: #e9ecef !important;
+}
+
+.table-bordered > :not(caption) > * > * {
+    border-color: #e9ecef !important;
+}
+
 .targa-auto {
     /* Stile targa italiana con bande blu laterali */
     background: linear-gradient(to right, #003399 0%, #003399 8%, #ffffff 8%, #ffffff 92%, #003399 92%, #003399 100%);

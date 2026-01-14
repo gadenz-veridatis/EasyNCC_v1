@@ -247,18 +247,28 @@
                                     <BRow>
                                         <BCol md="6" class="mb-3">
                                             <label for="client_id" class="form-label">Committente *</label>
-                                            <select
-                                                id="client_id"
-                                                v-model="form.client_id"
-                                                class="form-select"
-                                                required
-                                                @change="onClientChange"
-                                            >
-                                                <option value="">Seleziona committente</option>
-                                                <option v-for="client in committenti" :key="client.id" :value="client.id">
-                                                    {{ client.name }} {{ client.surname }}
-                                                </option>
-                                            </select>
+                                            <div class="input-group">
+                                                <select
+                                                    id="client_id"
+                                                    v-model="form.client_id"
+                                                    class="form-select"
+                                                    required
+                                                    @change="onClientChange"
+                                                >
+                                                    <option value="">Seleziona committente</option>
+                                                    <option v-for="client in committenti" :key="client.id" :value="client.id">
+                                                        {{ client.name }} {{ client.surname }}
+                                                    </option>
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-soft-primary"
+                                                    @click="openNewCommittenteModal"
+                                                    title="Aggiungi nuovo committente"
+                                                >
+                                                    <i class="ri-add-line"></i>
+                                                </button>
+                                            </div>
                                         </BCol>
                                         <BCol md="6" class="mb-3">
                                             <label class="form-label">Referente Committente</label>
@@ -272,17 +282,27 @@
                                         </BCol>
                                         <BCol md="6" class="mb-3">
                                             <label for="intermediary_id" class="form-label">Intermediario</label>
-                                            <select
-                                                id="intermediary_id"
-                                                v-model="form.intermediary_id"
-                                                class="form-select"
-                                                @change="onIntermediaryChange"
-                                            >
-                                                <option value="">Nessun intermediario</option>
-                                                <option v-for="intermediary in intermediari" :key="intermediary.id" :value="intermediary.id">
-                                                    {{ intermediary.name }} {{ intermediary.surname }}
-                                                </option>
-                                            </select>
+                                            <div class="input-group">
+                                                <select
+                                                    id="intermediary_id"
+                                                    v-model="form.intermediary_id"
+                                                    class="form-select"
+                                                    @change="onIntermediaryChange"
+                                                >
+                                                    <option value="">Nessun intermediario</option>
+                                                    <option v-for="intermediary in intermediari" :key="intermediary.id" :value="intermediary.id">
+                                                        {{ intermediary.name }} {{ intermediary.surname }}
+                                                    </option>
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-soft-primary"
+                                                    @click="openNewIntermediarioModal"
+                                                    title="Aggiungi nuovo intermediario"
+                                                >
+                                                    <i class="ri-add-line"></i>
+                                                </button>
+                                            </div>
                                         </BCol>
                                         <BCol md="6" class="mb-3">
                                             <label class="form-label">Referente Intermediario</label>
@@ -305,17 +325,27 @@
                                     <BRow>
                                         <BCol md="6" class="mb-3">
                                             <label for="supplier_id" class="form-label">Fornitore</label>
-                                            <select
-                                                id="supplier_id"
-                                                v-model="form.supplier_id"
-                                                class="form-select"
-                                                @change="onSupplierChange"
-                                            >
-                                                <option value="">Nessun fornitore esterno</option>
-                                                <option v-for="supplier in fornitori" :key="supplier.id" :value="supplier.id">
-                                                    {{ supplier.name }} {{ supplier.surname }}
-                                                </option>
-                                            </select>
+                                            <div class="input-group">
+                                                <select
+                                                    id="supplier_id"
+                                                    v-model="form.supplier_id"
+                                                    class="form-select"
+                                                    @change="onSupplierChange"
+                                                >
+                                                    <option value="">Nessun fornitore esterno</option>
+                                                    <option v-for="supplier in fornitori" :key="supplier.id" :value="supplier.id">
+                                                        {{ supplier.name }} {{ supplier.surname }}
+                                                    </option>
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-soft-primary"
+                                                    @click="openNewFornitoreModal"
+                                                    title="Aggiungi nuovo fornitore"
+                                                >
+                                                    <i class="ri-add-line"></i>
+                                                </button>
+                                            </div>
                                         </BCol>
                                         <BCol md="6" class="mb-3">
                                             <label class="form-label">Referente Fornitore</label>
@@ -1451,6 +1481,27 @@
                                         <p class="mb-0">Nessun task associato a questo servizio</p>
                                     </div>
                                 </fieldset>
+
+                                <!-- Audit Section -->
+                                <div v-if="isEdit && props.service" class="row mb-4 pt-3 border-top">
+                                    <div class="col-12">
+                                        <h6 class="text-muted mb-3">Informazioni di Sistema</h6>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-semibold">Creato da</label>
+                                        <p class="text-muted mb-0">
+                                            {{ props.service.creator ? `${props.service.creator.name || ''} ${props.service.creator.surname || ''}`.trim() : '-' }}
+                                            {{ props.service.created_at ? `il ${formatDateTime(props.service.created_at)}` : '' }}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-semibold">Ultimo aggiornamento da</label>
+                                        <p class="text-muted mb-0">
+                                            {{ props.service.updater ? `${props.service.updater.name || ''} ${props.service.updater.surname || ''}`.trim() : '-' }}
+                                            {{ props.service.updated_at ? `il ${formatDateTime(props.service.updated_at)}` : '' }}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </BCardBody>
                         <BCardFooter class="service-form-footer">
@@ -2052,6 +2103,810 @@
                 </div>
             </form>
         </BModal>
+
+        <!-- Modal: Nuovo Committente -->
+        <BModal
+            v-model="showNewCommittenteModal"
+            title="Nuovo Committente"
+            size="lg"
+            hide-footer
+            @hidden="resetCommittenteForm"
+        >
+            <form @submit.prevent="saveNewCommittente">
+                <BRow>
+                    <!-- Username -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_committente_username" class="form-label">Username *</label>
+                        <input
+                            id="new_committente_username"
+                            v-model="newCommittenteForm.username"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newCommittenteErrors.username }"
+                            placeholder="username"
+                            required
+                        />
+                        <small v-if="newCommittenteErrors.username" class="text-danger d-block mt-1">
+                            {{ newCommittenteErrors.username[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Email -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_committente_email" class="form-label">Email *</label>
+                        <input
+                            id="new_committente_email"
+                            v-model="newCommittenteForm.email"
+                            type="email"
+                            class="form-control"
+                            :class="{ 'is-invalid': newCommittenteErrors.email }"
+                            placeholder="email@example.com"
+                            required
+                        />
+                        <small v-if="newCommittenteErrors.email" class="text-danger d-block mt-1">
+                            {{ newCommittenteErrors.email[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Cognome (o Nome Azienda) -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_committente_surname" class="form-label">Cognome (o Nome Azienda) *</label>
+                        <input
+                            id="new_committente_surname"
+                            v-model="newCommittenteForm.surname"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newCommittenteErrors.surname }"
+                            placeholder="Cognome o Nome Azienda"
+                            required
+                        />
+                        <small v-if="newCommittenteErrors.surname" class="text-danger d-block mt-1">
+                            {{ newCommittenteErrors.surname[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Nome -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_committente_name" class="form-label">Nome</label>
+                        <input
+                            id="new_committente_name"
+                            v-model="newCommittenteForm.name"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newCommittenteErrors.name }"
+                            placeholder="Nome"
+                        />
+                        <small v-if="newCommittenteErrors.name" class="text-danger d-block mt-1">
+                            {{ newCommittenteErrors.name[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Password -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_committente_password" class="form-label">Password *</label>
+                        <div class="input-group">
+                            <input
+                                id="new_committente_password"
+                                v-model="newCommittenteForm.password"
+                                :type="showNewCommittentePassword ? 'text' : 'password'"
+                                class="form-control"
+                                :class="{ 'is-invalid': newCommittenteErrors.password }"
+                                placeholder="Inserisci una password"
+                                required
+                            />
+                            <button
+                                type="button"
+                                class="btn btn-outline-secondary"
+                                @click="showNewCommittentePassword = !showNewCommittentePassword"
+                            >
+                                <i :class="showNewCommittentePassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                            </button>
+                        </div>
+                        <small v-if="newCommittenteErrors.password" class="text-danger d-block mt-1">
+                            {{ newCommittenteErrors.password[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Password Confirmation -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_committente_password_confirmation" class="form-label">Conferma Password *</label>
+                        <div class="input-group">
+                            <input
+                                id="new_committente_password_confirmation"
+                                v-model="newCommittenteForm.password_confirmation"
+                                :type="showNewCommittentePasswordConfirmation ? 'text' : 'password'"
+                                class="form-control"
+                                :class="{ 'is-invalid': newCommittenteErrors.password_confirmation }"
+                                placeholder="Conferma la password"
+                                required
+                            />
+                            <button
+                                type="button"
+                                class="btn btn-outline-secondary"
+                                @click="showNewCommittentePasswordConfirmation = !showNewCommittentePasswordConfirmation"
+                            >
+                                <i :class="showNewCommittentePasswordConfirmation ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                            </button>
+                        </div>
+                        <small v-if="newCommittenteErrors.password_confirmation" class="text-danger d-block mt-1">
+                            {{ newCommittenteErrors.password_confirmation[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Telefono -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_committente_phone" class="form-label">Telefono</label>
+                        <input
+                            id="new_committente_phone"
+                            v-model="newCommittenteForm.phone"
+                            type="tel"
+                            class="form-control"
+                            :class="{ 'is-invalid': newCommittenteErrors.phone }"
+                            placeholder="+39 123 4567890"
+                        />
+                        <small v-if="newCommittenteErrors.phone" class="text-danger d-block mt-1">
+                            {{ newCommittenteErrors.phone[0] }}
+                        </small>
+                    </BCol>
+                </BRow>
+
+                <!-- Dati Referente Aziendale -->
+                <div class="border-top pt-3 mt-3">
+                    <h6 class="text-muted mb-3">
+                        <i class="ri-contacts-line me-2"></i>Dati Referente Aziendale
+                    </h6>
+                    <BRow>
+                        <!-- Contact Name -->
+                        <BCol md="6" class="mb-3">
+                            <label for="new_committente_contact_name" class="form-label">Nome Referente</label>
+                            <input
+                                id="new_committente_contact_name"
+                                v-model="newCommittenteForm.contact_name"
+                                type="text"
+                                class="form-control"
+                                :class="{ 'is-invalid': newCommittenteErrors.contact_name }"
+                                placeholder="Mario Rossi"
+                            />
+                            <small v-if="newCommittenteErrors.contact_name" class="text-danger d-block mt-1">
+                                {{ newCommittenteErrors.contact_name[0] }}
+                            </small>
+                        </BCol>
+
+                        <!-- Contact Phone -->
+                        <BCol md="6" class="mb-3">
+                            <label for="new_committente_contact_phone" class="form-label">Telefono Referente</label>
+                            <input
+                                id="new_committente_contact_phone"
+                                v-model="newCommittenteForm.contact_phone"
+                                type="tel"
+                                class="form-control"
+                                :class="{ 'is-invalid': newCommittenteErrors.contact_phone }"
+                                placeholder="+39 333 1234567"
+                            />
+                            <small v-if="newCommittenteErrors.contact_phone" class="text-danger d-block mt-1">
+                                {{ newCommittenteErrors.contact_phone[0] }}
+                            </small>
+                        </BCol>
+
+                        <!-- Contact Email -->
+                        <BCol md="12" class="mb-3">
+                            <label for="new_committente_contact_email" class="form-label">Email Referente</label>
+                            <input
+                                id="new_committente_contact_email"
+                                v-model="newCommittenteForm.contact_email"
+                                type="email"
+                                class="form-control"
+                                :class="{ 'is-invalid': newCommittenteErrors.contact_email }"
+                                placeholder="referente@example.com"
+                            />
+                            <small v-if="newCommittenteErrors.contact_email" class="text-danger d-block mt-1">
+                                {{ newCommittenteErrors.contact_email[0] }}
+                            </small>
+                        </BCol>
+                    </BRow>
+                </div>
+
+                <!-- Dati Tipo Collaboratore -->
+                <div class="border-top pt-3 mt-3">
+                    <h6 class="text-muted mb-3">
+                        <i class="ri-settings-3-line me-2"></i>Tipologia Collaboratore
+                    </h6>
+                    <BRow>
+                        <!-- Is Committente -->
+                        <BCol md="4" class="mb-3">
+                            <div class="form-check form-switch">
+                                <input
+                                    id="new_committente_is_committente"
+                                    v-model="newCommittenteForm.is_committente"
+                                    type="checkbox"
+                                    class="form-check-input"
+                                />
+                                <label for="new_committente_is_committente" class="form-check-label">
+                                    È Committente
+                                </label>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                Il collaboratore può essere committente di servizi
+                            </small>
+                        </BCol>
+
+                        <!-- Is Fornitore -->
+                        <BCol md="4" class="mb-3">
+                            <div class="form-check form-switch">
+                                <input
+                                    id="new_committente_is_fornitore"
+                                    v-model="newCommittenteForm.is_fornitore"
+                                    type="checkbox"
+                                    class="form-check-input"
+                                />
+                                <label for="new_committente_is_fornitore" class="form-check-label">
+                                    È Fornitore
+                                </label>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                Il collaboratore può fornire servizi
+                            </small>
+                        </BCol>
+
+                        <!-- Is Intermediario -->
+                        <BCol md="4" class="mb-3">
+                            <div class="form-check form-switch">
+                                <input
+                                    id="new_committente_is_intermediario"
+                                    v-model="newCommittenteForm.is_intermediario"
+                                    type="checkbox"
+                                    class="form-check-input"
+                                />
+                                <label for="new_committente_is_intermediario" class="form-check-label">
+                                    È Intermediario
+                                </label>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                Il collaboratore può intermediare servizi
+                            </small>
+                        </BCol>
+                    </BRow>
+                </div>
+
+                <!-- Info Message -->
+                <div class="alert alert-info mb-3 mt-3">
+                    <i class="ri-information-line me-2"></i>
+                    Sarà creato un utente con ruolo "Collaboratore" non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-soft-secondary" @click="showNewCommittenteModal = false">
+                        Annulla
+                    </button>
+                    <button type="submit" class="btn btn-primary" :disabled="savingNewCommittente">
+                        <span v-if="savingNewCommittente" class="spinner-border spinner-border-sm me-2"></span>
+                        <i v-else class="ri-add-line me-1"></i>
+                        Crea Committente
+                    </button>
+                </div>
+            </form>
+        </BModal>
+
+        <!-- Modal: Nuovo Intermediario -->
+        <BModal
+            v-model="showNewIntermediarioModal"
+            title="Nuovo Intermediario"
+            size="lg"
+            hide-footer
+            @hidden="resetIntermediarioForm"
+        >
+            <form @submit.prevent="saveNewIntermediario">
+                <BRow>
+                    <!-- Username -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_intermediario_username" class="form-label">Username *</label>
+                        <input
+                            id="new_intermediario_username"
+                            v-model="newIntermediarioForm.username"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newIntermediarioErrors.username }"
+                            placeholder="username"
+                            required
+                        />
+                        <small v-if="newIntermediarioErrors.username" class="text-danger d-block mt-1">
+                            {{ newIntermediarioErrors.username[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Email -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_intermediario_email" class="form-label">Email *</label>
+                        <input
+                            id="new_intermediario_email"
+                            v-model="newIntermediarioForm.email"
+                            type="email"
+                            class="form-control"
+                            :class="{ 'is-invalid': newIntermediarioErrors.email }"
+                            placeholder="email@example.com"
+                            required
+                        />
+                        <small v-if="newIntermediarioErrors.email" class="text-danger d-block mt-1">
+                            {{ newIntermediarioErrors.email[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Cognome (o Nome Azienda) -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_intermediario_surname" class="form-label">Cognome (o Nome Azienda) *</label>
+                        <input
+                            id="new_intermediario_surname"
+                            v-model="newIntermediarioForm.surname"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newIntermediarioErrors.surname }"
+                            placeholder="Cognome o Nome Azienda"
+                            required
+                        />
+                        <small v-if="newIntermediarioErrors.surname" class="text-danger d-block mt-1">
+                            {{ newIntermediarioErrors.surname[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Nome -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_intermediario_name" class="form-label">Nome</label>
+                        <input
+                            id="new_intermediario_name"
+                            v-model="newIntermediarioForm.name"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newIntermediarioErrors.name }"
+                            placeholder="Nome (opzionale)"
+                        />
+                        <small v-if="newIntermediarioErrors.name" class="text-danger d-block mt-1">
+                            {{ newIntermediarioErrors.name[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Password -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_intermediario_password" class="form-label">Password *</label>
+                        <div class="position-relative">
+                            <input
+                                id="new_intermediario_password"
+                                v-model="newIntermediarioForm.password"
+                                :type="showNewIntermediarioPassword ? 'text' : 'password'"
+                                class="form-control"
+                                :class="{ 'is-invalid': newIntermediarioErrors.password }"
+                                placeholder="Password"
+                                required
+                            />
+                            <button
+                                type="button"
+                                class="btn btn-link position-absolute end-0 top-0 text-decoration-none"
+                                @click="showNewIntermediarioPassword = !showNewIntermediarioPassword"
+                            >
+                                <i :class="showNewIntermediarioPassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                            </button>
+                        </div>
+                        <small v-if="newIntermediarioErrors.password" class="text-danger d-block mt-1">
+                            {{ newIntermediarioErrors.password[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Conferma Password -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_intermediario_password_confirmation" class="form-label">Conferma Password *</label>
+                        <div class="position-relative">
+                            <input
+                                id="new_intermediario_password_confirmation"
+                                v-model="newIntermediarioForm.password_confirmation"
+                                :type="showNewIntermediarioPasswordConfirmation ? 'text' : 'password'"
+                                class="form-control"
+                                placeholder="Conferma Password"
+                                required
+                            />
+                            <button
+                                type="button"
+                                class="btn btn-link position-absolute end-0 top-0 text-decoration-none"
+                                @click="showNewIntermediarioPasswordConfirmation = !showNewIntermediarioPasswordConfirmation"
+                            >
+                                <i :class="showNewIntermediarioPasswordConfirmation ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                            </button>
+                        </div>
+                    </BCol>
+
+                    <!-- Telefono -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_intermediario_phone" class="form-label">Telefono</label>
+                        <input
+                            id="new_intermediario_phone"
+                            v-model="newIntermediarioForm.phone"
+                            type="tel"
+                            class="form-control"
+                            :class="{ 'is-invalid': newIntermediarioErrors.phone }"
+                            placeholder="Telefono (opzionale)"
+                        />
+                        <small v-if="newIntermediarioErrors.phone" class="text-danger d-block mt-1">
+                            {{ newIntermediarioErrors.phone[0] }}
+                        </small>
+                    </BCol>
+                </BRow>
+
+                <!-- Dati Referente Aziendale -->
+                <div class="border-top pt-3 mt-3">
+                    <h6 class="text-muted mb-3">
+                        <i class="ri-contacts-line me-2"></i>Dati Referente Aziendale
+                    </h6>
+                    <BRow>
+                        <!-- Nome Referente -->
+                        <BCol md="4" class="mb-3">
+                            <label for="new_intermediario_contact_name" class="form-label">Nome Referente</label>
+                            <input
+                                id="new_intermediario_contact_name"
+                                v-model="newIntermediarioForm.contact_name"
+                                type="text"
+                                class="form-control"
+                                placeholder="Nome referente"
+                            />
+                        </BCol>
+
+                        <!-- Telefono Referente -->
+                        <BCol md="4" class="mb-3">
+                            <label for="new_intermediario_contact_phone" class="form-label">Telefono Referente</label>
+                            <input
+                                id="new_intermediario_contact_phone"
+                                v-model="newIntermediarioForm.contact_phone"
+                                type="tel"
+                                class="form-control"
+                                placeholder="Telefono referente"
+                            />
+                        </BCol>
+
+                        <!-- Email Referente -->
+                        <BCol md="4" class="mb-3">
+                            <label for="new_intermediario_contact_email" class="form-label">Email Referente</label>
+                            <input
+                                id="new_intermediario_contact_email"
+                                v-model="newIntermediarioForm.contact_email"
+                                type="email"
+                                class="form-control"
+                                placeholder="Email referente"
+                            />
+                        </BCol>
+                    </BRow>
+                </div>
+
+                <!-- Tipologia Collaboratore -->
+                <div class="border-top pt-3 mt-3">
+                    <h6 class="text-muted mb-3">
+                        <i class="ri-settings-3-line me-2"></i>Tipologia Collaboratore
+                    </h6>
+                    <BRow>
+                        <!-- È Intermediario -->
+                        <BCol md="4" class="mb-3">
+                            <div class="form-check form-switch">
+                                <input
+                                    id="new_intermediario_is_intermediario"
+                                    v-model="newIntermediarioForm.is_intermediario"
+                                    type="checkbox"
+                                    class="form-check-input"
+                                />
+                                <label for="new_intermediario_is_intermediario" class="form-check-label">
+                                    È Intermediario
+                                </label>
+                            </div>
+                        </BCol>
+
+                        <!-- È Committente -->
+                        <BCol md="4" class="mb-3">
+                            <div class="form-check form-switch">
+                                <input
+                                    id="new_intermediario_is_committente"
+                                    v-model="newIntermediarioForm.is_committente"
+                                    type="checkbox"
+                                    class="form-check-input"
+                                />
+                                <label for="new_intermediario_is_committente" class="form-check-label">
+                                    È Committente
+                                </label>
+                            </div>
+                        </BCol>
+
+                        <!-- È Fornitore -->
+                        <BCol md="4" class="mb-3">
+                            <div class="form-check form-switch">
+                                <input
+                                    id="new_intermediario_is_fornitore"
+                                    v-model="newIntermediarioForm.is_fornitore"
+                                    type="checkbox"
+                                    class="form-check-input"
+                                />
+                                <label for="new_intermediario_is_fornitore" class="form-check-label">
+                                    È Fornitore
+                                </label>
+                            </div>
+                        </BCol>
+                    </BRow>
+                </div>
+
+                <!-- Info Message -->
+                <div class="alert alert-info mb-3 mt-3">
+                    <i class="ri-information-line me-2"></i>
+                    Sarà creato un utente con ruolo "Collaboratore" non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-soft-secondary" @click="showNewIntermediarioModal = false">
+                        <i class="ri-close-line me-1"></i>
+                        Annulla
+                    </button>
+                    <button type="submit" class="btn btn-primary" :disabled="savingNewIntermediario">
+                        <span v-if="savingNewIntermediario" class="spinner-border spinner-border-sm me-2"></span>
+                        <i v-else class="ri-add-line me-1"></i>
+                        Crea Intermediario
+                    </button>
+                </div>
+            </form>
+        </BModal>
+
+        <!-- Modal: Nuovo Fornitore -->
+        <BModal
+            v-model="showNewFornitoreModal"
+            title="Nuovo Fornitore"
+            size="lg"
+            hide-footer
+            @hidden="resetFornitoreForm"
+        >
+            <form @submit.prevent="saveNewFornitore">
+                <BRow>
+                    <!-- Username -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_fornitore_username" class="form-label">Username *</label>
+                        <input
+                            id="new_fornitore_username"
+                            v-model="newFornitoreForm.username"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newFornitoreErrors.username }"
+                            placeholder="username"
+                            required
+                        />
+                        <small v-if="newFornitoreErrors.username" class="text-danger d-block mt-1">
+                            {{ newFornitoreErrors.username[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Email -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_fornitore_email" class="form-label">Email *</label>
+                        <input
+                            id="new_fornitore_email"
+                            v-model="newFornitoreForm.email"
+                            type="email"
+                            class="form-control"
+                            :class="{ 'is-invalid': newFornitoreErrors.email }"
+                            placeholder="email@example.com"
+                            required
+                        />
+                        <small v-if="newFornitoreErrors.email" class="text-danger d-block mt-1">
+                            {{ newFornitoreErrors.email[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Cognome (o Nome Azienda) -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_fornitore_surname" class="form-label">Cognome (o Nome Azienda) *</label>
+                        <input
+                            id="new_fornitore_surname"
+                            v-model="newFornitoreForm.surname"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newFornitoreErrors.surname }"
+                            placeholder="Cognome o Nome Azienda"
+                            required
+                        />
+                        <small v-if="newFornitoreErrors.surname" class="text-danger d-block mt-1">
+                            {{ newFornitoreErrors.surname[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Nome -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_fornitore_name" class="form-label">Nome</label>
+                        <input
+                            id="new_fornitore_name"
+                            v-model="newFornitoreForm.name"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newFornitoreErrors.name }"
+                            placeholder="Nome (opzionale)"
+                        />
+                        <small v-if="newFornitoreErrors.name" class="text-danger d-block mt-1">
+                            {{ newFornitoreErrors.name[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Password -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_fornitore_password" class="form-label">Password *</label>
+                        <div class="position-relative">
+                            <input
+                                id="new_fornitore_password"
+                                v-model="newFornitoreForm.password"
+                                :type="showNewFornitorePassword ? 'text' : 'password'"
+                                class="form-control"
+                                :class="{ 'is-invalid': newFornitoreErrors.password }"
+                                placeholder="Password"
+                                required
+                            />
+                            <button
+                                type="button"
+                                class="btn btn-link position-absolute end-0 top-0 text-decoration-none"
+                                @click="showNewFornitorePassword = !showNewFornitorePassword"
+                            >
+                                <i :class="showNewFornitorePassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                            </button>
+                        </div>
+                        <small v-if="newFornitoreErrors.password" class="text-danger d-block mt-1">
+                            {{ newFornitoreErrors.password[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Conferma Password -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_fornitore_password_confirmation" class="form-label">Conferma Password *</label>
+                        <div class="position-relative">
+                            <input
+                                id="new_fornitore_password_confirmation"
+                                v-model="newFornitoreForm.password_confirmation"
+                                :type="showNewFornitorePasswordConfirmation ? 'text' : 'password'"
+                                class="form-control"
+                                placeholder="Conferma Password"
+                                required
+                            />
+                            <button
+                                type="button"
+                                class="btn btn-link position-absolute end-0 top-0 text-decoration-none"
+                                @click="showNewFornitorePasswordConfirmation = !showNewFornitorePasswordConfirmation"
+                            >
+                                <i :class="showNewFornitorePasswordConfirmation ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                            </button>
+                        </div>
+                    </BCol>
+
+                    <!-- Telefono -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_fornitore_phone" class="form-label">Telefono</label>
+                        <input
+                            id="new_fornitore_phone"
+                            v-model="newFornitoreForm.phone"
+                            type="tel"
+                            class="form-control"
+                            :class="{ 'is-invalid': newFornitoreErrors.phone }"
+                            placeholder="Telefono (opzionale)"
+                        />
+                        <small v-if="newFornitoreErrors.phone" class="text-danger d-block mt-1">
+                            {{ newFornitoreErrors.phone[0] }}
+                        </small>
+                    </BCol>
+                </BRow>
+
+                <!-- Dati Referente Aziendale -->
+                <div class="border-top pt-3 mt-3">
+                    <h6 class="text-muted mb-3">
+                        <i class="ri-contacts-line me-2"></i>Dati Referente Aziendale
+                    </h6>
+                    <BRow>
+                        <!-- Nome Referente -->
+                        <BCol md="4" class="mb-3">
+                            <label for="new_fornitore_contact_name" class="form-label">Nome Referente</label>
+                            <input
+                                id="new_fornitore_contact_name"
+                                v-model="newFornitoreForm.contact_name"
+                                type="text"
+                                class="form-control"
+                                placeholder="Nome referente"
+                            />
+                        </BCol>
+
+                        <!-- Telefono Referente -->
+                        <BCol md="4" class="mb-3">
+                            <label for="new_fornitore_contact_phone" class="form-label">Telefono Referente</label>
+                            <input
+                                id="new_fornitore_contact_phone"
+                                v-model="newFornitoreForm.contact_phone"
+                                type="tel"
+                                class="form-control"
+                                placeholder="Telefono referente"
+                            />
+                        </BCol>
+
+                        <!-- Email Referente -->
+                        <BCol md="4" class="mb-3">
+                            <label for="new_fornitore_contact_email" class="form-label">Email Referente</label>
+                            <input
+                                id="new_fornitore_contact_email"
+                                v-model="newFornitoreForm.contact_email"
+                                type="email"
+                                class="form-control"
+                                placeholder="Email referente"
+                            />
+                        </BCol>
+                    </BRow>
+                </div>
+
+                <!-- Tipologia Collaboratore -->
+                <div class="border-top pt-3 mt-3">
+                    <h6 class="text-muted mb-3">
+                        <i class="ri-settings-3-line me-2"></i>Tipologia Collaboratore
+                    </h6>
+                    <BRow>
+                        <!-- È Fornitore -->
+                        <BCol md="4" class="mb-3">
+                            <div class="form-check form-switch">
+                                <input
+                                    id="new_fornitore_is_fornitore"
+                                    v-model="newFornitoreForm.is_fornitore"
+                                    type="checkbox"
+                                    class="form-check-input"
+                                />
+                                <label for="new_fornitore_is_fornitore" class="form-check-label">
+                                    È Fornitore
+                                </label>
+                            </div>
+                        </BCol>
+
+                        <!-- È Committente -->
+                        <BCol md="4" class="mb-3">
+                            <div class="form-check form-switch">
+                                <input
+                                    id="new_fornitore_is_committente"
+                                    v-model="newFornitoreForm.is_committente"
+                                    type="checkbox"
+                                    class="form-check-input"
+                                />
+                                <label for="new_fornitore_is_committente" class="form-check-label">
+                                    È Committente
+                                </label>
+                            </div>
+                        </BCol>
+
+                        <!-- È Intermediario -->
+                        <BCol md="4" class="mb-3">
+                            <div class="form-check form-switch">
+                                <input
+                                    id="new_fornitore_is_intermediario"
+                                    v-model="newFornitoreForm.is_intermediario"
+                                    type="checkbox"
+                                    class="form-check-input"
+                                />
+                                <label for="new_fornitore_is_intermediario" class="form-check-label">
+                                    È Intermediario
+                                </label>
+                            </div>
+                        </BCol>
+                    </BRow>
+                </div>
+
+                <!-- Info Message -->
+                <div class="alert alert-info mb-3 mt-3">
+                    <i class="ri-information-line me-2"></i>
+                    Sarà creato un utente con ruolo "Collaboratore" non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-soft-secondary" @click="showNewFornitoreModal = false">
+                        <i class="ri-close-line me-1"></i>
+                        Annulla
+                    </button>
+                    <button type="submit" class="btn btn-primary" :disabled="savingNewFornitore">
+                        <span v-if="savingNewFornitore" class="spinner-border spinner-border-sm me-2"></span>
+                        <i v-else class="ri-add-line me-1"></i>
+                        Crea Fornitore
+                    </button>
+                </div>
+            </form>
+        </BModal>
     </Layout>
 </template>
 
@@ -2077,6 +2932,18 @@ const exitAfterSave = ref(true); // Default: Salva ed Esci
 const showActivityModal = ref(false);
 const showTransactionModal = ref(false);
 const showTaskModal = ref(false);
+const showNewCommittenteModal = ref(false);
+const savingNewCommittente = ref(false);
+const showNewCommittentePassword = ref(false);
+const showNewCommittentePasswordConfirmation = ref(false);
+const showNewIntermediarioModal = ref(false);
+const savingNewIntermediario = ref(false);
+const showNewIntermediarioPassword = ref(false);
+const showNewIntermediarioPasswordConfirmation = ref(false);
+const showNewFornitoreModal = ref(false);
+const savingNewFornitore = ref(false);
+const showNewFornitorePassword = ref(false);
+const showNewFornitorePasswordConfirmation = ref(false);
 
 // Current user and companies
 const currentUser = ref(null);
@@ -2309,6 +3176,72 @@ const taskForm = ref({
     status: 'to_complete',
     notes: ''
 });
+
+// New Committente Form
+const newCommittenteForm = ref({
+    username: '',
+    email: '',
+    surname: '',
+    name: '',
+    password: '',
+    password_confirmation: '',
+    phone: '',
+    role: 'collaboratore',
+    is_active: false,
+    company_id: null,
+    contact_name: '',
+    contact_phone: '',
+    contact_email: '',
+    is_committente: true,
+    is_fornitore: false,
+    is_intermediario: false
+});
+
+const newCommittenteErrors = ref({});
+
+// New Intermediario Form
+const newIntermediarioForm = ref({
+    username: '',
+    email: '',
+    surname: '',
+    name: '',
+    password: '',
+    password_confirmation: '',
+    phone: '',
+    role: 'collaboratore',
+    is_active: false,
+    company_id: null,
+    contact_name: '',
+    contact_phone: '',
+    contact_email: '',
+    is_committente: false,
+    is_fornitore: false,
+    is_intermediario: true
+});
+
+const newIntermediarioErrors = ref({});
+
+// New Fornitore Form
+const newFornitoreForm = ref({
+    username: '',
+    email: '',
+    surname: '',
+    name: '',
+    password: '',
+    password_confirmation: '',
+    phone: '',
+    role: 'collaboratore',
+    is_active: false,
+    company_id: null,
+    contact_name: '',
+    contact_phone: '',
+    contact_email: '',
+    is_committente: false,
+    is_fornitore: true,
+    is_intermediario: false
+});
+
+const newFornitoreErrors = ref({});
 
 // Computed
 const selectedClientContact = computed(() => {
@@ -2553,6 +3486,12 @@ const loadSettings = async () => {
             }
             if (settings.value.card_fees_percentage !== null && settings.value.card_fees_percentage !== undefined) {
                 form.value.card_fees_percentage = settings.value.card_fees_percentage;
+            }
+            // Imposta il fornitore di default
+            if (settings.value.default_supplier_id !== null && settings.value.default_supplier_id !== undefined) {
+                form.value.supplier_id = settings.value.default_supplier_id;
+                // Aggiorna il referente fornitore dopo aver impostato il fornitore
+                onSupplierChange();
             }
         }
     } catch (error) {
@@ -3568,6 +4507,282 @@ const deleteTask = async (taskId) => {
     }
 };
 
+// New Committente Management
+const openNewCommittenteModal = () => {
+    resetCommittenteForm();
+    newCommittenteForm.value.company_id = form.value.company_id;
+    showNewCommittenteModal.value = true;
+};
+
+const resetCommittenteForm = () => {
+    newCommittenteForm.value = {
+        username: '',
+        email: '',
+        surname: '',
+        name: '',
+        password: '',
+        password_confirmation: '',
+        phone: '',
+        role: 'collaboratore',
+        is_active: false,
+        company_id: null,
+        contact_name: '',
+        contact_phone: '',
+        contact_email: '',
+        is_committente: true,
+        is_fornitore: false,
+        is_intermediario: false
+    };
+    newCommittenteErrors.value = {};
+    showNewCommittentePassword.value = false;
+    showNewCommittentePasswordConfirmation.value = false;
+};
+
+const saveNewCommittente = async () => {
+    savingNewCommittente.value = true;
+    newCommittenteErrors.value = {};
+
+    try {
+        // Prepare business contacts array
+        const businessContacts = [];
+        if (newCommittenteForm.value.contact_name || newCommittenteForm.value.contact_phone || newCommittenteForm.value.contact_email) {
+            businessContacts.push({
+                name: newCommittenteForm.value.contact_name || null,
+                phone: newCommittenteForm.value.contact_phone || null,
+                email: newCommittenteForm.value.contact_email || null
+            });
+        }
+
+        const data = {
+            username: newCommittenteForm.value.username,
+            email: newCommittenteForm.value.email,
+            surname: newCommittenteForm.value.surname,
+            name: newCommittenteForm.value.name || null,
+            password: newCommittenteForm.value.password,
+            password_confirmation: newCommittenteForm.value.password_confirmation,
+            phone: newCommittenteForm.value.phone || null,
+            role: 'collaboratore',
+            is_active: false,
+            is_intermediario: newCommittenteForm.value.is_intermediario,
+            company_id: newCommittenteForm.value.company_id,
+            profile: {
+                is_committente: newCommittenteForm.value.is_committente,
+                is_fornitore: newCommittenteForm.value.is_fornitore,
+                business_contacts: businessContacts
+            }
+        };
+
+        const response = await axios.post('/api/users', data);
+
+        // Reload committenti list
+        await loadCounterparts();
+
+        // Select the newly created committente
+        form.value.client_id = response.data.id;
+
+        // Close modal
+        showNewCommittenteModal.value = false;
+
+        // Show success message
+        alert('Committente creato con successo!');
+    } catch (error) {
+        console.error('Error creating committente:', error);
+
+        if (error.response && error.response.status === 422) {
+            // Validation errors
+            newCommittenteErrors.value = error.response.data.errors || {};
+        } else {
+            alert('Errore durante la creazione del committente. Riprova.');
+        }
+    } finally {
+        savingNewCommittente.value = false;
+    }
+};
+
+// New Intermediario Management
+const openNewIntermediarioModal = () => {
+    resetIntermediarioForm();
+    newIntermediarioForm.value.company_id = form.value.company_id;
+    showNewIntermediarioModal.value = true;
+};
+
+const resetIntermediarioForm = () => {
+    newIntermediarioForm.value = {
+        username: '',
+        email: '',
+        surname: '',
+        name: '',
+        password: '',
+        password_confirmation: '',
+        phone: '',
+        role: 'collaboratore',
+        is_active: false,
+        company_id: null,
+        contact_name: '',
+        contact_phone: '',
+        contact_email: '',
+        is_committente: false,
+        is_fornitore: false,
+        is_intermediario: true
+    };
+    newIntermediarioErrors.value = {};
+    showNewIntermediarioPassword.value = false;
+    showNewIntermediarioPasswordConfirmation.value = false;
+};
+
+const saveNewIntermediario = async () => {
+    savingNewIntermediario.value = true;
+    newIntermediarioErrors.value = {};
+
+    try {
+        // Prepare business contacts array
+        const businessContacts = [];
+        if (newIntermediarioForm.value.contact_name || newIntermediarioForm.value.contact_phone || newIntermediarioForm.value.contact_email) {
+            businessContacts.push({
+                name: newIntermediarioForm.value.contact_name || null,
+                phone: newIntermediarioForm.value.contact_phone || null,
+                email: newIntermediarioForm.value.contact_email || null
+            });
+        }
+
+        const data = {
+            username: newIntermediarioForm.value.username,
+            email: newIntermediarioForm.value.email,
+            surname: newIntermediarioForm.value.surname,
+            name: newIntermediarioForm.value.name || null,
+            password: newIntermediarioForm.value.password,
+            password_confirmation: newIntermediarioForm.value.password_confirmation,
+            phone: newIntermediarioForm.value.phone || null,
+            role: 'collaboratore',
+            is_active: false,
+            is_intermediario: newIntermediarioForm.value.is_intermediario,
+            company_id: newIntermediarioForm.value.company_id,
+            profile: {
+                is_committente: newIntermediarioForm.value.is_committente,
+                is_fornitore: newIntermediarioForm.value.is_fornitore,
+                business_contacts: businessContacts
+            }
+        };
+
+        const response = await axios.post('/api/users', data);
+
+        // Reload intermediari list
+        await loadCounterparts();
+
+        // Select the newly created intermediario
+        form.value.intermediary_id = response.data.id;
+
+        // Close modal
+        showNewIntermediarioModal.value = false;
+
+        // Show success message
+        alert('Intermediario creato con successo!');
+    } catch (error) {
+        console.error('Error creating intermediario:', error);
+
+        if (error.response && error.response.status === 422) {
+            // Validation errors
+            newIntermediarioErrors.value = error.response.data.errors || {};
+        } else {
+            alert('Errore durante la creazione dell\'intermediario. Riprova.');
+        }
+    } finally {
+        savingNewIntermediario.value = false;
+    }
+};
+
+// New Fornitore Management
+const openNewFornitoreModal = () => {
+    resetFornitoreForm();
+    newFornitoreForm.value.company_id = form.value.company_id;
+    showNewFornitoreModal.value = true;
+};
+
+const resetFornitoreForm = () => {
+    newFornitoreForm.value = {
+        username: '',
+        email: '',
+        surname: '',
+        name: '',
+        password: '',
+        password_confirmation: '',
+        phone: '',
+        role: 'collaboratore',
+        is_active: false,
+        company_id: null,
+        contact_name: '',
+        contact_phone: '',
+        contact_email: '',
+        is_committente: false,
+        is_fornitore: true,
+        is_intermediario: false
+    };
+    newFornitoreErrors.value = {};
+    showNewFornitorePassword.value = false;
+    showNewFornitorePasswordConfirmation.value = false;
+};
+
+const saveNewFornitore = async () => {
+    savingNewFornitore.value = true;
+    newFornitoreErrors.value = {};
+
+    try {
+        // Prepare business contacts array
+        const businessContacts = [];
+        if (newFornitoreForm.value.contact_name || newFornitoreForm.value.contact_phone || newFornitoreForm.value.contact_email) {
+            businessContacts.push({
+                name: newFornitoreForm.value.contact_name || null,
+                phone: newFornitoreForm.value.contact_phone || null,
+                email: newFornitoreForm.value.contact_email || null
+            });
+        }
+
+        const data = {
+            username: newFornitoreForm.value.username,
+            email: newFornitoreForm.value.email,
+            surname: newFornitoreForm.value.surname,
+            name: newFornitoreForm.value.name || null,
+            password: newFornitoreForm.value.password,
+            password_confirmation: newFornitoreForm.value.password_confirmation,
+            phone: newFornitoreForm.value.phone || null,
+            role: 'collaboratore',
+            is_active: false,
+            is_intermediario: newFornitoreForm.value.is_intermediario,
+            company_id: newFornitoreForm.value.company_id,
+            profile: {
+                is_committente: newFornitoreForm.value.is_committente,
+                is_fornitore: newFornitoreForm.value.is_fornitore,
+                business_contacts: businessContacts
+            }
+        };
+
+        const response = await axios.post('/api/users', data);
+
+        // Reload fornitori list
+        await loadCounterparts();
+
+        // Select the newly created fornitore
+        form.value.supplier_id = response.data.id;
+
+        // Close modal
+        showNewFornitoreModal.value = false;
+
+        // Show success message
+        alert('Fornitore creato con successo!');
+    } catch (error) {
+        console.error('Error creating fornitore:', error);
+
+        if (error.response && error.response.status === 422) {
+            // Validation errors
+            newFornitoreErrors.value = error.response.data.errors || {};
+        } else {
+            alert('Errore durante la creazione del fornitore. Riprova.');
+        }
+    } finally {
+        savingNewFornitore.value = false;
+    }
+};
+
 // Activity Confirmation Tasks Management
 // Toggle only changes the state, actual creation/deletion happens on save
 const toggleActivityConfirmation = () => {
@@ -3793,6 +5008,12 @@ const submitForm = async () => {
     submitting.value = true;
     try {
         const payload = { ...form.value };
+
+        // Convert empty strings to null for nullable foreign keys
+        if (payload.supplier_id === '') payload.supplier_id = null;
+        if (payload.intermediary_id === '') payload.intermediary_id = null;
+        if (payload.dress_code_id === '') payload.dress_code_id = null;
+
         const url = isEdit.value ? `/api/services/${props.service.id}` : '/api/services';
         const method = isEdit.value ? 'put' : 'post';
 
@@ -3947,6 +5168,20 @@ onMounted(async () => {
         }
         if (props.service.tasks) {
             serviceTasks.value = props.service.tasks;
+
+            // Initialize activityConfirmationEnabled based on existing confirmation tasks
+            const hasConfirmationTasks = serviceTasks.value.some(task =>
+                task.notes && task.notes.includes('Task di conferma automatico per l\'esperienza:')
+            );
+            activityConfirmationEnabled.value = hasConfirmationTasks;
+        }
+
+        // Initialize accountingEnabled based on existing sale transactions
+        if (props.service.accounting_transactions) {
+            const hasSaleTransactions = props.service.accounting_transactions.some(
+                t => t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance')
+            );
+            accountingEnabled.value = hasSaleTransactions;
         }
 
         // Set default values if not present
