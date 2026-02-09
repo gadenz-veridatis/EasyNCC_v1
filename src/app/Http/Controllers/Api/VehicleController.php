@@ -44,6 +44,18 @@ class VehicleController extends Controller
             });
         }
 
+        // Filter by expiring attachments
+        if ($request->filled('expiring')) {
+            $days = (int) $request->expiring;
+            if ($days > 0) {
+                $query->whereHas('vehicleAttachments', function($q) use ($days) {
+                    $q->whereNotNull('expiration_date')
+                      ->where('expiration_date', '<=', now()->addDays($days))
+                      ->where('expiration_date', '>=', now());
+                });
+            }
+        }
+
         // Ordinamento
         $sortBy = $request->get('sort_by', 'created_at');
         $sortOrder = $request->get('sort_order', 'desc');
@@ -100,7 +112,7 @@ class VehicleController extends Controller
      */
     public function show(Vehicle $vehicle): JsonResponse
     {
-        return response()->json($vehicle->load(['company', 'assignedDrivers', 'services', 'creator', 'updater']));
+        return response()->json($vehicle->load(['company', 'assignedDrivers', 'services', 'vehicleAttachments', 'unavailabilities', 'creator', 'updater']));
     }
 
     /**

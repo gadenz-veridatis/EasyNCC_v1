@@ -23,8 +23,8 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
     // EasyNCC Routes
     Route::prefix('easyncc')->name('easyncc.')->group(function () {
 
-        // Dashboard
-        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+        // Dashboard (currently disabled - calendar is the landing page)
+        // Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
         // Vehicles
         Route::prefix('vehicles')->name('vehicles.')->group(function () {
@@ -49,6 +49,27 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
             Route::get('/create', [UserWebController::class, 'create'])->name('create')->middleware('role:super-admin,admin,operator');
             Route::get('/{id}', [UserWebController::class, 'show'])->name('show');
             Route::get('/{id}/edit', [UserWebController::class, 'edit'])->name('edit')->middleware('role:super-admin,admin,operator');
+        });
+
+        // Drivers
+        Route::prefix('drivers')->name('drivers.')->middleware('role:super-admin,admin,operator')->group(function () {
+            Route::get('/', function () {
+                return inertia('EasyNCC/Drivers/Index');
+            })->name('index');
+        });
+
+        // Committenti
+        Route::prefix('committenti')->name('committenti.')->middleware('role:super-admin,admin,operator')->group(function () {
+            Route::get('/', function () {
+                return inertia('EasyNCC/Committenti/Index');
+            })->name('index');
+        });
+
+        // Fornitori
+        Route::prefix('fornitori')->name('fornitori.')->middleware('role:super-admin,admin,operator')->group(function () {
+            Route::get('/', function () {
+                return inertia('EasyNCC/Fornitori/Index');
+            })->name('index');
         });
 
         // Activities
@@ -173,10 +194,15 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
         });
     });
 
+    // Landing page: Services Calendar
+    Route::get('/', function () {
+        return redirect()->route('easyncc.services.calendar');
+    });
+
     Route::controller(VelzonRoutesController::class)->group(function () {
 
-        // dashboards
-        Route::get('/', 'dashboard');
+        // dashboards (Velzon demo routes - not used)
+        // Route::get('/', 'dashboard');
         Route::get('/dashboard/analytics', 'dashboard_analytics');
         Route::get('/dashboard/crm', 'dashboard_crm');
         Route::get('/dashboard/crypto', 'dashboard_crypto');

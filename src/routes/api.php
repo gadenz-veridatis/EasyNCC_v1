@@ -110,6 +110,7 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
     Route::get('services/{service}', [ServiceController::class, 'show']);
 
     Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+        Route::post('services/check-overlaps', [ServiceController::class, 'checkOverlaps']);
         Route::post('services', [ServiceController::class, 'store']);
         Route::put('services/{service}', [ServiceController::class, 'update']);
         Route::patch('services/{service}', [ServiceController::class, 'update']);

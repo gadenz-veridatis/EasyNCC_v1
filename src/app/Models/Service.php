@@ -177,4 +177,20 @@ class Service extends Model
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
+
+    /**
+     * Get overlaps where this service is the primary service.
+     */
+    public function overlaps(): HasMany
+    {
+        return $this->hasMany(ServiceOverlap::class, 'service_id');
+    }
+
+    /**
+     * Get overlaps where this service is the overlapping service.
+     */
+    public function overlappedBy(): HasMany
+    {
+        return $this->hasMany(ServiceOverlap::class, 'overlapping_service_id');
+    }
 }

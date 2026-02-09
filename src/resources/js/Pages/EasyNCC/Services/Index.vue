@@ -198,9 +198,11 @@
                                             Data
                                             <i v-if="sortField === 'pickup_datetime'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
                                         </th>
-                                        <th scope="col">Passeggeri</th>
+                                        <th scope="col">
+                                            Passeggeri<br/>Bagagli
+                                        </th>
                                         <th scope="col" @click="sortBy('client_id')" style="cursor: pointer;">
-                                            Committente
+                                            Committente<br/>Intermediario
                                             <i v-if="sortField === 'client_id'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
                                         </th>
                                         <th scope="col">Autista</th>
@@ -228,24 +230,76 @@
                                         </td>
                                         <!-- Dati Identificativi -->
                                         <td>
-                                            <div class="fw-bold">#{{ service.reference_number || service.id }}</div>
-                                            <div class="text-muted small" v-if="service.service_type">{{ service.service_type }}</div>
+                                            <!-- Tipologia Servizio come Tag, più visibile -->
+                                            <div class="mb-2" v-if="service.service_type">
+                                                <span class="badge bg-primary text-white" style="font-size: 0.9rem; padding: 0.45rem 0.85rem;">
+                                                    {{ service.service_type }}
+                                                </span>
+                                            </div>
 
-                                            <!-- Contact Name Inline Edit -->
-                                            <div class="mt-1">
+                                            <!-- Primo Passeggero o Messaggio -->
+                                            <div class="mb-1">
+                                                <div v-if="service.passengers && service.passengers.length > 0" class="d-flex align-items-center gap-1">
+                                                    <span v-if="service.passengers[0].nationality">{{ getNationalityFlag(service.passengers[0].nationality) }} </span>
+                                                    <span class="fw-bold text-uppercase">{{ service.passengers[0].surname }}</span>
+                                                    <span>{{ service.passengers[0].name }}</span>
+                                                    <!-- Icona per aprire modale se ci sono più passeggeri -->
+                                                    <button
+                                                        v-if="service.passengers.length > 1"
+                                                        type="button"
+                                                        @click="showPassengersModal(service)"
+                                                        class="btn btn-link btn-sm p-0 text-primary"
+                                                        :title="`Vedi tutti i ${service.passengers.length} passeggeri`"
+                                                        style="line-height: 1;"
+                                                    >
+                                                        <i class="ri-group-line" style="font-size: 1rem;"></i>
+                                                        <span class="badge bg-primary rounded-pill ms-1" style="font-size: 0.7rem;">{{ service.passengers.length }}</span>
+                                                    </button>
+                                                </div>
+                                                <div v-else class="text-muted small fst-italic">
+                                                    Nessun passeggero inserito
+                                                </div>
+                                            </div>
+
+                                            <!-- Identificativo Servizio in fondo, visibilità ridotta -->
+                                            <div class="small text-muted">
+                                                #{{ service.reference_number || service.id }}
+                                            </div>
+                                        </td>
+                                        <!-- Data -->
+                                        <td>
+                                            <div class="d-flex align-items-start gap-2 mb-2">
+                                                <i class="ri-map-pin-add-line text-success" style="font-size: 1.1rem;" title="Pickup"></i>
+                                                <div>
+                                                    <div class="fw-bold">{{ formatDate(service.pickup_datetime) }}</div>
+                                                    <div class="small text-primary">{{ service.pickup_address }}</div>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-start gap-2">
+                                                <i class="ri-map-pin-line text-danger" style="font-size: 1.1rem;" title="Dropoff"></i>
+                                                <div>
+                                                    <div class="small text-muted">{{ formatDate(service.dropoff_datetime) }}</div>
+                                                    <div class="small text-muted">{{ service.dropoff_address }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <!-- Passeggeri -->
+                                        <td>
+                                            <!-- Passenger Count Inline Edit -->
+                                            <div class="mb-1">
                                                 <!-- Display mode -->
                                                 <div
-                                                    v-if="editingContactName !== service.id"
+                                                    v-if="editingPassengerCount !== service.id"
                                                     class="d-flex align-items-center gap-1"
                                                 >
-                                                    <div class="fw-bold text-primary">
-                                                        {{ service.contact_name || 'Nessun nominativo' }}
+                                                    <div class="fw-bold">
+                                                        <i class="ri-user-line"></i> {{ service.passenger_count || 0 }}
                                                     </div>
                                                     <button
                                                         type="button"
-                                                        @click="startEditContactName(service)"
+                                                        @click="startEditPassengerCount(service)"
                                                         class="btn btn-link btn-sm p-0 text-muted"
-                                                        title="Modifica nominativo"
+                                                        title="Modifica numero passeggeri"
                                                         style="line-height: 1;"
                                                     >
                                                         <i class="ri-edit-line" style="font-size: 0.9rem;"></i>
@@ -255,18 +309,19 @@
                                                 <!-- Edit mode -->
                                                 <div v-else class="d-flex gap-2 align-items-center">
                                                     <input
-                                                        v-model="editingContactNameValue"
-                                                        :ref="el => contactNameInputRefs[service.id] = el"
-                                                        @keydown.enter="saveContactName(service)"
-                                                        @keydown.escape="cancelEditContactName"
-                                                        type="text"
+                                                        v-model.number="editingPassengerCountValue"
+                                                        :ref="el => passengerCountInputRefs[service.id] = el"
+                                                        @keydown.enter="savePassengerCount(service)"
+                                                        @keydown.escape="cancelEditPassengerCount"
+                                                        type="number"
+                                                        min="0"
                                                         class="form-control form-control-sm"
-                                                        placeholder="Inserisci nominativo"
-                                                        style="font-size: 0.85rem; min-width: 150px;"
+                                                        placeholder="N. passeggeri"
+                                                        style="font-size: 0.85rem; width: 80px;"
                                                     />
                                                     <button
                                                         type="button"
-                                                        @click="saveContactName(service)"
+                                                        @click="savePassengerCount(service)"
                                                         class="btn btn-sm btn-success"
                                                         title="Salva"
                                                     >
@@ -274,7 +329,125 @@
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        @click="cancelEditContactName"
+                                                        @click="cancelEditPassengerCount"
+                                                        class="btn btn-sm btn-secondary"
+                                                        title="Annulla"
+                                                    >
+                                                        <i class="ri-close-line"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <!-- Bagagli -->
+                                            <div class="small mb-1">
+                                                <span class="text-muted me-2" style="font-size: 0.7rem;">Bagagli:</span>
+                                                <span class="d-inline-flex align-items-center gap-2">
+                                                    <span :title="`Bagaglio grande: ${service.big_luggage || 0}`" style="cursor: help;">
+                                                        <i class="ri-luggage-cart-line"></i>{{ service.big_luggage || 0 }}
+                                                    </span>
+                                                    <span :title="`Bagaglio medio: ${service.medium_luggage || 0}`" style="cursor: help;">
+                                                        <i class="ri-briefcase-line"></i>{{ service.medium_luggage || 0 }}
+                                                    </span>
+                                                    <span :title="`Bagaglio piccolo: ${service.small_luggage || 0}`" style="cursor: help;">
+                                                        <i class="ri-handbag-line"></i>{{ service.small_luggage || 0 }}
+                                                    </span>
+                                                </span>
+                                            </div>
+                                            <!-- Babyseat -->
+                                            <div class="small mb-1">
+                                                <span class="text-muted me-2" style="font-size: 0.7rem;">Baby Seat:</span>
+                                                <span class="d-inline-flex align-items-center gap-2">
+                                                    <span :title="`Ovetto: ${service.babyseat_egg || 0}`" style="cursor: help;">
+                                                        <i class="ri-bear-smile-line"></i>{{ service.babyseat_egg || 0 }}
+                                                    </span>
+                                                    <span :title="`Seggiolino standard: ${service.babyseat_standard || 0}`" style="cursor: help;">
+                                                        <i class="ri-parent-line"></i>{{ service.babyseat_standard || 0 }}
+                                                    </span>
+                                                    <span :title="`Booster: ${service.babyseat_booster || 0}`" style="cursor: help;">
+                                                        <i class="ri-user-smile-line"></i>{{ service.babyseat_booster || 0 }}
+                                                    </span>
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <!-- Committente/Intermediario -->
+                                        <td>
+                                            <!-- Committente -->
+                                            <div v-if="service.client">
+                                                <div class="small text-muted mb-1">
+                                                    <span class="badge bg-soft-primary text-primary" style="font-size: 0.7rem;">Committente</span>
+                                                </div>
+                                                <div class="fw-bold">
+                                                    {{ service.client.name }} {{ service.client.surname }}
+                                                </div>
+                                                <div class="small" v-if="service.client.phone">
+                                                    <i class="ri-phone-line"></i> {{ service.client.phone }}
+                                                </div>
+                                            </div>
+
+                                            <!-- Intermediario -->
+                                            <div v-if="service.intermediary" class="mt-2 pt-2 border-top">
+                                                <div class="small text-muted mb-1">
+                                                    <span class="badge bg-soft-secondary text-secondary" style="font-size: 0.7rem;">Intermediario</span>
+                                                </div>
+                                                <div class="small">
+                                                    {{ service.intermediary.name }} {{ service.intermediary.surname }}
+                                                </div>
+                                                <div class="small" v-if="service.intermediary.phone">
+                                                    <i class="ri-phone-line"></i> {{ service.intermediary.phone }}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <!-- Autista -->
+                                        <td>
+                                            <!-- Display mode -->
+                                            <div v-if="editingDrivers !== service.id">
+                                                <div v-if="service.drivers && service.drivers.length > 0">
+                                                    <div v-for="driver in service.drivers" :key="driver.id" class="mb-2">
+                                                        <span class="badge text-start" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'}; padding: 0.5rem 0.75rem;`">
+                                                            <div class="fw-bold text-uppercase" style="font-size: 0.9rem;">{{ driver.surname }}</div>
+                                                            <div style="font-size: 0.85rem;">{{ driver.name }}</div>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div v-else class="text-muted small">
+                                                    Nessun autista
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    @click="startEditDrivers(service)"
+                                                    class="btn btn-link btn-sm p-0 text-muted mt-2"
+                                                    title="Modifica autisti"
+                                                    style="line-height: 1;"
+                                                >
+                                                    <i class="ri-edit-line" style="font-size: 0.9rem;"></i>
+                                                </button>
+                                            </div>
+
+                                            <!-- Edit mode -->
+                                            <div v-else class="mb-2">
+                                                <select
+                                                    v-model="editingDriversValue"
+                                                    :ref="el => driversInputRefs[service.id] = el"
+                                                    class="form-select form-select-sm"
+                                                    multiple
+                                                    size="5"
+                                                    style="min-width: 200px;"
+                                                >
+                                                    <option v-for="driver in drivers" :key="driver.id" :value="driver.id">
+                                                        {{ driver.surname }} {{ driver.name }}
+                                                    </option>
+                                                </select>
+                                                <div class="d-flex gap-2 mt-2">
+                                                    <button
+                                                        type="button"
+                                                        @click="saveDrivers(service)"
+                                                        class="btn btn-sm btn-success"
+                                                        title="Salva"
+                                                    >
+                                                        <i class="ri-check-line"></i>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        @click="cancelEditDrivers"
                                                         class="btn btn-sm btn-secondary"
                                                         title="Annulla"
                                                     >
@@ -283,73 +456,13 @@
                                                 </div>
                                             </div>
 
-                                            <div class="mt-1" v-if="service.status">
-                                                <span class="badge" :class="getStatusBadgeClass(service.status.name)">{{ service.status.name }}</span>
-                                            </div>
-                                        </td>
-                                        <!-- Data -->
-                                        <td>
-                                            <div class="fw-bold">{{ formatDate(service.pickup_datetime) }}</div>
-                                            <div class="small text-primary">{{ service.pickup_address }}</div>
-                                            <div class="small text-muted mt-1">{{ formatDate(service.dropoff_datetime) }}</div>
-                                            <div class="small text-muted">{{ service.dropoff_address }}</div>
-                                        </td>
-                                        <!-- Passeggeri -->
-                                        <td>
-                                            <div class="fw-bold mb-1">
-                                                <i class="ri-user-line"></i> {{ service.passenger_count || 0 }}
-                                            </div>
-                                            <!-- Bagagli -->
-                                            <div class="small mb-1">
-                                                <i class="ri-luggage-cart-line me-1" title="Bagaglio grande"></i>{{ service.big_luggage || 0 }}
-                                                <i class="ri-briefcase-line ms-2 me-1" title="Bagaglio medio"></i>{{ service.medium_luggage || 0 }}
-                                                <i class="ri-handbag-line ms-2 me-1" title="Bagaglio piccolo"></i>{{ service.small_luggage || 0 }}
-                                            </div>
-                                            <!-- Babyseat -->
-                                            <div class="small mb-1">
-                                                <i class="ri-bear-smile-line me-1" title="Ovetto"></i>{{ service.babyseat_egg || 0 }}
-                                                <i class="ri-parent-line ms-2 me-1" title="Seggiolino standard"></i>{{ service.babyseat_standard || 0 }}
-                                                <i class="ri-user-smile-line ms-2 me-1" title="Booster"></i>{{ service.babyseat_booster || 0 }}
-                                            </div>
-                                            <!-- Lista passeggeri -->
-                                            <div class="small" v-if="service.passengers && service.passengers.length > 0">
-                                                <div v-for="(passenger, idx) in service.passengers" :key="idx" class="text-muted mb-1" style="font-size: 0.75rem;">
-                                                    <span v-if="passenger.nationality">{{ getNationalityFlag(passenger.nationality) }} </span>
-                                                    <span class="text-uppercase fw-bold">{{ passenger.surname }}</span> {{ passenger.name }}
-                                                    <span v-if="passenger.phone"><br><i class="ri-phone-line"></i> {{ passenger.phone }}</span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <!-- Committente -->
-                                        <td>
-                                            <div class="fw-bold" v-if="service.client">
-                                                {{ service.client.name }} {{ service.client.surname }}
-                                            </div>
-                                            <div class="small" v-if="service.client && service.client.phone">
-                                                <i class="ri-phone-line"></i> {{ service.client.phone }}
-                                            </div>
-                                            <div class="small text-muted mt-1" v-if="service.intermediary">
-                                                Int: {{ service.intermediary.name }} {{ service.intermediary.surname }}
-                                            </div>
-                                            <div class="small" v-if="service.intermediary && service.intermediary.phone">
-                                                <i class="ri-phone-line"></i> {{ service.intermediary.phone }}
-                                            </div>
-                                        </td>
-                                        <!-- Autista -->
-                                        <td>
-                                            <div v-if="service.drivers && service.drivers.length > 0">
-                                                <div v-for="driver in service.drivers" :key="driver.id" class="mb-1">
-                                                    <span class="badge" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'}`">
-                                                        {{ driver.name }} {{ driver.surname }}
-                                                    </span>
-                                                </div>
-                                                <div class="mt-2">
-                                                    <!-- Display mode -->
-                                                    <div
-                                                        v-if="editingDressCode !== service.id"
-                                                        class="d-flex align-items-center gap-1"
-                                                    >
-                                                        <div style="font-size: 0.85rem;">
+                                            <div class="mt-2">
+                                                <!-- Display mode -->
+                                                <div
+                                                    v-if="editingDressCode !== service.id"
+                                                    class="d-flex align-items-center gap-1"
+                                                >
+                                                        <div style="font-size: 0.75rem;">
                                                             <i class="ri-shirt-line me-1"></i>
                                                             {{ service.dress_code ? service.dress_code.name : 'Nessun dress code' }}
                                                         </div>
@@ -401,50 +514,124 @@
                                                         </button>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div v-else class="text-muted">-</div>
                                         </td>
                                         <!-- Veicolo -->
                                         <td>
                                             <div v-if="service.vehicle">
-                                                <div class="targa-auto mb-1">
-                                                    <span class="codice-targa">{{ service.vehicle.license_plate }}</span>
+                                                <!-- Display mode -->
+                                                <div
+                                                    v-if="editingVehicle !== service.id"
+                                                    class="d-flex align-items-center gap-1"
+                                                >
+                                                    <div
+                                                        class="targa-auto"
+                                                        :title="`${service.vehicle.brand} ${service.vehicle.model} - ${service.vehicle.passenger_capacity} posti`"
+                                                        style="cursor: help;"
+                                                    >
+                                                        <span class="codice-targa">{{ service.vehicle.license_plate }}</span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        @click="startEditVehicle(service)"
+                                                        class="btn btn-link btn-sm p-0 text-muted"
+                                                        title="Modifica veicolo"
+                                                        style="line-height: 1;"
+                                                    >
+                                                        <i class="ri-edit-line" style="font-size: 0.9rem;"></i>
+                                                    </button>
                                                 </div>
-                                                <div class="small mt-2">{{ service.vehicle.brand }} {{ service.vehicle.model }}</div>
+
+                                                <!-- Edit mode -->
+                                                <div v-else class="d-flex gap-2 align-items-center">
+                                                    <select
+                                                        v-model="editingVehicleValue"
+                                                        :ref="el => vehicleInputRefs[service.id] = el"
+                                                        class="form-select form-select-sm"
+                                                        style="min-width: 150px;"
+                                                    >
+                                                        <option value="">Seleziona veicolo</option>
+                                                        <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
+                                                            {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
+                                                        </option>
+                                                    </select>
+                                                    <button
+                                                        type="button"
+                                                        @click="saveVehicle(service)"
+                                                        class="btn btn-sm btn-success"
+                                                        title="Salva"
+                                                    >
+                                                        <i class="ri-check-line"></i>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        @click="cancelEditVehicle"
+                                                        class="btn btn-sm btn-secondary"
+                                                        title="Annulla"
+                                                    >
+                                                        <i class="ri-close-line"></i>
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div v-else class="text-muted">-</div>
-                                            <!-- Fornitore -->
-                                            <div class="small text-muted mt-2" v-if="service.supplier">
-                                                <i class="ri-building-line"></i> {{ service.supplier.name }} {{ service.supplier.surname }}
+                                            <div v-else class="text-muted">
+                                                <button
+                                                    type="button"
+                                                    @click="startEditVehicle(service)"
+                                                    class="btn btn-link btn-sm p-0 text-muted"
+                                                    title="Assegna veicolo"
+                                                >
+                                                    <i class="ri-add-line"></i> Assegna
+                                                </button>
+                                            </div>
+
+                                            <!-- Fornitore trasporto -->
+                                            <div class="small mt-2" v-if="service.supplier">
+                                                <span class="badge bg-soft-info text-info" style="font-size: 0.7rem;">Fornitore</span>
+                                                <div class="text-muted mt-1">
+                                                    <i class="ri-building-line"></i> {{ service.supplier.name }} {{ service.supplier.surname }}
+                                                </div>
                                             </div>
                                         </td>
                                         <!-- Esperienze -->
                                         <td>
                                             <div v-if="service.activities && service.activities.length > 0">
                                                 <div v-for="activity in service.activities" :key="activity.id" class="small mb-1">
+                                                    <!-- Ora | Tipologia -->
                                                     <div class="fw-medium">
-                                                        <i class="ri-time-line"></i> {{ formatTime(activity.start_time) }}
+                                                        {{ formatTime(activity.start_time) }} | {{ activity.activity_type?.name || '-' }}
                                                     </div>
-                                                    <div>{{ activity.activity_type?.name || '-' }}</div>
-                                                    <div class="text-muted">{{ activity.supplier?.name || '-' }}</div>
+                                                    <!-- Fornitore | Pagamento -->
+                                                    <div class="text-muted" style="font-size: 0.75rem;">
+                                                        <span v-if="activity.supplier?.name || activity.supplier?.surname">
+                                                            {{ activity.supplier.name }} {{ activity.supplier.surname }}
+                                                        </span>
+                                                        <span v-if="(activity.supplier?.name || activity.supplier?.surname) && activity.payment_type"> | </span>
+                                                        <span v-if="activity.payment_type" class="text-secondary">
+                                                            Pagamento: {{ activity.payment_type }}
+                                                        </span>
+                                                        <span v-if="!activity.supplier?.name && !activity.supplier?.surname && !activity.payment_type">-</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div v-else class="text-muted">-</div>
                                         </td>
                                         <!-- Economics -->
                                         <td>
-                                            <div class="small">
-                                                <div class="mb-2">
-                                                    <span class="badge bg-success fs-6 px-3 py-2">€{{ formatCurrency(service.service_price) }}</span>
-                                                </div>
-                                                <div><i class="ri-wallet-3-line me-1" title="Acconto"></i>€{{ formatCurrency(service.deposit_amount) }}</div>
-                                                <div><i class="ri-money-euro-circle-line me-1" title="Saldo imponibile"></i>€{{ formatCurrency(service.balance_taxable) }}</div>
-                                                <div><i class="ri-percent-line me-1" title="Diritti di agenzia"></i>€{{ formatCurrency(service.balance_handling_fees) }}</div>
-                                                <div><i class="ri-bank-card-line me-1" title="Commissioni carta"></i>€{{ formatCurrency(service.balance_card_fees) }}</div>
+                                            <div
+                                                class="cursor-pointer"
+                                                style="cursor: pointer;"
+                                                @click="showEconomicsModal(service)"
+                                                title="Clicca per vedere i dettagli economici"
+                                            >
+                                                <span class="badge bg-success fs-6 px-3 py-2">€{{ formatCurrency(service.service_price) }}</span>
                                             </div>
                                         </td>
                                         <!-- Notifiche -->
                                         <td>
+                                            <!-- Status di Conferma -->
+                                            <div class="mb-2" v-if="service.status">
+                                                <span class="badge" :class="getStatusBadgeClass(service.status.name)">{{ service.status.name }}</span>
+                                            </div>
+
                                             <div class="small">
                                                 <!-- Movimenti Contabili -->
                                                 <div class="mb-1">
@@ -466,6 +653,16 @@
                                                         title="Clicca per vedere i task"
                                                     ></i>
                                                     {{ getCompletedTasksCount(service) }}/{{ service.tasks_count || 0 }}
+                                                </div>
+                                                <!-- Sovrapposizioni -->
+                                                <div v-if="getTotalOverlapsCount(service) > 0" class="mt-1">
+                                                    <i
+                                                        class="ri-error-warning-line text-warning"
+                                                        style="cursor: pointer;"
+                                                        @click="showOverlapsPopup(service)"
+                                                        title="Clicca per vedere le sovrapposizioni"
+                                                    ></i>
+                                                    <span class="badge bg-warning text-dark ms-1">{{ getTotalOverlapsCount(service) }}</span>
                                                 </div>
                                             </div>
                                         </td>
@@ -579,8 +776,94 @@
                             </div>
                         </div>
 
+                        <!-- Popup Sovrapposizioni -->
+                        <div v-if="showOverlapsModal" class="popup-overlay" @click="closeOverlapsPopup">
+                            <div class="popup-content popup-content-large" @click.stop>
+                                <div class="popup-header">
+                                    <h6 class="mb-0">
+                                        <i class="ri-error-warning-line text-warning me-2"></i>
+                                        Sovrapposizioni - Servizio #{{ selectedServiceForOverlaps?.reference_number || selectedServiceForOverlaps?.id }}
+                                    </h6>
+                                    <button type="button" class="btn-close" @click="closeOverlapsPopup"></button>
+                                </div>
+                                <div class="popup-body">
+                                    <!-- Informazioni sul servizio corrente -->
+                                    <div class="alert alert-light border mb-3">
+                                        <h6 class="mb-2"><i class="ri-car-line me-1"></i> Servizio Corrente</h6>
+                                        <div class="row small">
+                                            <div class="col-md-4">
+                                                <strong>Veicolo:</strong> {{ selectedServiceForOverlaps?.vehicle ? `${selectedServiceForOverlaps.vehicle.license_plate} - ${selectedServiceForOverlaps.vehicle.brand} ${selectedServiceForOverlaps.vehicle.model}` : '-' }}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <strong>Uscita:</strong> {{ formatDate(selectedServiceForOverlaps?.vehicle_departure_datetime) }}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <strong>Rientro:</strong> {{ formatDate(selectedServiceForOverlaps?.vehicle_return_datetime) }}
+                                            </div>
+                                        </div>
+                                        <div class="row small mt-1" v-if="selectedServiceForOverlaps?.drivers?.length">
+                                            <div class="col-12">
+                                                <strong>Driver:</strong>
+                                                <span v-for="(driver, idx) in selectedServiceForOverlaps.drivers" :key="driver.id">
+                                                    {{ driver.surname }} {{ driver.name }}<span v-if="idx < selectedServiceForOverlaps.drivers.length - 1">, </span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tabella sovrapposizioni -->
+                                    <div v-if="allOverlaps.length > 0" class="table-responsive">
+                                        <table class="table table-sm table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Servizio</th>
+                                                    <th>Tipo</th>
+                                                    <th>Risorsa Sovrapposta</th>
+                                                    <th>Periodo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="overlap in allOverlaps" :key="overlap.id">
+                                                    <td>
+                                                        <Link
+                                                            :href="route('easyncc.services.edit', overlap.related_service_id)"
+                                                            class="text-primary"
+                                                        >
+                                                            #{{ overlap.related_service_reference || overlap.related_service_id }}
+                                                        </Link>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge" :class="getOverlapTypeBadgeClass(overlap.overlap_type)">
+                                                            {{ getOverlapTypeLabel(overlap.overlap_type) }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div v-if="overlap.overlap_type === 'vehicle' || overlap.overlap_type === 'both'">
+                                                            <i class="ri-car-line me-1"></i>
+                                                            {{ overlap.vehicle ? `${overlap.vehicle.license_plate} - ${overlap.vehicle.brand} ${overlap.vehicle.model}` : '-' }}
+                                                        </div>
+                                                        <div v-if="overlap.overlap_type === 'driver' || overlap.overlap_type === 'both'">
+                                                            <i class="ri-user-line me-1"></i>
+                                                            {{ overlap.driver ? `${overlap.driver.surname} ${overlap.driver.name}` : '-' }}
+                                                        </div>
+                                                    </td>
+                                                    <td class="small">
+                                                        {{ formatDate(overlap.service_departure) }} -
+                                                        {{ formatDate(overlap.service_return) }}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div v-else class="text-center text-muted py-3">
+                                        <p class="mb-0">Nessuna sovrapposizione presente</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- No Data -->
-                        <div v-else class="text-center text-muted py-5">
+                        <div v-else-if="!loading && services.length === 0" class="text-center text-muted py-5">
                             <p>Nessun servizio trovato</p>
                         </div>
 
@@ -592,6 +875,120 @@
                 </BCard>
             </BCol>
         </BRow>
+
+        <!-- Passengers Modal -->
+        <BModal
+            v-model="showPassengersModalFlag"
+            title="Lista Passeggeri"
+            size="lg"
+            hide-footer
+            centered
+        >
+            <div v-if="selectedService">
+                <h6 class="mb-3">
+                    Servizio: <strong>#{{ selectedService.reference_number || selectedService.id }}</strong>
+                </h6>
+
+                <div v-if="selectedService.passengers && selectedService.passengers.length > 0" class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Passeggero</th>
+                                <th>Telefono</th>
+                                <th>Email</th>
+                                <th>Nazionalità</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(passenger, idx) in selectedService.passengers" :key="idx">
+                                <td>{{ idx + 1 }}</td>
+                                <td>
+                                    <span v-if="passenger.nationality">{{ getNationalityFlag(passenger.nationality) }} </span>
+                                    <span class="fw-bold text-uppercase">{{ passenger.surname }}</span> {{ passenger.name }}
+                                </td>
+                                <td>
+                                    <span v-if="passenger.phone">
+                                        <i class="ri-phone-line"></i> {{ passenger.phone }}
+                                    </span>
+                                    <span v-else class="text-muted">-</span>
+                                </td>
+                                <td>
+                                    <span v-if="passenger.email">
+                                        <i class="ri-mail-line"></i> {{ passenger.email }}
+                                    </span>
+                                    <span v-else class="text-muted">-</span>
+                                </td>
+                                <td>
+                                    <span v-if="passenger.nationality">{{ passenger.nationality }}</span>
+                                    <span v-else class="text-muted">-</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div v-else class="text-center py-4">
+                    <i class="ri-user-line display-4 text-muted"></i>
+                    <p class="text-muted mt-2">Nessun passeggero registrato</p>
+                </div>
+            </div>
+        </BModal>
+
+        <!-- Economics Modal -->
+        <BModal
+            v-model="showEconomicsModalFlag"
+            title="Dettagli Economici"
+            size="lg"
+            hide-footer
+            centered
+        >
+            <div v-if="selectedService">
+                <h6 class="mb-3">
+                    Servizio: <strong>#{{ selectedService.reference_number || selectedService.id }}</strong>
+                </h6>
+
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold">Prezzo Totale</td>
+                                <td class="text-end">
+                                    <span class="badge bg-success fs-6 px-3 py-2">€{{ formatCurrency(selectedService.service_price) }}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <i class="ri-wallet-3-line me-1 text-primary"></i>
+                                    Acconto
+                                </td>
+                                <td class="text-end">€{{ formatCurrency(selectedService.deposit_amount) }}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <i class="ri-money-euro-circle-line me-1 text-success"></i>
+                                    Saldo Imponibile
+                                </td>
+                                <td class="text-end">€{{ formatCurrency(selectedService.balance_taxable) }}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <i class="ri-percent-line me-1 text-warning"></i>
+                                    Diritti di Agenzia
+                                </td>
+                                <td class="text-end">€{{ formatCurrency(selectedService.balance_handling_fees) }}</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <i class="ri-bank-card-line me-1 text-info"></i>
+                                    Commissioni Carta
+                                </td>
+                                <td class="text-end">€{{ formatCurrency(selectedService.balance_card_fees) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </BModal>
     </Layout>
 </template>
 
@@ -609,6 +1006,13 @@ const error = ref('');
 const selectedServices = ref([]);
 const selectAll = ref(false);
 
+// Passengers Modal
+const showPassengersModalFlag = ref(false);
+const selectedService = ref(null);
+
+// Economics Modal
+const showEconomicsModalFlag = ref(false);
+
 // Inline editing
 const editingDressCode = ref(null);
 const editingDressCodeValue = ref(null);
@@ -617,6 +1021,18 @@ const dressCodeInputRefs = ref({});
 const editingContactName = ref(null);
 const editingContactNameValue = ref(null);
 const contactNameInputRefs = ref({});
+
+const editingPassengerCount = ref(null);
+const editingPassengerCountValue = ref(null);
+const passengerCountInputRefs = ref({});
+
+const editingVehicle = ref(null);
+const editingVehicleValue = ref(null);
+const vehicleInputRefs = ref({});
+
+const editingDrivers = ref(null);
+const editingDriversValue = ref([]);
+const driversInputRefs = ref({});
 
 // Dictionaries
 const serviceTypes = ref([]);
@@ -748,6 +1164,16 @@ const debouncedLoadServices = () => {
     }, 500);
 };
 
+const showPassengersModal = (service) => {
+    selectedService.value = service;
+    showPassengersModalFlag.value = true;
+};
+
+const showEconomicsModal = (service) => {
+    selectedService.value = service;
+    showEconomicsModalFlag.value = true;
+};
+
 const loadServices = async () => {
     loading.value = true;
     error.value = '';
@@ -860,6 +1286,106 @@ const cancelEditDressCode = () => {
     editingDressCodeValue.value = null;
 };
 
+// Inline vehicle editing functions
+const startEditVehicle = (service) => {
+    editingVehicle.value = service.id;
+    editingVehicleValue.value = service.vehicle_id;
+    // Focus select in next tick using dynamic ref
+    nextTick(() => {
+        const select = vehicleInputRefs.value[service.id];
+        if (select) {
+            select.focus();
+        }
+    });
+};
+
+const saveVehicle = async (service) => {
+    // Prevent duplicate saves
+    if (!editingVehicle.value || editingVehicle.value !== service.id) {
+        return;
+    }
+
+    try {
+        const payload = {
+            vehicle_id: editingVehicleValue.value
+        };
+
+        await axios.put(`/api/services/${service.id}`, payload);
+
+        // Update local service data
+        const serviceIndex = services.value.findIndex(s => s.id === service.id);
+        if (serviceIndex !== -1) {
+            services.value[serviceIndex].vehicle_id = editingVehicleValue.value;
+            if (editingVehicleValue.value) {
+                const vehicle = vehicles.value.find(v => v.id === editingVehicleValue.value);
+                services.value[serviceIndex].vehicle = vehicle;
+            } else {
+                services.value[serviceIndex].vehicle = null;
+            }
+        }
+
+        // Clear editing state
+        editingVehicle.value = null;
+        editingVehicleValue.value = null;
+    } catch (err) {
+        error.value = 'Errore nell\'aggiornamento del veicolo';
+        console.error('Error updating vehicle:', err);
+        // Reload services to revert changes in case of error
+        await loadServices();
+        // Clear editing state even on error
+        editingVehicle.value = null;
+        editingVehicleValue.value = null;
+    }
+};
+
+const cancelEditVehicle = () => {
+    editingVehicle.value = null;
+    editingVehicleValue.value = null;
+};
+
+// Inline drivers editing functions
+const startEditDrivers = (service) => {
+    editingDrivers.value = service.id;
+    editingDriversValue.value = service.drivers ? service.drivers.map(d => d.id) : [];
+    nextTick(() => {
+        const select = driversInputRefs.value[service.id];
+        if (select) {
+            select.focus();
+        }
+    });
+};
+
+const saveDrivers = async (service) => {
+    if (!editingDrivers.value || editingDrivers.value !== service.id) {
+        return;
+    }
+
+    try {
+        const payload = {
+            driver_ids: editingDriversValue.value
+        };
+
+        await axios.put(`/api/services/${service.id}`, payload);
+
+        // Reload services to get updated driver data with colors
+        await loadServices();
+
+        editingDrivers.value = null;
+        editingDriversValue.value = [];
+    } catch (err) {
+        error.value = 'Errore nell\'aggiornamento degli autisti';
+        console.error('Error updating drivers:', err);
+        await loadServices();
+        editingDrivers.value = null;
+        editingDriversValue.value = [];
+    }
+};
+
+const cancelEditDrivers = () => {
+    editingDrivers.value = null;
+    editingDriversValue.value = [];
+};
+
 // Inline contact name editing functions
 const startEditContactName = (service) => {
     editingContactName.value = service.id;
@@ -909,6 +1435,58 @@ const saveContactName = async (service) => {
 const cancelEditContactName = () => {
     editingContactName.value = null;
     editingContactNameValue.value = null;
+};
+
+// Passenger Count inline editing methods
+const startEditPassengerCount = (service) => {
+    editingPassengerCount.value = service.id;
+    editingPassengerCountValue.value = service.passenger_count || 0;
+    nextTick(() => {
+        const input = passengerCountInputRefs.value[service.id];
+        if (input) {
+            input.focus();
+            input.select();
+        }
+    });
+};
+
+const savePassengerCount = async (service) => {
+    if (!editingPassengerCount.value || editingPassengerCount.value !== service.id) {
+        return;
+    }
+
+    // Validate: passenger_count must be >= 0
+    if (editingPassengerCountValue.value < 0) {
+        error.value = 'Il numero di passeggeri non può essere negativo';
+        return;
+    }
+
+    try {
+        const payload = {
+            passenger_count: editingPassengerCountValue.value || 0
+        };
+
+        await axios.put(`/api/services/${service.id}`, payload);
+
+        const serviceIndex = services.value.findIndex(s => s.id === service.id);
+        if (serviceIndex !== -1) {
+            services.value[serviceIndex].passenger_count = editingPassengerCountValue.value || 0;
+        }
+
+        editingPassengerCount.value = null;
+        editingPassengerCountValue.value = null;
+    } catch (err) {
+        error.value = 'Errore nell\'aggiornamento del numero passeggeri';
+        console.error('Error updating passenger count:', err);
+        await loadServices();
+        editingPassengerCount.value = null;
+        editingPassengerCountValue.value = null;
+    }
+};
+
+const cancelEditPassengerCount = () => {
+    editingPassengerCount.value = null;
+    editingPassengerCountValue.value = null;
 };
 
 const toggleSelectAll = () => {
@@ -1022,7 +1600,10 @@ const getNationalityFlag = (nationality) => {
 // Popup variables
 const showTransactionsModal = ref(false);
 const showTasksModal = ref(false);
+const showOverlapsModal = ref(false);
 const selectedServiceForPopup = ref(null);
+const selectedServiceForOverlaps = ref(null);
+const allOverlaps = ref([]);
 
 // Status badge classes
 const getStatusBadgeClass = (status) => {
@@ -1121,6 +1702,84 @@ const showTasksPopup = async (service) => {
 const closeTasksPopup = () => {
     showTasksModal.value = false;
     selectedServiceForPopup.value = null;
+};
+
+// Overlaps functions
+const getTotalOverlapsCount = (service) => {
+    return (service.overlaps_count || 0) + (service.overlapped_by_count || 0);
+};
+
+const showOverlapsPopup = async (service) => {
+    try {
+        // Load full service data with overlaps
+        const response = await axios.get(`/api/services/${service.id}`);
+        selectedServiceForOverlaps.value = response.data;
+
+        // Combine overlaps and overlappedBy into a single array
+        const overlaps = [];
+
+        // Add overlaps (where this service overlaps others)
+        if (service.overlaps && service.overlaps.length > 0) {
+            service.overlaps.forEach(o => {
+                overlaps.push({
+                    id: o.id,
+                    overlap_type: o.overlap_type,
+                    related_service_id: o.overlapping_service?.id || o.overlapping_service_id,
+                    related_service_reference: o.overlapping_service?.reference_number,
+                    service_departure: o.overlapping_service?.vehicle_departure_datetime,
+                    service_return: o.overlapping_service?.vehicle_return_datetime,
+                    vehicle: o.vehicle,
+                    driver: o.driver
+                });
+            });
+        }
+
+        // Add overlappedBy (where other services overlap this one)
+        if (service.overlapped_by && service.overlapped_by.length > 0) {
+            service.overlapped_by.forEach(o => {
+                overlaps.push({
+                    id: `by_${o.id}`,
+                    overlap_type: o.overlap_type,
+                    related_service_id: o.service?.id || o.service_id,
+                    related_service_reference: o.service?.reference_number,
+                    service_departure: o.service?.vehicle_departure_datetime,
+                    service_return: o.service?.vehicle_return_datetime,
+                    vehicle: o.vehicle,
+                    driver: o.driver
+                });
+            });
+        }
+
+        allOverlaps.value = overlaps;
+        showOverlapsModal.value = true;
+    } catch (err) {
+        console.error('Error loading overlaps:', err);
+        error.value = 'Errore nel caricamento delle sovrapposizioni';
+    }
+};
+
+const closeOverlapsPopup = () => {
+    showOverlapsModal.value = false;
+    selectedServiceForOverlaps.value = null;
+    allOverlaps.value = [];
+};
+
+const getOverlapTypeBadgeClass = (type) => {
+    const typeMap = {
+        'vehicle': 'bg-info',
+        'driver': 'bg-warning text-dark',
+        'both': 'bg-danger'
+    };
+    return typeMap[type] || 'bg-secondary';
+};
+
+const getOverlapTypeLabel = (type) => {
+    const typeMap = {
+        'vehicle': 'Veicolo',
+        'driver': 'Driver',
+        'both': 'Veicolo + Driver'
+    };
+    return typeMap[type] || type;
 };
 
 onMounted(async () => {

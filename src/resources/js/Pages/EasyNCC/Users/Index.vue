@@ -121,9 +121,9 @@
                             <table class="table table-hover table-nowrap align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th scope="col" class="sortable" @click="sortBy('username')">
-                                            Username
-                                            <i v-if="sortField === 'username'" :class="`bx bx-${sortDirection === 'asc' ? 'up' : 'down'}-arrow-alt`"></i>
+                                        <th scope="col" class="sortable" @click="sortBy('surname')">
+                                            Utente
+                                            <i v-if="sortField === 'surname'" :class="`bx bx-${sortDirection === 'asc' ? 'up' : 'down'}-arrow-alt`"></i>
                                         </th>
                                         <th scope="col" class="sortable" @click="sortBy('email')">
                                             Email
@@ -136,14 +136,14 @@
                                         <th scope="col" style="width: 60px;">Int.</th>
                                         <th scope="col" style="width: 60px;">Com.</th>
                                         <th scope="col" style="width: 60px;">For.</th>
-                                        <th scope="col">Azienda</th>
+                                        <th v-if="isSuperAdmin" scope="col">Azienda</th>
                                         <th scope="col">Stato</th>
                                         <th scope="col">Azioni</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr v-for="user in users" :key="user.id">
-                                        <td class="fw-medium">{{ user.username }}</td>
+                                        <td class="fw-medium">{{ user.surname?.toUpperCase() }} {{ user.name }}</td>
                                         <td>{{ user.email }}</td>
                                         <td>
                                             <span :class="`badge bg-${getRoleBadge(user.role)}`">
@@ -151,25 +151,25 @@
                                             </span>
                                         </td>
                                         <td class="text-center">
-                                            <span v-if="user.is_intermediario" class="badge bg-info">Sì</span>
-                                            <span v-else class="badge bg-secondary">No</span>
+                                            <span v-if="user.is_intermediario" class="badge bg-success">Sì</span>
+                                            <span v-else class="badge" style="background-color: silver;">No</span>
                                         </td>
                                         <td class="text-center">
-                                            <span v-if="user.role === 'collaboratore' && user.client_profile?.is_committente" class="badge bg-primary">Sì</span>
-                                            <span v-else-if="user.role === 'collaboratore'" class="badge bg-secondary">No</span>
+                                            <span v-if="user.role === 'collaboratore' && user.client_profile?.is_committente" class="badge bg-success">Sì</span>
+                                            <span v-else-if="user.role === 'collaboratore'" class="badge" style="background-color: silver;">No</span>
                                             <span v-else>-</span>
                                         </td>
                                         <td class="text-center">
                                             <span v-if="user.role === 'collaboratore' && user.client_profile?.is_fornitore" class="badge bg-success">Sì</span>
-                                            <span v-else-if="user.role === 'collaboratore'" class="badge bg-secondary">No</span>
+                                            <span v-else-if="user.role === 'collaboratore'" class="badge" style="background-color: silver;">No</span>
                                             <span v-else>-</span>
                                         </td>
-                                        <td>{{ user.company?.name || '-' }}</td>
+                                        <td v-if="isSuperAdmin">{{ user.company?.name || '-' }}</td>
                                         <td>
                                             <span v-if="user.is_active" class="badge bg-success">
                                                 Attivo
                                             </span>
-                                            <span v-else class="badge bg-danger">
+                                            <span v-else class="badge" style="background-color: silver;">
                                                 Inattivo
                                             </span>
                                         </td>

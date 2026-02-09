@@ -396,6 +396,7 @@ export default {
                 const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
                 params.role = 'collaboratore';
                 params.is_fornitore = 1;
+                params.per_page = 1000;
                 const response = await axios.get('/api/users', { params });
                 this.suppliers = response.data.data || [];
             } catch (error) {

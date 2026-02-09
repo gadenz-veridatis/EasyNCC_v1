@@ -16,7 +16,12 @@ class UserController extends Controller
     public function index(Request $request): JsonResponse
     {
         // For list view, load company, clientProfile for collaboratore users, and driverProfile for drivers
-        $query = User::with(['company:id,name', 'clientProfile:user_id,is_committente,is_fornitore', 'driverProfile:user_id,color,allow_overlapping']);
+        $query = User::with([
+            'company:id,name',
+            'clientProfile:user_id,is_committente,is_fornitore',
+            'driverProfile:user_id,color,fiscal_code,vat_number,allow_overlapping',
+            'driverAttachments'
+        ]);
 
         // Multi-tenancy: Filter by company
         // Super-admin can see all companies or filter by company_id
@@ -68,6 +73,18 @@ class UserController extends Controller
                   ->orWhere('email', 'ilike', "%{$search}%")
                   ->orWhere('username', 'ilike', "%{$search}%");
             });
+        }
+
+        // Filter by expiring documents (for drivers)
+        if ($request->filled('expiring') && $request->role === 'driver') {
+            $days = (int) $request->expiring;
+            if ($days > 0) {
+                $query->whereHas('driverAttachments', function($q) use ($days) {
+                    $q->whereNotNull('expiration_date')
+                      ->where('expiration_date', '<=', now()->addDays($days))
+                      ->where('expiration_date', '>=', now());
+                });
+            }
         }
 
         // Sorting - support both sort_order and sort_direction for compatibility

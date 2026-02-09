@@ -6,7 +6,7 @@
 
         <BRow>
             <BCol lg="12">
-                <form @submit.prevent="submitForm">
+                <form @submit.prevent>
                     <BCard no-body class="service-form-card">
                         <BCardHeader>
                             <div class="d-flex justify-content-between align-items-center">
@@ -115,38 +115,14 @@
                                             </select>
                                         </BCol>
                                         <BCol md="4" class="mb-3">
-                                            <label for="passenger_count" class="form-label fw-bold text-primary fs-5">
-                                                <i class="ri-group-line me-1"></i>Numero Passeggeri *
-                                            </label>
+                                            <label for="passenger_count" class="form-label">Numero Passeggeri *</label>
                                             <input
                                                 id="passenger_count"
                                                 v-model.number="form.passenger_count"
                                                 type="number"
-                                                class="form-control form-control-lg border-primary"
+                                                class="form-control"
                                                 required
                                                 min="1"
-                                            />
-                                        </BCol>
-                                        <BCol md="6" class="mb-3">
-                                            <label for="contact_name" class="form-label fw-bold text-primary fs-5">
-                                                <i class="ri-user-star-line me-1"></i>Nominativo di Riferimento
-                                            </label>
-                                            <input
-                                                id="contact_name"
-                                                v-model="form.contact_name"
-                                                type="text"
-                                                class="form-control form-control-lg border-primary"
-                                                placeholder="Nome del contatto"
-                                            />
-                                        </BCol>
-                                        <BCol md="6" class="mb-3">
-                                            <label for="contact_phone" class="form-label">Contatto di Riferimento</label>
-                                            <input
-                                                id="contact_phone"
-                                                v-model="form.contact_phone"
-                                                type="text"
-                                                class="form-control"
-                                                placeholder="Telefono/Email del contatto"
                                             />
                                         </BCol>
                                     </BRow>
@@ -247,19 +223,24 @@
                                     <BRow>
                                         <BCol md="6" class="mb-3">
                                             <label for="client_id" class="form-label">Committente *</label>
-                                            <div class="input-group">
-                                                <select
+                                            <div class="d-flex gap-2">
+                                                <Multiselect
                                                     id="client_id"
                                                     v-model="form.client_id"
-                                                    class="form-select"
-                                                    required
+                                                    :options="searchCommittenti"
+                                                    :searchable="true"
+                                                    :loading="committentiLoading"
+                                                    :filter-results="false"
+                                                    :min-chars="0"
+                                                    :delay="300"
+                                                    :resolve-on-load="true"
+                                                    placeholder="Cerca committente..."
+                                                    no-options-text="Nessun committente trovato"
+                                                    no-results-text="Nessun risultato"
                                                     @change="onClientChange"
-                                                >
-                                                    <option value="">Seleziona committente</option>
-                                                    <option v-for="client in committenti" :key="client.id" :value="client.id">
-                                                        {{ client.name }} {{ client.surname }}
-                                                    </option>
-                                                </select>
+                                                    class="flex-grow-1"
+                                                    :required="true"
+                                                />
                                                 <button
                                                     type="button"
                                                     class="btn btn-soft-primary"
@@ -268,32 +249,39 @@
                                                 >
                                                     <i class="ri-add-line"></i>
                                                 </button>
+                                                <button
+                                                    v-if="hasPassengerData"
+                                                    type="button"
+                                                    class="btn btn-soft-success"
+                                                    @click="createCommittenteFromPassenger"
+                                                    :disabled="creatingCommittenteFromPassenger"
+                                                    title="Crea committente usando i dati del primo passeggero"
+                                                >
+                                                    <span v-if="creatingCommittenteFromPassenger" class="spinner-border spinner-border-sm"></span>
+                                                    <span v-else><i class="ri-user-3-line"></i><i class="ri-arrow-right-line"></i></span>
+                                                </button>
                                             </div>
                                         </BCol>
                                         <BCol md="6" class="mb-3">
-                                            <label class="form-label">Referente Committente</label>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                :value="selectedClientContact"
-                                                readonly
-                                                disabled
-                                            />
-                                        </BCol>
-                                        <BCol md="6" class="mb-3">
                                             <label for="intermediary_id" class="form-label">Intermediario</label>
-                                            <div class="input-group">
-                                                <select
+                                            <div class="d-flex gap-2">
+                                                <Multiselect
                                                     id="intermediary_id"
                                                     v-model="form.intermediary_id"
-                                                    class="form-select"
+                                                    :options="searchIntermediari"
+                                                    :searchable="true"
+                                                    :loading="intermediariLoading"
+                                                    :filter-results="false"
+                                                    :min-chars="0"
+                                                    :delay="300"
+                                                    :resolve-on-load="true"
+                                                    placeholder="Cerca intermediario..."
+                                                    no-options-text="Nessun intermediario trovato"
+                                                    no-results-text="Nessun risultato"
                                                     @change="onIntermediaryChange"
-                                                >
-                                                    <option value="">Nessun intermediario</option>
-                                                    <option v-for="intermediary in intermediari" :key="intermediary.id" :value="intermediary.id">
-                                                        {{ intermediary.name }} {{ intermediary.surname }}
-                                                    </option>
-                                                </select>
+                                                    class="flex-grow-1"
+                                                    :canClear="true"
+                                                />
                                                 <button
                                                     type="button"
                                                     class="btn btn-soft-primary"
@@ -303,16 +291,6 @@
                                                     <i class="ri-add-line"></i>
                                                 </button>
                                             </div>
-                                        </BCol>
-                                        <BCol md="6" class="mb-3">
-                                            <label class="form-label">Referente Intermediario</label>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                :value="selectedIntermediaryContact"
-                                                readonly
-                                                disabled
-                                            />
                                         </BCol>
                                     </BRow>
                                 </fieldset>
@@ -325,18 +303,24 @@
                                     <BRow>
                                         <BCol md="6" class="mb-3">
                                             <label for="supplier_id" class="form-label">Fornitore</label>
-                                            <div class="input-group">
-                                                <select
+                                            <div class="d-flex gap-2">
+                                                <Multiselect
                                                     id="supplier_id"
                                                     v-model="form.supplier_id"
-                                                    class="form-select"
+                                                    :options="searchFornitori"
+                                                    :searchable="true"
+                                                    :loading="fornitoriLoading"
+                                                    :filter-results="false"
+                                                    :min-chars="0"
+                                                    :delay="300"
+                                                    :resolve-on-load="true"
+                                                    placeholder="Cerca fornitore..."
+                                                    no-options-text="Nessun fornitore trovato"
+                                                    no-results-text="Nessun risultato"
                                                     @change="onSupplierChange"
-                                                >
-                                                    <option value="">Nessun fornitore esterno</option>
-                                                    <option v-for="supplier in fornitori" :key="supplier.id" :value="supplier.id">
-                                                        {{ supplier.name }} {{ supplier.surname }}
-                                                    </option>
-                                                </select>
+                                                    class="flex-grow-1"
+                                                    :canClear="true"
+                                                />
                                                 <button
                                                     type="button"
                                                     class="btn btn-soft-primary"
@@ -346,16 +330,6 @@
                                                     <i class="ri-add-line"></i>
                                                 </button>
                                             </div>
-                                        </BCol>
-                                        <BCol md="6" class="mb-3">
-                                            <label class="form-label">Referente Fornitore</label>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                :value="selectedSupplierContact"
-                                                readonly
-                                                disabled
-                                            />
                                         </BCol>
                                         <BCol md="8" class="mb-3">
                                             <label for="vehicle_id" class="form-label">Veicolo *</label>
@@ -1515,7 +1489,7 @@
                                         <i v-else class="ri-save-line me-1"></i>
                                         Salva
                                     </button>
-                                    <button type="submit" class="btn btn-primary" :disabled="submitting">
+                                    <button type="button" class="btn btn-primary" :disabled="submitting" @click="saveAndExit">
                                         <span v-if="submitting && exitAfterSave" class="spinner-border spinner-border-sm me-2"></span>
                                         <i v-else class="ri-save-line me-1"></i>
                                         Salva ed Esci
@@ -2104,6 +2078,94 @@
             </form>
         </BModal>
 
+        <!-- Modal: Conferma Sovrapposizioni -->
+        <BModal
+            v-model="showOverlapModal"
+            title="Sovrapposizioni Rilevate"
+            size="lg"
+            hide-footer
+            no-close-on-backdrop
+        >
+            <div class="alert alert-warning mb-3">
+                <i class="ri-alert-line me-2"></i>
+                Sono state rilevate sovrapposizioni temporali per questo servizio. Confermare per procedere con il salvataggio.
+            </div>
+
+            <!-- Current service info -->
+            <div class="card bg-light mb-3">
+                <div class="card-body py-2">
+                    <h6 class="card-title mb-2">Servizio corrente</h6>
+                    <div class="d-flex flex-wrap gap-3">
+                        <div v-if="currentServiceVehicle">
+                            <i class="ri-car-line me-1 text-primary"></i>
+                            <strong>{{ currentServiceVehicle }}</strong>
+                        </div>
+                        <div v-if="currentServiceDrivers">
+                            <i class="ri-user-line me-1 text-success"></i>
+                            <strong>{{ currentServiceDrivers }}</strong>
+                        </div>
+                        <div>
+                            <i class="ri-time-line me-1 text-info"></i>
+                            <small>{{ formatDateTime(form.vehicle_departure_datetime) }} - {{ formatDateTime(form.vehicle_return_datetime) }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h6 class="mb-2">Servizi in sovrapposizione:</h6>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Servizio</th>
+                            <th>Tipo Sovrapposizione</th>
+                            <th>Risorsa Sovrapposta</th>
+                            <th>Periodo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(overlap, index) in detectedOverlaps" :key="index">
+                            <td>
+                                <strong>{{ overlap.overlapping_service_reference || '#' + overlap.overlapping_service_id }}</strong>
+                            </td>
+                            <td>
+                                <span v-if="overlap.overlap_type === 'vehicle'" class="badge bg-info">Veicolo</span>
+                                <span v-else-if="overlap.overlap_type === 'driver'" class="badge bg-warning">Autista</span>
+                                <span v-else-if="overlap.overlap_type === 'both'" class="badge bg-danger">Veicolo + Autista</span>
+                            </td>
+                            <td>
+                                <div v-if="overlap.vehicle_plate" class="text-info mb-1">
+                                    <i class="ri-car-line me-1"></i>
+                                    <strong>{{ overlap.vehicle_plate }}</strong>
+                                    <small class="text-muted ms-1">{{ overlap.vehicle_brand }} {{ overlap.vehicle_model }}</small>
+                                </div>
+                                <div v-if="overlap.driver_name" class="text-warning">
+                                    <i class="ri-user-line me-1"></i>
+                                    <strong>{{ overlap.driver_name }}</strong>
+                                </div>
+                            </td>
+                            <td>
+                                <small>
+                                    {{ formatDateTime(overlap.service_departure) }} -
+                                    {{ formatDateTime(overlap.service_return) }}
+                                </small>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-soft-secondary" @click="cancelOverlapConfirmation">
+                    Annulla
+                </button>
+                <button type="button" class="btn btn-warning" @click="confirmOverlapsAndSave">
+                    <i class="ri-check-line me-1"></i>
+                    Conferma e Salva
+                </button>
+            </div>
+        </BModal>
+
         <!-- Modal: Nuovo Committente -->
         <BModal
             v-model="showNewCommittenteModal"
@@ -2114,40 +2176,6 @@
         >
             <form @submit.prevent="saveNewCommittente">
                 <BRow>
-                    <!-- Username -->
-                    <BCol md="6" class="mb-3">
-                        <label for="new_committente_username" class="form-label">Username *</label>
-                        <input
-                            id="new_committente_username"
-                            v-model="newCommittenteForm.username"
-                            type="text"
-                            class="form-control"
-                            :class="{ 'is-invalid': newCommittenteErrors.username }"
-                            placeholder="username"
-                            required
-                        />
-                        <small v-if="newCommittenteErrors.username" class="text-danger d-block mt-1">
-                            {{ newCommittenteErrors.username[0] }}
-                        </small>
-                    </BCol>
-
-                    <!-- Email -->
-                    <BCol md="6" class="mb-3">
-                        <label for="new_committente_email" class="form-label">Email *</label>
-                        <input
-                            id="new_committente_email"
-                            v-model="newCommittenteForm.email"
-                            type="email"
-                            class="form-control"
-                            :class="{ 'is-invalid': newCommittenteErrors.email }"
-                            placeholder="email@example.com"
-                            required
-                        />
-                        <small v-if="newCommittenteErrors.email" class="text-danger d-block mt-1">
-                            {{ newCommittenteErrors.email[0] }}
-                        </small>
-                    </BCol>
-
                     <!-- Cognome (o Nome Azienda) -->
                     <BCol md="6" class="mb-3">
                         <label for="new_committente_surname" class="form-label">Cognome (o Nome Azienda) *</label>
@@ -2181,58 +2209,6 @@
                         </small>
                     </BCol>
 
-                    <!-- Password -->
-                    <BCol md="6" class="mb-3">
-                        <label for="new_committente_password" class="form-label">Password *</label>
-                        <div class="input-group">
-                            <input
-                                id="new_committente_password"
-                                v-model="newCommittenteForm.password"
-                                :type="showNewCommittentePassword ? 'text' : 'password'"
-                                class="form-control"
-                                :class="{ 'is-invalid': newCommittenteErrors.password }"
-                                placeholder="Inserisci una password"
-                                required
-                            />
-                            <button
-                                type="button"
-                                class="btn btn-outline-secondary"
-                                @click="showNewCommittentePassword = !showNewCommittentePassword"
-                            >
-                                <i :class="showNewCommittentePassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
-                            </button>
-                        </div>
-                        <small v-if="newCommittenteErrors.password" class="text-danger d-block mt-1">
-                            {{ newCommittenteErrors.password[0] }}
-                        </small>
-                    </BCol>
-
-                    <!-- Password Confirmation -->
-                    <BCol md="6" class="mb-3">
-                        <label for="new_committente_password_confirmation" class="form-label">Conferma Password *</label>
-                        <div class="input-group">
-                            <input
-                                id="new_committente_password_confirmation"
-                                v-model="newCommittenteForm.password_confirmation"
-                                :type="showNewCommittentePasswordConfirmation ? 'text' : 'password'"
-                                class="form-control"
-                                :class="{ 'is-invalid': newCommittenteErrors.password_confirmation }"
-                                placeholder="Conferma la password"
-                                required
-                            />
-                            <button
-                                type="button"
-                                class="btn btn-outline-secondary"
-                                @click="showNewCommittentePasswordConfirmation = !showNewCommittentePasswordConfirmation"
-                            >
-                                <i :class="showNewCommittentePasswordConfirmation ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
-                            </button>
-                        </div>
-                        <small v-if="newCommittenteErrors.password_confirmation" class="text-danger d-block mt-1">
-                            {{ newCommittenteErrors.password_confirmation[0] }}
-                        </small>
-                    </BCol>
-
                     <!-- Telefono -->
                     <BCol md="6" class="mb-3">
                         <label for="new_committente_phone" class="form-label">Telefono</label>
@@ -2250,128 +2226,121 @@
                     </BCol>
                 </BRow>
 
-                <!-- Dati Referente Aziendale -->
+                <!-- Dati di sistema (collapsible) -->
                 <div class="border-top pt-3 mt-3">
-                    <h6 class="text-muted mb-3">
-                        <i class="ri-contacts-line me-2"></i>Dati Referente Aziendale
-                    </h6>
-                    <BRow>
-                        <!-- Contact Name -->
-                        <BCol md="6" class="mb-3">
-                            <label for="new_committente_contact_name" class="form-label">Nome Referente</label>
-                            <input
-                                id="new_committente_contact_name"
-                                v-model="newCommittenteForm.contact_name"
-                                type="text"
-                                class="form-control"
-                                :class="{ 'is-invalid': newCommittenteErrors.contact_name }"
-                                placeholder="Mario Rossi"
-                            />
-                            <small v-if="newCommittenteErrors.contact_name" class="text-danger d-block mt-1">
-                                {{ newCommittenteErrors.contact_name[0] }}
-                            </small>
-                        </BCol>
+                    <div
+                        class="d-flex align-items-center justify-content-between mb-3"
+                        style="cursor: pointer;"
+                        @click="showSystemDataSection = !showSystemDataSection"
+                    >
+                        <h6 class="text-muted mb-0">
+                            <i class="ri-settings-3-line me-2"></i>Dati di sistema
+                        </h6>
+                        <i :class="showSystemDataSection ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'" class="text-muted"></i>
+                    </div>
 
-                        <!-- Contact Phone -->
-                        <BCol md="6" class="mb-3">
-                            <label for="new_committente_contact_phone" class="form-label">Telefono Referente</label>
-                            <input
-                                id="new_committente_contact_phone"
-                                v-model="newCommittenteForm.contact_phone"
-                                type="tel"
-                                class="form-control"
-                                :class="{ 'is-invalid': newCommittenteErrors.contact_phone }"
-                                placeholder="+39 333 1234567"
-                            />
-                            <small v-if="newCommittenteErrors.contact_phone" class="text-danger d-block mt-1">
-                                {{ newCommittenteErrors.contact_phone[0] }}
-                            </small>
-                        </BCol>
-
-                        <!-- Contact Email -->
-                        <BCol md="12" class="mb-3">
-                            <label for="new_committente_contact_email" class="form-label">Email Referente</label>
-                            <input
-                                id="new_committente_contact_email"
-                                v-model="newCommittenteForm.contact_email"
-                                type="email"
-                                class="form-control"
-                                :class="{ 'is-invalid': newCommittenteErrors.contact_email }"
-                                placeholder="referente@example.com"
-                            />
-                            <small v-if="newCommittenteErrors.contact_email" class="text-danger d-block mt-1">
-                                {{ newCommittenteErrors.contact_email[0] }}
-                            </small>
-                        </BCol>
-                    </BRow>
-                </div>
-
-                <!-- Dati Tipo Collaboratore -->
-                <div class="border-top pt-3 mt-3">
-                    <h6 class="text-muted mb-3">
-                        <i class="ri-settings-3-line me-2"></i>Tipologia Collaboratore
-                    </h6>
-                    <BRow>
-                        <!-- Is Committente -->
-                        <BCol md="4" class="mb-3">
-                            <div class="form-check form-switch">
+                    <div v-show="showSystemDataSection">
+                        <BRow>
+                            <!-- Username -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_committente_username" class="form-label">Username *</label>
                                 <input
-                                    id="new_committente_is_committente"
-                                    v-model="newCommittenteForm.is_committente"
-                                    type="checkbox"
-                                    class="form-check-input"
+                                    id="new_committente_username"
+                                    v-model="newCommittenteForm.username"
+                                    type="text"
+                                    class="form-control"
+                                    :class="{ 'is-invalid': newCommittenteErrors.username }"
+                                    placeholder="username"
+                                    required
+                                    readonly
                                 />
-                                <label for="new_committente_is_committente" class="form-check-label">
-                                    È Committente
-                                </label>
-                            </div>
-                            <small class="text-muted d-block mt-1">
-                                Il collaboratore può essere committente di servizi
-                            </small>
-                        </BCol>
+                                <small class="text-muted d-block mt-1">Generato automaticamente</small>
+                                <small v-if="newCommittenteErrors.username" class="text-danger d-block mt-1">
+                                    {{ newCommittenteErrors.username[0] }}
+                                </small>
+                            </BCol>
 
-                        <!-- Is Fornitore -->
-                        <BCol md="4" class="mb-3">
-                            <div class="form-check form-switch">
+                            <!-- Email -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_committente_email" class="form-label">Email *</label>
                                 <input
-                                    id="new_committente_is_fornitore"
-                                    v-model="newCommittenteForm.is_fornitore"
-                                    type="checkbox"
-                                    class="form-check-input"
+                                    id="new_committente_email"
+                                    v-model="newCommittenteForm.email"
+                                    type="email"
+                                    class="form-control"
+                                    :class="{ 'is-invalid': newCommittenteErrors.email }"
+                                    placeholder="email@example.com"
+                                    required
+                                    readonly
                                 />
-                                <label for="new_committente_is_fornitore" class="form-check-label">
-                                    È Fornitore
-                                </label>
-                            </div>
-                            <small class="text-muted d-block mt-1">
-                                Il collaboratore può fornire servizi
-                            </small>
-                        </BCol>
+                                <small class="text-muted d-block mt-1">Generato automaticamente</small>
+                                <small v-if="newCommittenteErrors.email" class="text-danger d-block mt-1">
+                                    {{ newCommittenteErrors.email[0] }}
+                                </small>
+                            </BCol>
 
-                        <!-- Is Intermediario -->
-                        <BCol md="4" class="mb-3">
-                            <div class="form-check form-switch">
-                                <input
-                                    id="new_committente_is_intermediario"
-                                    v-model="newCommittenteForm.is_intermediario"
-                                    type="checkbox"
-                                    class="form-check-input"
-                                />
-                                <label for="new_committente_is_intermediario" class="form-check-label">
-                                    È Intermediario
-                                </label>
-                            </div>
-                            <small class="text-muted d-block mt-1">
-                                Il collaboratore può intermediare servizi
-                            </small>
-                        </BCol>
-                    </BRow>
+                            <!-- Password -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_committente_password" class="form-label">Password *</label>
+                                <div class="input-group">
+                                    <input
+                                        id="new_committente_password"
+                                        v-model="newCommittenteForm.password"
+                                        :type="showNewCommittentePassword ? 'text' : 'password'"
+                                        class="form-control"
+                                        :class="{ 'is-invalid': newCommittenteErrors.password }"
+                                        placeholder="Inserisci una password"
+                                        required
+                                        readonly
+                                    />
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary"
+                                        @click="showNewCommittentePassword = !showNewCommittentePassword"
+                                    >
+                                        <i :class="showNewCommittentePassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-1">Password di default</small>
+                                <small v-if="newCommittenteErrors.password" class="text-danger d-block mt-1">
+                                    {{ newCommittenteErrors.password[0] }}
+                                </small>
+                            </BCol>
+
+                            <!-- Password Confirmation -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_committente_password_confirmation" class="form-label">Conferma Password *</label>
+                                <div class="input-group">
+                                    <input
+                                        id="new_committente_password_confirmation"
+                                        v-model="newCommittenteForm.password_confirmation"
+                                        :type="showNewCommittentePasswordConfirmation ? 'text' : 'password'"
+                                        class="form-control"
+                                        :class="{ 'is-invalid': newCommittenteErrors.password_confirmation }"
+                                        placeholder="Conferma la password"
+                                        required
+                                        readonly
+                                    />
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary"
+                                        @click="showNewCommittentePasswordConfirmation = !showNewCommittentePasswordConfirmation"
+                                    >
+                                        <i :class="showNewCommittentePasswordConfirmation ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                                    </button>
+                                </div>
+                                <small v-if="newCommittenteErrors.password_confirmation" class="text-danger d-block mt-1">
+                                    {{ newCommittenteErrors.password_confirmation[0] }}
+                                </small>
+                            </BCol>
+                        </BRow>
+                    </div>
                 </div>
 
                 <!-- Info Message -->
                 <div class="alert alert-info mb-3 mt-3">
                     <i class="ri-information-line me-2"></i>
-                    Sarà creato un utente con ruolo "Collaboratore" non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
+                    Sarà creato un utente committente non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
                 </div>
 
                 <!-- Action Buttons -->
@@ -2398,40 +2367,6 @@
         >
             <form @submit.prevent="saveNewIntermediario">
                 <BRow>
-                    <!-- Username -->
-                    <BCol md="6" class="mb-3">
-                        <label for="new_intermediario_username" class="form-label">Username *</label>
-                        <input
-                            id="new_intermediario_username"
-                            v-model="newIntermediarioForm.username"
-                            type="text"
-                            class="form-control"
-                            :class="{ 'is-invalid': newIntermediarioErrors.username }"
-                            placeholder="username"
-                            required
-                        />
-                        <small v-if="newIntermediarioErrors.username" class="text-danger d-block mt-1">
-                            {{ newIntermediarioErrors.username[0] }}
-                        </small>
-                    </BCol>
-
-                    <!-- Email -->
-                    <BCol md="6" class="mb-3">
-                        <label for="new_intermediario_email" class="form-label">Email *</label>
-                        <input
-                            id="new_intermediario_email"
-                            v-model="newIntermediarioForm.email"
-                            type="email"
-                            class="form-control"
-                            :class="{ 'is-invalid': newIntermediarioErrors.email }"
-                            placeholder="email@example.com"
-                            required
-                        />
-                        <small v-if="newIntermediarioErrors.email" class="text-danger d-block mt-1">
-                            {{ newIntermediarioErrors.email[0] }}
-                        </small>
-                    </BCol>
-
                     <!-- Cognome (o Nome Azienda) -->
                     <BCol md="6" class="mb-3">
                         <label for="new_intermediario_surname" class="form-label">Cognome (o Nome Azienda) *</label>
@@ -2458,59 +2393,11 @@
                             type="text"
                             class="form-control"
                             :class="{ 'is-invalid': newIntermediarioErrors.name }"
-                            placeholder="Nome (opzionale)"
+                            placeholder="Nome"
                         />
                         <small v-if="newIntermediarioErrors.name" class="text-danger d-block mt-1">
                             {{ newIntermediarioErrors.name[0] }}
                         </small>
-                    </BCol>
-
-                    <!-- Password -->
-                    <BCol md="6" class="mb-3">
-                        <label for="new_intermediario_password" class="form-label">Password *</label>
-                        <div class="position-relative">
-                            <input
-                                id="new_intermediario_password"
-                                v-model="newIntermediarioForm.password"
-                                :type="showNewIntermediarioPassword ? 'text' : 'password'"
-                                class="form-control"
-                                :class="{ 'is-invalid': newIntermediarioErrors.password }"
-                                placeholder="Password"
-                                required
-                            />
-                            <button
-                                type="button"
-                                class="btn btn-link position-absolute end-0 top-0 text-decoration-none"
-                                @click="showNewIntermediarioPassword = !showNewIntermediarioPassword"
-                            >
-                                <i :class="showNewIntermediarioPassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
-                            </button>
-                        </div>
-                        <small v-if="newIntermediarioErrors.password" class="text-danger d-block mt-1">
-                            {{ newIntermediarioErrors.password[0] }}
-                        </small>
-                    </BCol>
-
-                    <!-- Conferma Password -->
-                    <BCol md="6" class="mb-3">
-                        <label for="new_intermediario_password_confirmation" class="form-label">Conferma Password *</label>
-                        <div class="position-relative">
-                            <input
-                                id="new_intermediario_password_confirmation"
-                                v-model="newIntermediarioForm.password_confirmation"
-                                :type="showNewIntermediarioPasswordConfirmation ? 'text' : 'password'"
-                                class="form-control"
-                                placeholder="Conferma Password"
-                                required
-                            />
-                            <button
-                                type="button"
-                                class="btn btn-link position-absolute end-0 top-0 text-decoration-none"
-                                @click="showNewIntermediarioPasswordConfirmation = !showNewIntermediarioPasswordConfirmation"
-                            >
-                                <i :class="showNewIntermediarioPasswordConfirmation ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
-                            </button>
-                        </div>
                     </BCol>
 
                     <!-- Telefono -->
@@ -2522,7 +2409,7 @@
                             type="tel"
                             class="form-control"
                             :class="{ 'is-invalid': newIntermediarioErrors.phone }"
-                            placeholder="Telefono (opzionale)"
+                            placeholder="+39 123 4567890"
                         />
                         <small v-if="newIntermediarioErrors.phone" class="text-danger d-block mt-1">
                             {{ newIntermediarioErrors.phone[0] }}
@@ -2530,113 +2417,126 @@
                     </BCol>
                 </BRow>
 
-                <!-- Dati Referente Aziendale -->
+                <!-- Dati di sistema (collapsible) -->
                 <div class="border-top pt-3 mt-3">
-                    <h6 class="text-muted mb-3">
-                        <i class="ri-contacts-line me-2"></i>Dati Referente Aziendale
-                    </h6>
-                    <BRow>
-                        <!-- Nome Referente -->
-                        <BCol md="4" class="mb-3">
-                            <label for="new_intermediario_contact_name" class="form-label">Nome Referente</label>
-                            <input
-                                id="new_intermediario_contact_name"
-                                v-model="newIntermediarioForm.contact_name"
-                                type="text"
-                                class="form-control"
-                                placeholder="Nome referente"
-                            />
-                        </BCol>
+                    <div
+                        class="d-flex align-items-center justify-content-between mb-3"
+                        style="cursor: pointer;"
+                        @click="showIntermediarioSystemDataSection = !showIntermediarioSystemDataSection"
+                    >
+                        <h6 class="text-muted mb-0">
+                            <i class="ri-settings-3-line me-2"></i>Dati di sistema
+                        </h6>
+                        <i :class="showIntermediarioSystemDataSection ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'" class="text-muted"></i>
+                    </div>
 
-                        <!-- Telefono Referente -->
-                        <BCol md="4" class="mb-3">
-                            <label for="new_intermediario_contact_phone" class="form-label">Telefono Referente</label>
-                            <input
-                                id="new_intermediario_contact_phone"
-                                v-model="newIntermediarioForm.contact_phone"
-                                type="tel"
-                                class="form-control"
-                                placeholder="Telefono referente"
-                            />
-                        </BCol>
-
-                        <!-- Email Referente -->
-                        <BCol md="4" class="mb-3">
-                            <label for="new_intermediario_contact_email" class="form-label">Email Referente</label>
-                            <input
-                                id="new_intermediario_contact_email"
-                                v-model="newIntermediarioForm.contact_email"
-                                type="email"
-                                class="form-control"
-                                placeholder="Email referente"
-                            />
-                        </BCol>
-                    </BRow>
-                </div>
-
-                <!-- Tipologia Collaboratore -->
-                <div class="border-top pt-3 mt-3">
-                    <h6 class="text-muted mb-3">
-                        <i class="ri-settings-3-line me-2"></i>Tipologia Collaboratore
-                    </h6>
-                    <BRow>
-                        <!-- È Intermediario -->
-                        <BCol md="4" class="mb-3">
-                            <div class="form-check form-switch">
+                    <div v-show="showIntermediarioSystemDataSection">
+                        <BRow>
+                            <!-- Username -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_intermediario_username" class="form-label">Username *</label>
                                 <input
-                                    id="new_intermediario_is_intermediario"
-                                    v-model="newIntermediarioForm.is_intermediario"
-                                    type="checkbox"
-                                    class="form-check-input"
+                                    id="new_intermediario_username"
+                                    v-model="newIntermediarioForm.username"
+                                    type="text"
+                                    class="form-control"
+                                    :class="{ 'is-invalid': newIntermediarioErrors.username }"
+                                    placeholder="username"
+                                    required
+                                    readonly
                                 />
-                                <label for="new_intermediario_is_intermediario" class="form-check-label">
-                                    È Intermediario
-                                </label>
-                            </div>
-                        </BCol>
+                                <small class="text-muted d-block mt-1">Generato automaticamente</small>
+                                <small v-if="newIntermediarioErrors.username" class="text-danger d-block mt-1">
+                                    {{ newIntermediarioErrors.username[0] }}
+                                </small>
+                            </BCol>
 
-                        <!-- È Committente -->
-                        <BCol md="4" class="mb-3">
-                            <div class="form-check form-switch">
+                            <!-- Email -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_intermediario_email" class="form-label">Email *</label>
                                 <input
-                                    id="new_intermediario_is_committente"
-                                    v-model="newIntermediarioForm.is_committente"
-                                    type="checkbox"
-                                    class="form-check-input"
+                                    id="new_intermediario_email"
+                                    v-model="newIntermediarioForm.email"
+                                    type="email"
+                                    class="form-control"
+                                    :class="{ 'is-invalid': newIntermediarioErrors.email }"
+                                    placeholder="email@example.com"
+                                    required
+                                    readonly
                                 />
-                                <label for="new_intermediario_is_committente" class="form-check-label">
-                                    È Committente
-                                </label>
-                            </div>
-                        </BCol>
+                                <small class="text-muted d-block mt-1">Generato automaticamente</small>
+                                <small v-if="newIntermediarioErrors.email" class="text-danger d-block mt-1">
+                                    {{ newIntermediarioErrors.email[0] }}
+                                </small>
+                            </BCol>
 
-                        <!-- È Fornitore -->
-                        <BCol md="4" class="mb-3">
-                            <div class="form-check form-switch">
-                                <input
-                                    id="new_intermediario_is_fornitore"
-                                    v-model="newIntermediarioForm.is_fornitore"
-                                    type="checkbox"
-                                    class="form-check-input"
-                                />
-                                <label for="new_intermediario_is_fornitore" class="form-check-label">
-                                    È Fornitore
-                                </label>
-                            </div>
-                        </BCol>
-                    </BRow>
+                            <!-- Password -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_intermediario_password" class="form-label">Password *</label>
+                                <div class="input-group">
+                                    <input
+                                        id="new_intermediario_password"
+                                        v-model="newIntermediarioForm.password"
+                                        :type="showNewIntermediarioPassword ? 'text' : 'password'"
+                                        class="form-control"
+                                        :class="{ 'is-invalid': newIntermediarioErrors.password }"
+                                        placeholder="Inserisci una password"
+                                        required
+                                        readonly
+                                    />
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary"
+                                        @click="showNewIntermediarioPassword = !showNewIntermediarioPassword"
+                                    >
+                                        <i :class="showNewIntermediarioPassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-1">Password di default</small>
+                                <small v-if="newIntermediarioErrors.password" class="text-danger d-block mt-1">
+                                    {{ newIntermediarioErrors.password[0] }}
+                                </small>
+                            </BCol>
+
+                            <!-- Password Confirmation -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_intermediario_password_confirmation" class="form-label">Conferma Password *</label>
+                                <div class="input-group">
+                                    <input
+                                        id="new_intermediario_password_confirmation"
+                                        v-model="newIntermediarioForm.password_confirmation"
+                                        :type="showNewIntermediarioPasswordConfirmation ? 'text' : 'password'"
+                                        class="form-control"
+                                        :class="{ 'is-invalid': newIntermediarioErrors.password_confirmation }"
+                                        placeholder="Conferma la password"
+                                        required
+                                        readonly
+                                    />
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary"
+                                        @click="showNewIntermediarioPasswordConfirmation = !showNewIntermediarioPasswordConfirmation"
+                                    >
+                                        <i :class="showNewIntermediarioPasswordConfirmation ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                                    </button>
+                                </div>
+                                <small v-if="newIntermediarioErrors.password_confirmation" class="text-danger d-block mt-1">
+                                    {{ newIntermediarioErrors.password_confirmation[0] }}
+                                </small>
+                            </BCol>
+                        </BRow>
+                    </div>
                 </div>
 
                 <!-- Info Message -->
                 <div class="alert alert-info mb-3 mt-3">
                     <i class="ri-information-line me-2"></i>
-                    Sarà creato un utente con ruolo "Collaboratore" non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
+                    Sarà creato un utente intermediario non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
                 </div>
 
                 <!-- Action Buttons -->
                 <div class="d-flex justify-content-end gap-2">
                     <button type="button" class="btn btn-soft-secondary" @click="showNewIntermediarioModal = false">
-                        <i class="ri-close-line me-1"></i>
                         Annulla
                     </button>
                     <button type="submit" class="btn btn-primary" :disabled="savingNewIntermediario">
@@ -2658,40 +2558,6 @@
         >
             <form @submit.prevent="saveNewFornitore">
                 <BRow>
-                    <!-- Username -->
-                    <BCol md="6" class="mb-3">
-                        <label for="new_fornitore_username" class="form-label">Username *</label>
-                        <input
-                            id="new_fornitore_username"
-                            v-model="newFornitoreForm.username"
-                            type="text"
-                            class="form-control"
-                            :class="{ 'is-invalid': newFornitoreErrors.username }"
-                            placeholder="username"
-                            required
-                        />
-                        <small v-if="newFornitoreErrors.username" class="text-danger d-block mt-1">
-                            {{ newFornitoreErrors.username[0] }}
-                        </small>
-                    </BCol>
-
-                    <!-- Email -->
-                    <BCol md="6" class="mb-3">
-                        <label for="new_fornitore_email" class="form-label">Email *</label>
-                        <input
-                            id="new_fornitore_email"
-                            v-model="newFornitoreForm.email"
-                            type="email"
-                            class="form-control"
-                            :class="{ 'is-invalid': newFornitoreErrors.email }"
-                            placeholder="email@example.com"
-                            required
-                        />
-                        <small v-if="newFornitoreErrors.email" class="text-danger d-block mt-1">
-                            {{ newFornitoreErrors.email[0] }}
-                        </small>
-                    </BCol>
-
                     <!-- Cognome (o Nome Azienda) -->
                     <BCol md="6" class="mb-3">
                         <label for="new_fornitore_surname" class="form-label">Cognome (o Nome Azienda) *</label>
@@ -2718,59 +2584,11 @@
                             type="text"
                             class="form-control"
                             :class="{ 'is-invalid': newFornitoreErrors.name }"
-                            placeholder="Nome (opzionale)"
+                            placeholder="Nome"
                         />
                         <small v-if="newFornitoreErrors.name" class="text-danger d-block mt-1">
                             {{ newFornitoreErrors.name[0] }}
                         </small>
-                    </BCol>
-
-                    <!-- Password -->
-                    <BCol md="6" class="mb-3">
-                        <label for="new_fornitore_password" class="form-label">Password *</label>
-                        <div class="position-relative">
-                            <input
-                                id="new_fornitore_password"
-                                v-model="newFornitoreForm.password"
-                                :type="showNewFornitorePassword ? 'text' : 'password'"
-                                class="form-control"
-                                :class="{ 'is-invalid': newFornitoreErrors.password }"
-                                placeholder="Password"
-                                required
-                            />
-                            <button
-                                type="button"
-                                class="btn btn-link position-absolute end-0 top-0 text-decoration-none"
-                                @click="showNewFornitorePassword = !showNewFornitorePassword"
-                            >
-                                <i :class="showNewFornitorePassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
-                            </button>
-                        </div>
-                        <small v-if="newFornitoreErrors.password" class="text-danger d-block mt-1">
-                            {{ newFornitoreErrors.password[0] }}
-                        </small>
-                    </BCol>
-
-                    <!-- Conferma Password -->
-                    <BCol md="6" class="mb-3">
-                        <label for="new_fornitore_password_confirmation" class="form-label">Conferma Password *</label>
-                        <div class="position-relative">
-                            <input
-                                id="new_fornitore_password_confirmation"
-                                v-model="newFornitoreForm.password_confirmation"
-                                :type="showNewFornitorePasswordConfirmation ? 'text' : 'password'"
-                                class="form-control"
-                                placeholder="Conferma Password"
-                                required
-                            />
-                            <button
-                                type="button"
-                                class="btn btn-link position-absolute end-0 top-0 text-decoration-none"
-                                @click="showNewFornitorePasswordConfirmation = !showNewFornitorePasswordConfirmation"
-                            >
-                                <i :class="showNewFornitorePasswordConfirmation ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
-                            </button>
-                        </div>
                     </BCol>
 
                     <!-- Telefono -->
@@ -2782,7 +2600,7 @@
                             type="tel"
                             class="form-control"
                             :class="{ 'is-invalid': newFornitoreErrors.phone }"
-                            placeholder="Telefono (opzionale)"
+                            placeholder="+39 123 4567890"
                         />
                         <small v-if="newFornitoreErrors.phone" class="text-danger d-block mt-1">
                             {{ newFornitoreErrors.phone[0] }}
@@ -2790,113 +2608,126 @@
                     </BCol>
                 </BRow>
 
-                <!-- Dati Referente Aziendale -->
+                <!-- Dati di sistema (collapsible) -->
                 <div class="border-top pt-3 mt-3">
-                    <h6 class="text-muted mb-3">
-                        <i class="ri-contacts-line me-2"></i>Dati Referente Aziendale
-                    </h6>
-                    <BRow>
-                        <!-- Nome Referente -->
-                        <BCol md="4" class="mb-3">
-                            <label for="new_fornitore_contact_name" class="form-label">Nome Referente</label>
-                            <input
-                                id="new_fornitore_contact_name"
-                                v-model="newFornitoreForm.contact_name"
-                                type="text"
-                                class="form-control"
-                                placeholder="Nome referente"
-                            />
-                        </BCol>
+                    <div
+                        class="d-flex align-items-center justify-content-between mb-3"
+                        style="cursor: pointer;"
+                        @click="showFornitoreSystemDataSection = !showFornitoreSystemDataSection"
+                    >
+                        <h6 class="text-muted mb-0">
+                            <i class="ri-settings-3-line me-2"></i>Dati di sistema
+                        </h6>
+                        <i :class="showFornitoreSystemDataSection ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'" class="text-muted"></i>
+                    </div>
 
-                        <!-- Telefono Referente -->
-                        <BCol md="4" class="mb-3">
-                            <label for="new_fornitore_contact_phone" class="form-label">Telefono Referente</label>
-                            <input
-                                id="new_fornitore_contact_phone"
-                                v-model="newFornitoreForm.contact_phone"
-                                type="tel"
-                                class="form-control"
-                                placeholder="Telefono referente"
-                            />
-                        </BCol>
-
-                        <!-- Email Referente -->
-                        <BCol md="4" class="mb-3">
-                            <label for="new_fornitore_contact_email" class="form-label">Email Referente</label>
-                            <input
-                                id="new_fornitore_contact_email"
-                                v-model="newFornitoreForm.contact_email"
-                                type="email"
-                                class="form-control"
-                                placeholder="Email referente"
-                            />
-                        </BCol>
-                    </BRow>
-                </div>
-
-                <!-- Tipologia Collaboratore -->
-                <div class="border-top pt-3 mt-3">
-                    <h6 class="text-muted mb-3">
-                        <i class="ri-settings-3-line me-2"></i>Tipologia Collaboratore
-                    </h6>
-                    <BRow>
-                        <!-- È Fornitore -->
-                        <BCol md="4" class="mb-3">
-                            <div class="form-check form-switch">
+                    <div v-show="showFornitoreSystemDataSection">
+                        <BRow>
+                            <!-- Username -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_fornitore_username" class="form-label">Username *</label>
                                 <input
-                                    id="new_fornitore_is_fornitore"
-                                    v-model="newFornitoreForm.is_fornitore"
-                                    type="checkbox"
-                                    class="form-check-input"
+                                    id="new_fornitore_username"
+                                    v-model="newFornitoreForm.username"
+                                    type="text"
+                                    class="form-control"
+                                    :class="{ 'is-invalid': newFornitoreErrors.username }"
+                                    placeholder="username"
+                                    required
+                                    readonly
                                 />
-                                <label for="new_fornitore_is_fornitore" class="form-check-label">
-                                    È Fornitore
-                                </label>
-                            </div>
-                        </BCol>
+                                <small class="text-muted d-block mt-1">Generato automaticamente</small>
+                                <small v-if="newFornitoreErrors.username" class="text-danger d-block mt-1">
+                                    {{ newFornitoreErrors.username[0] }}
+                                </small>
+                            </BCol>
 
-                        <!-- È Committente -->
-                        <BCol md="4" class="mb-3">
-                            <div class="form-check form-switch">
+                            <!-- Email -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_fornitore_email" class="form-label">Email *</label>
                                 <input
-                                    id="new_fornitore_is_committente"
-                                    v-model="newFornitoreForm.is_committente"
-                                    type="checkbox"
-                                    class="form-check-input"
+                                    id="new_fornitore_email"
+                                    v-model="newFornitoreForm.email"
+                                    type="email"
+                                    class="form-control"
+                                    :class="{ 'is-invalid': newFornitoreErrors.email }"
+                                    placeholder="email@example.com"
+                                    required
+                                    readonly
                                 />
-                                <label for="new_fornitore_is_committente" class="form-check-label">
-                                    È Committente
-                                </label>
-                            </div>
-                        </BCol>
+                                <small class="text-muted d-block mt-1">Generato automaticamente</small>
+                                <small v-if="newFornitoreErrors.email" class="text-danger d-block mt-1">
+                                    {{ newFornitoreErrors.email[0] }}
+                                </small>
+                            </BCol>
 
-                        <!-- È Intermediario -->
-                        <BCol md="4" class="mb-3">
-                            <div class="form-check form-switch">
-                                <input
-                                    id="new_fornitore_is_intermediario"
-                                    v-model="newFornitoreForm.is_intermediario"
-                                    type="checkbox"
-                                    class="form-check-input"
-                                />
-                                <label for="new_fornitore_is_intermediario" class="form-check-label">
-                                    È Intermediario
-                                </label>
-                            </div>
-                        </BCol>
-                    </BRow>
+                            <!-- Password -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_fornitore_password" class="form-label">Password *</label>
+                                <div class="input-group">
+                                    <input
+                                        id="new_fornitore_password"
+                                        v-model="newFornitoreForm.password"
+                                        :type="showNewFornitorePassword ? 'text' : 'password'"
+                                        class="form-control"
+                                        :class="{ 'is-invalid': newFornitoreErrors.password }"
+                                        placeholder="Inserisci una password"
+                                        required
+                                        readonly
+                                    />
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary"
+                                        @click="showNewFornitorePassword = !showNewFornitorePassword"
+                                    >
+                                        <i :class="showNewFornitorePassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-1">Password di default</small>
+                                <small v-if="newFornitoreErrors.password" class="text-danger d-block mt-1">
+                                    {{ newFornitoreErrors.password[0] }}
+                                </small>
+                            </BCol>
+
+                            <!-- Password Confirmation -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_fornitore_password_confirmation" class="form-label">Conferma Password *</label>
+                                <div class="input-group">
+                                    <input
+                                        id="new_fornitore_password_confirmation"
+                                        v-model="newFornitoreForm.password_confirmation"
+                                        :type="showNewFornitorePasswordConfirmation ? 'text' : 'password'"
+                                        class="form-control"
+                                        :class="{ 'is-invalid': newFornitoreErrors.password_confirmation }"
+                                        placeholder="Conferma la password"
+                                        required
+                                        readonly
+                                    />
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary"
+                                        @click="showNewFornitorePasswordConfirmation = !showNewFornitorePasswordConfirmation"
+                                    >
+                                        <i :class="showNewFornitorePasswordConfirmation ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                                    </button>
+                                </div>
+                                <small v-if="newFornitoreErrors.password_confirmation" class="text-danger d-block mt-1">
+                                    {{ newFornitoreErrors.password_confirmation[0] }}
+                                </small>
+                            </BCol>
+                        </BRow>
+                    </div>
                 </div>
 
                 <!-- Info Message -->
                 <div class="alert alert-info mb-3 mt-3">
                     <i class="ri-information-line me-2"></i>
-                    Sarà creato un utente con ruolo "Collaboratore" non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
+                    Sarà creato un utente fornitore non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
                 </div>
 
                 <!-- Action Buttons -->
                 <div class="d-flex justify-content-end gap-2">
                     <button type="button" class="btn btn-soft-secondary" @click="showNewFornitoreModal = false">
-                        <i class="ri-close-line me-1"></i>
                         Annulla
                     </button>
                     <button type="submit" class="btn btn-primary" :disabled="savingNewFornitore">
@@ -2915,6 +2746,8 @@ import { ref, computed, onMounted, nextTick } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
+import Multiselect from '@vueform/multiselect';
+import '@vueform/multiselect/themes/default.css';
 import axios from 'axios';
 import moment from 'moment';
 
@@ -2929,9 +2762,12 @@ const isEdit = computed(() => !!props.service);
 const loading = ref(false);
 const submitting = ref(false);
 const exitAfterSave = ref(true); // Default: Salva ed Esci
+const pendingExitAfterSave = ref(true); // Store exit preference when overlaps are detected
 const showActivityModal = ref(false);
 const showTransactionModal = ref(false);
 const showTaskModal = ref(false);
+const showOverlapModal = ref(false);
+const detectedOverlaps = ref([]);
 const showNewCommittenteModal = ref(false);
 const savingNewCommittente = ref(false);
 const showNewCommittentePassword = ref(false);
@@ -2951,8 +2787,14 @@ const companies = ref([]);
 
 // Lists
 const committenti = ref([]);
+const committentiLoaded = ref(false);
+const committentiLoading = ref(false);
 const intermediari = ref([]);
+const intermediariLoaded = ref(false);
+const intermediariLoading = ref(false);
 const fornitori = ref([]);
+const fornitoriLoaded = ref(false);
+const fornitoriLoading = ref(false);
 const vehicles = ref([]);
 const drivers = ref([]);
 const dressCodes = ref([]);
@@ -3042,6 +2884,23 @@ const selectedDrivers = computed(() => {
 
 const availableDrivers = computed(() => {
     return drivers.value.filter(driver => !form.value.driver_ids.includes(driver.id));
+});
+
+// Computed for overlap modal - current service info
+const currentServiceVehicle = computed(() => {
+    if (!form.value.vehicle_id) return null;
+    const vehicle = vehicles.value.find(v => v.id === form.value.vehicle_id);
+    if (!vehicle) return null;
+    return `${vehicle.license_plate} - ${vehicle.brand} ${vehicle.model}`;
+});
+
+const currentServiceDrivers = computed(() => {
+    if (!form.value.driver_ids || form.value.driver_ids.length === 0) return null;
+    const driverNames = form.value.driver_ids.map(id => {
+        const driver = drivers.value.find(d => d.id === id);
+        return driver ? `${driver.surname} ${driver.name}` : null;
+    }).filter(Boolean);
+    return driverNames.join(', ');
 });
 
 // Methods for driver management
@@ -3189,9 +3048,6 @@ const newCommittenteForm = ref({
     role: 'collaboratore',
     is_active: false,
     company_id: null,
-    contact_name: '',
-    contact_phone: '',
-    contact_email: '',
     is_committente: true,
     is_fornitore: false,
     is_intermediario: false
@@ -3211,15 +3067,13 @@ const newIntermediarioForm = ref({
     role: 'collaboratore',
     is_active: false,
     company_id: null,
-    contact_name: '',
-    contact_phone: '',
-    contact_email: '',
     is_committente: false,
     is_fornitore: false,
     is_intermediario: true
 });
 
 const newIntermediarioErrors = ref({});
+const showIntermediarioSystemDataSection = ref(false);
 
 // New Fornitore Form
 const newFornitoreForm = ref({
@@ -3233,15 +3087,13 @@ const newFornitoreForm = ref({
     role: 'collaboratore',
     is_active: false,
     company_id: null,
-    contact_name: '',
-    contact_phone: '',
-    contact_email: '',
     is_committente: false,
     is_fornitore: true,
     is_intermediario: false
 });
 
 const newFornitoreErrors = ref({});
+const showFornitoreSystemDataSection = ref(false);
 
 // Computed
 const selectedClientContact = computed(() => {
@@ -3249,6 +3101,16 @@ const selectedClientContact = computed(() => {
     const client = committenti.value.find(c => c.id === form.value.client_id);
     return client ? `${client.email || ''} ${client.phone || ''}`.trim() : '';
 });
+
+// Check if at least one passenger has some data filled in
+const hasPassengerData = computed(() => {
+    if (!form.value.passengers || form.value.passengers.length === 0) return false;
+    const firstPassenger = form.value.passengers[0];
+    return !!(firstPassenger.surname || firstPassenger.name || firstPassenger.phone || firstPassenger.email);
+});
+
+// Creating committente from passenger state
+const creatingCommittenteFromPassenger = ref(false);
 
 const selectedIntermediaryContact = computed(() => {
     if (!form.value.intermediary_id) return '';
@@ -3373,10 +3235,200 @@ const loadCounterparts = async () => {
         committenti.value = users.filter(u => u.client_profile?.is_committente);
         intermediari.value = users.filter(u => u.is_intermediario);
         fornitori.value = users.filter(u => u.client_profile?.is_fornitore);
+        committentiLoaded.value = true;
     } catch (error) {
         console.error('Error loading counterparts:', error);
     }
 };
+
+// Async search function for committenti
+const searchCommittenti = async (query) => {
+    if (!form.value.company_id) return [];
+
+    committentiLoading.value = true;
+    try {
+        const params = {
+            is_committente: 1,
+            per_page: 30,
+            company_id: isSuperAdmin.value ? form.value.company_id : undefined
+        };
+
+        // Add search parameter if query has 2+ characters
+        if (query && query.length >= 2) {
+            params.search = query;
+        }
+
+        const response = await axios.get('/api/users', { params });
+        const users = response.data.data || [];
+
+        // Map to options format
+        let options = users.map(c => ({
+            value: c.id,
+            label: `${c.surname || ''} ${c.name || ''}`.trim() || c.email
+        }));
+
+        // If editing and current client is not in results, add it
+        if (isEdit.value && props.service?.client && form.value.client_id) {
+            const currentId = form.value.client_id;
+            const exists = options.some(o => o.value === currentId);
+            if (!exists) {
+                const c = props.service.client;
+                options.unshift({
+                    value: c.id,
+                    label: `${c.surname || ''} ${c.name || ''}`.trim() || c.email
+                });
+            }
+        }
+
+        return options;
+    } catch (error) {
+        console.error('Error searching committenti:', error);
+        return [];
+    } finally {
+        committentiLoading.value = false;
+    }
+};
+
+// Load initial committenti when dropdown opens (for pre-populated list)
+const loadCommittentiLazy = async () => {
+    if (committentiLoaded.value || committentiLoading.value) return;
+    if (!form.value.company_id) return;
+
+    const options = await searchCommittenti('');
+    committenti.value = options;
+    committentiLoaded.value = true;
+};
+
+// Options for committenti Multiselect (used for initial load and selected value display)
+const committentiOptions = computed(() => {
+    return committenti.value;
+});
+
+// Async search function for intermediari
+const searchIntermediari = async (query) => {
+    if (!form.value.company_id) return [];
+
+    intermediariLoading.value = true;
+    try {
+        const params = {
+            is_intermediario: 1,
+            per_page: 30,
+            company_id: isSuperAdmin.value ? form.value.company_id : undefined
+        };
+
+        // Add search parameter if query has 2+ characters
+        if (query && query.length >= 2) {
+            params.search = query;
+        }
+
+        const response = await axios.get('/api/users', { params });
+        const users = response.data.data || [];
+
+        // Map to options format
+        let options = users.map(i => ({
+            value: i.id,
+            label: `${i.surname || ''} ${i.name || ''}`.trim() || i.email
+        }));
+
+        // If editing and current intermediary is not in results, add it
+        if (isEdit.value && props.service?.intermediary && form.value.intermediary_id) {
+            const currentId = form.value.intermediary_id;
+            const exists = options.some(o => o.value === currentId);
+            if (!exists) {
+                const i = props.service.intermediary;
+                options.unshift({
+                    value: i.id,
+                    label: `${i.surname || ''} ${i.name || ''}`.trim() || i.email
+                });
+            }
+        }
+
+        return options;
+    } catch (error) {
+        console.error('Error searching intermediari:', error);
+        return [];
+    } finally {
+        intermediariLoading.value = false;
+    }
+};
+
+// Load initial intermediari when dropdown opens
+const loadIntermediariLazy = async () => {
+    if (intermediariLoaded.value || intermediariLoading.value) return;
+    if (!form.value.company_id) return;
+
+    const options = await searchIntermediari('');
+    intermediari.value = options;
+    intermediariLoaded.value = true;
+};
+
+// Options for intermediari Multiselect
+const intermediariOptions = computed(() => {
+    return intermediari.value;
+});
+
+// Async search function for fornitori
+const searchFornitori = async (query) => {
+    if (!form.value.company_id) return [];
+
+    fornitoriLoading.value = true;
+    try {
+        const params = {
+            is_fornitore: 1,
+            per_page: 30,
+            company_id: isSuperAdmin.value ? form.value.company_id : undefined
+        };
+
+        // Add search parameter if query has 2+ characters
+        if (query && query.length >= 2) {
+            params.search = query;
+        }
+
+        const response = await axios.get('/api/users', { params });
+        const users = response.data.data || [];
+
+        // Map to options format
+        let options = users.map(f => ({
+            value: f.id,
+            label: `${f.surname || ''} ${f.name || ''}`.trim() || f.email
+        }));
+
+        // If editing and current supplier is not in results, add it
+        if (isEdit.value && props.service?.supplier && form.value.supplier_id) {
+            const currentId = form.value.supplier_id;
+            const exists = options.some(o => o.value === currentId);
+            if (!exists) {
+                const s = props.service.supplier;
+                options.unshift({
+                    value: s.id,
+                    label: `${s.surname || ''} ${s.name || ''}`.trim() || s.email
+                });
+            }
+        }
+
+        return options;
+    } catch (error) {
+        console.error('Error searching fornitori:', error);
+        return [];
+    } finally {
+        fornitoriLoading.value = false;
+    }
+};
+
+// Load initial fornitori when dropdown opens
+const loadFornitoriLazy = async () => {
+    if (fornitoriLoaded.value || fornitoriLoading.value) return;
+    if (!form.value.company_id) return;
+
+    const options = await searchFornitori('');
+    fornitori.value = options;
+    fornitoriLoaded.value = true;
+};
+
+// Options for fornitori Multiselect
+const fornitoriOptions = computed(() => {
+    return fornitori.value;
+});
 
 const loadVehicles = async () => {
     if (!form.value.company_id) return;
@@ -4508,27 +4560,43 @@ const deleteTask = async (taskId) => {
 };
 
 // New Committente Management
+const showSystemDataSection = ref(false);
+
+const generateCommittenteCredentials = () => {
+    const timestamp = Date.now();
+    const username = `NCC-USR-${timestamp}`;
+    const email = `${username}@nccgest.it`;
+    const password = 'NCC-PWD-123!!';
+    return { username, email, password };
+};
+
 const openNewCommittenteModal = () => {
     resetCommittenteForm();
     newCommittenteForm.value.company_id = form.value.company_id;
+
+    // Auto-generate credentials
+    const credentials = generateCommittenteCredentials();
+    newCommittenteForm.value.username = credentials.username;
+    newCommittenteForm.value.email = credentials.email;
+    newCommittenteForm.value.password = credentials.password;
+    newCommittenteForm.value.password_confirmation = credentials.password;
+
     showNewCommittenteModal.value = true;
 };
 
 const resetCommittenteForm = () => {
+    const credentials = generateCommittenteCredentials();
     newCommittenteForm.value = {
-        username: '',
-        email: '',
+        username: credentials.username,
+        email: credentials.email,
         surname: '',
         name: '',
-        password: '',
-        password_confirmation: '',
+        password: credentials.password,
+        password_confirmation: credentials.password,
         phone: '',
         role: 'collaboratore',
         is_active: false,
         company_id: null,
-        contact_name: '',
-        contact_phone: '',
-        contact_email: '',
         is_committente: true,
         is_fornitore: false,
         is_intermediario: false
@@ -4536,6 +4604,7 @@ const resetCommittenteForm = () => {
     newCommittenteErrors.value = {};
     showNewCommittentePassword.value = false;
     showNewCommittentePasswordConfirmation.value = false;
+    showSystemDataSection.value = false;
 };
 
 const saveNewCommittente = async () => {
@@ -4543,16 +4612,6 @@ const saveNewCommittente = async () => {
     newCommittenteErrors.value = {};
 
     try {
-        // Prepare business contacts array
-        const businessContacts = [];
-        if (newCommittenteForm.value.contact_name || newCommittenteForm.value.contact_phone || newCommittenteForm.value.contact_email) {
-            businessContacts.push({
-                name: newCommittenteForm.value.contact_name || null,
-                phone: newCommittenteForm.value.contact_phone || null,
-                email: newCommittenteForm.value.contact_email || null
-            });
-        }
-
         const data = {
             username: newCommittenteForm.value.username,
             email: newCommittenteForm.value.email,
@@ -4563,12 +4622,11 @@ const saveNewCommittente = async () => {
             phone: newCommittenteForm.value.phone || null,
             role: 'collaboratore',
             is_active: false,
-            is_intermediario: newCommittenteForm.value.is_intermediario,
+            is_intermediario: false,
             company_id: newCommittenteForm.value.company_id,
             profile: {
-                is_committente: newCommittenteForm.value.is_committente,
-                is_fornitore: newCommittenteForm.value.is_fornitore,
-                business_contacts: businessContacts
+                is_committente: true,
+                is_fornitore: false
             }
         };
 
@@ -4599,28 +4657,113 @@ const saveNewCommittente = async () => {
     }
 };
 
+// Create Committente from Passenger data
+const createCommittenteFromPassenger = async () => {
+    if (!hasPassengerData.value) {
+        alert('Inserisci almeno un passeggero con alcuni dati prima di creare un committente.');
+        return;
+    }
+
+    creatingCommittenteFromPassenger.value = true;
+
+    try {
+        const firstPassenger = form.value.passengers[0];
+        const timestamp = Date.now();
+
+        // Generate username if not available (passengers don't have username)
+        const username = `NCC-USR-${timestamp}`;
+
+        // Use passenger email or generate one
+        const email = firstPassenger.email || `${username}@nccgest.it`;
+
+        // Default password
+        const password = 'NCC-PWD-123!!';
+
+        const data = {
+            username: username,
+            email: email,
+            surname: firstPassenger.surname || 'Da completare',
+            name: firstPassenger.name || null,
+            password: password,
+            password_confirmation: password,
+            phone: firstPassenger.phone || null,
+            role: 'collaboratore',
+            is_active: false,
+            is_intermediario: false,
+            company_id: form.value.company_id,
+            profile: {
+                is_committente: true,
+                is_fornitore: false
+            }
+        };
+
+        const response = await axios.post('/api/users', data);
+
+        // Reload committenti list
+        await loadCounterparts();
+
+        // Also reload lazy-loaded committenti if already loaded
+        if (committentiLoaded.value) {
+            committentiLoaded.value = false;
+            await loadCommittentiLazy();
+        }
+
+        // Select the newly created committente
+        form.value.client_id = response.data.id;
+
+        // Show success message
+        alert('Committente creato con successo dai dati del passeggero!');
+    } catch (error) {
+        console.error('Error creating committente from passenger:', error);
+
+        if (error.response && error.response.status === 422) {
+            const errors = error.response.data.errors || {};
+            const errorMessages = Object.values(errors).flat().join('\n');
+            alert('Errore di validazione:\n' + errorMessages);
+        } else {
+            alert('Errore durante la creazione del committente. Riprova.');
+        }
+    } finally {
+        creatingCommittenteFromPassenger.value = false;
+    }
+};
+
 // New Intermediario Management
+const generateIntermediarioCredentials = () => {
+    const timestamp = Date.now();
+    const username = `NCC-USR-${timestamp}`;
+    const email = `${username}@nccgest.it`;
+    const password = 'NCC-PWD-123!!';
+    return { username, email, password };
+};
+
 const openNewIntermediarioModal = () => {
     resetIntermediarioForm();
     newIntermediarioForm.value.company_id = form.value.company_id;
+
+    // Auto-generate credentials
+    const credentials = generateIntermediarioCredentials();
+    newIntermediarioForm.value.username = credentials.username;
+    newIntermediarioForm.value.email = credentials.email;
+    newIntermediarioForm.value.password = credentials.password;
+    newIntermediarioForm.value.password_confirmation = credentials.password;
+
     showNewIntermediarioModal.value = true;
 };
 
 const resetIntermediarioForm = () => {
+    const credentials = generateIntermediarioCredentials();
     newIntermediarioForm.value = {
-        username: '',
-        email: '',
+        username: credentials.username,
+        email: credentials.email,
         surname: '',
         name: '',
-        password: '',
-        password_confirmation: '',
+        password: credentials.password,
+        password_confirmation: credentials.password,
         phone: '',
         role: 'collaboratore',
         is_active: false,
         company_id: null,
-        contact_name: '',
-        contact_phone: '',
-        contact_email: '',
         is_committente: false,
         is_fornitore: false,
         is_intermediario: true
@@ -4628,6 +4771,7 @@ const resetIntermediarioForm = () => {
     newIntermediarioErrors.value = {};
     showNewIntermediarioPassword.value = false;
     showNewIntermediarioPasswordConfirmation.value = false;
+    showIntermediarioSystemDataSection.value = false;
 };
 
 const saveNewIntermediario = async () => {
@@ -4635,16 +4779,6 @@ const saveNewIntermediario = async () => {
     newIntermediarioErrors.value = {};
 
     try {
-        // Prepare business contacts array
-        const businessContacts = [];
-        if (newIntermediarioForm.value.contact_name || newIntermediarioForm.value.contact_phone || newIntermediarioForm.value.contact_email) {
-            businessContacts.push({
-                name: newIntermediarioForm.value.contact_name || null,
-                phone: newIntermediarioForm.value.contact_phone || null,
-                email: newIntermediarioForm.value.contact_email || null
-            });
-        }
-
         const data = {
             username: newIntermediarioForm.value.username,
             email: newIntermediarioForm.value.email,
@@ -4655,12 +4789,11 @@ const saveNewIntermediario = async () => {
             phone: newIntermediarioForm.value.phone || null,
             role: 'collaboratore',
             is_active: false,
-            is_intermediario: newIntermediarioForm.value.is_intermediario,
+            is_intermediario: true,
             company_id: newIntermediarioForm.value.company_id,
             profile: {
-                is_committente: newIntermediarioForm.value.is_committente,
-                is_fornitore: newIntermediarioForm.value.is_fornitore,
-                business_contacts: businessContacts
+                is_committente: false,
+                is_fornitore: false
             }
         };
 
@@ -4668,6 +4801,12 @@ const saveNewIntermediario = async () => {
 
         // Reload intermediari list
         await loadCounterparts();
+
+        // Also reload lazy-loaded intermediari if already loaded
+        if (intermediariLoaded.value) {
+            intermediariLoaded.value = false;
+            await loadIntermediariLazy();
+        }
 
         // Select the newly created intermediario
         form.value.intermediary_id = response.data.id;
@@ -4692,27 +4831,41 @@ const saveNewIntermediario = async () => {
 };
 
 // New Fornitore Management
+const generateFornitoreCredentials = () => {
+    const timestamp = Date.now();
+    const username = `NCC-USR-${timestamp}`;
+    const email = `${username}@nccgest.it`;
+    const password = 'NCC-PWD-123!!';
+    return { username, email, password };
+};
+
 const openNewFornitoreModal = () => {
     resetFornitoreForm();
     newFornitoreForm.value.company_id = form.value.company_id;
+
+    // Auto-generate credentials
+    const credentials = generateFornitoreCredentials();
+    newFornitoreForm.value.username = credentials.username;
+    newFornitoreForm.value.email = credentials.email;
+    newFornitoreForm.value.password = credentials.password;
+    newFornitoreForm.value.password_confirmation = credentials.password;
+
     showNewFornitoreModal.value = true;
 };
 
 const resetFornitoreForm = () => {
+    const credentials = generateFornitoreCredentials();
     newFornitoreForm.value = {
-        username: '',
-        email: '',
+        username: credentials.username,
+        email: credentials.email,
         surname: '',
         name: '',
-        password: '',
-        password_confirmation: '',
+        password: credentials.password,
+        password_confirmation: credentials.password,
         phone: '',
         role: 'collaboratore',
         is_active: false,
         company_id: null,
-        contact_name: '',
-        contact_phone: '',
-        contact_email: '',
         is_committente: false,
         is_fornitore: true,
         is_intermediario: false
@@ -4720,6 +4873,7 @@ const resetFornitoreForm = () => {
     newFornitoreErrors.value = {};
     showNewFornitorePassword.value = false;
     showNewFornitorePasswordConfirmation.value = false;
+    showFornitoreSystemDataSection.value = false;
 };
 
 const saveNewFornitore = async () => {
@@ -4727,16 +4881,6 @@ const saveNewFornitore = async () => {
     newFornitoreErrors.value = {};
 
     try {
-        // Prepare business contacts array
-        const businessContacts = [];
-        if (newFornitoreForm.value.contact_name || newFornitoreForm.value.contact_phone || newFornitoreForm.value.contact_email) {
-            businessContacts.push({
-                name: newFornitoreForm.value.contact_name || null,
-                phone: newFornitoreForm.value.contact_phone || null,
-                email: newFornitoreForm.value.contact_email || null
-            });
-        }
-
         const data = {
             username: newFornitoreForm.value.username,
             email: newFornitoreForm.value.email,
@@ -4747,12 +4891,11 @@ const saveNewFornitore = async () => {
             phone: newFornitoreForm.value.phone || null,
             role: 'collaboratore',
             is_active: false,
-            is_intermediario: newFornitoreForm.value.is_intermediario,
+            is_intermediario: false,
             company_id: newFornitoreForm.value.company_id,
             profile: {
-                is_committente: newFornitoreForm.value.is_committente,
-                is_fornitore: newFornitoreForm.value.is_fornitore,
-                business_contacts: businessContacts
+                is_committente: false,
+                is_fornitore: true
             }
         };
 
@@ -4760,6 +4903,12 @@ const saveNewFornitore = async () => {
 
         // Reload fornitori list
         await loadCounterparts();
+
+        // Also reload lazy-loaded fornitori if already loaded
+        if (fornitoriLoaded.value) {
+            fornitoriLoaded.value = false;
+            await loadFornitoriLazy();
+        }
 
         // Select the newly created fornitore
         form.value.supplier_id = response.data.id;
@@ -5004,7 +5153,13 @@ const saveAndStay = async () => {
     await submitForm();
 };
 
-const submitForm = async () => {
+// Function to handle "Salva ed Esci" button (save and exit)
+const saveAndExit = async () => {
+    exitAfterSave.value = true;
+    await submitForm();
+};
+
+const submitForm = async (confirmOverlaps = false) => {
     submitting.value = true;
     try {
         const payload = { ...form.value };
@@ -5013,6 +5168,11 @@ const submitForm = async () => {
         if (payload.supplier_id === '') payload.supplier_id = null;
         if (payload.intermediary_id === '') payload.intermediary_id = null;
         if (payload.dress_code_id === '') payload.dress_code_id = null;
+
+        // Add confirm_overlaps flag if user confirmed
+        if (confirmOverlaps) {
+            payload.confirm_overlaps = true;
+        }
 
         const url = isEdit.value ? `/api/services/${props.service.id}` : '/api/services';
         const method = isEdit.value ? 'put' : 'post';
@@ -5066,13 +5226,19 @@ const submitForm = async () => {
             }
         }
     } catch (error) {
-        console.error('Error submitting form:', error);
-
-        // Log detailed validation errors for 422 responses
+        // Check for overlap confirmation request first (422 with requires_confirmation)
         if (error.response && error.response.status === 422) {
-            console.error('Validation failed!');
-            console.error('Response data:', error.response.data);
-            console.error('Validation errors:', error.response.data.errors);
+            if (error.response.data.requires_confirmation && error.response.data.overlaps) {
+                // This is an overlap confirmation request, show modal
+                // Store the current exitAfterSave preference before it gets reset
+                pendingExitAfterSave.value = exitAfterSave.value;
+                detectedOverlaps.value = error.response.data.overlaps;
+                showOverlapModal.value = true;
+                return; // Don't show error, just show the modal
+            }
+
+            // Regular validation error
+            console.error('Validation failed:', error.response.data);
 
             // Show specific validation errors
             if (error.response.data.errors) {
@@ -5080,16 +5246,34 @@ const submitForm = async () => {
                     .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
                     .join('\n');
                 alert('Errori di validazione:\n\n' + errorMessages);
+            } else if (error.response.data.message) {
+                alert(error.response.data.message);
             } else {
                 alert('Errore durante il salvataggio del servizio (422 - Validation Error)');
             }
         } else {
+            console.error('Error submitting form:', error);
             alert('Errore durante il salvataggio del servizio');
         }
     } finally {
         submitting.value = false;
         exitAfterSave.value = true; // Reset to default for next save
     }
+};
+
+// Confirm overlaps and proceed with save
+const confirmOverlapsAndSave = async () => {
+    showOverlapModal.value = false;
+    // Restore the exit preference from when overlaps were detected
+    exitAfterSave.value = pendingExitAfterSave.value;
+    await submitForm(true);
+};
+
+// Cancel overlap confirmation
+const cancelOverlapConfirmation = () => {
+    showOverlapModal.value = false;
+    detectedOverlaps.value = [];
+    pendingExitAfterSave.value = true; // Reset pending preference
 };
 
 onMounted(async () => {
@@ -5113,8 +5297,9 @@ onMounted(async () => {
     }
 
     // Load all data (now company_id is set)
+    // Note: loadCounterparts is not called here for lazy loading optimization
+    // Committenti will be loaded when the user opens the select dropdown
     await Promise.all([
-        loadCounterparts(),
         loadVehicles(),
         loadDrivers(),
         loadDressCodes(),
@@ -5125,6 +5310,19 @@ onMounted(async () => {
         loadPaymentTypes(),
         loadSettings()
     ]);
+
+    // Pre-populate client in committenti if editing and client exists
+    if (isEdit.value && props.service?.client) {
+        committenti.value = [props.service.client];
+    }
+    // Pre-populate intermediary if editing and intermediary exists
+    if (isEdit.value && props.service?.intermediary) {
+        intermediari.value = [props.service.intermediary];
+    }
+    // Pre-populate supplier if editing and supplier exists
+    if (isEdit.value && props.service?.supplier) {
+        fornitori.value = [props.service.supplier];
+    }
 
     if (isEdit.value && props.service) {
         // Populate form with service data

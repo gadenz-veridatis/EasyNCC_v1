@@ -184,13 +184,15 @@ export default {
           <span data-key="t-menu">Servizi</span>
         </li>
 
-        <!-- Dashboard -->
+        <!-- Dashboard (currently disabled) -->
+        <!--
         <li class="nav-item">
           <Link href="/" class="nav-link menu-link">
             <i class="ri-dashboard-2-line"></i>
             <span>Dashboard</span>
           </Link>
         </li>
+        -->
 
         <!-- Lista Servizi -->
         <li class="nav-item">
@@ -244,19 +246,35 @@ export default {
           <span data-key="t-registries">Anagrafiche</span>
         </li>
 
-        <!-- Utenti -->
-        <li class="nav-item">
-          <Link href="/easyncc/users" class="nav-link menu-link">
-            <i class="ri-user-line"></i>
-            <span>Utenti</span>
-          </Link>
-        </li>
-
         <!-- Veicoli -->
         <li class="nav-item">
           <Link href="/easyncc/vehicles" class="nav-link menu-link">
             <i class="ri-car-line"></i>
             <span>Veicoli</span>
+          </Link>
+        </li>
+
+        <!-- Driver -->
+        <li class="nav-item">
+          <Link href="/easyncc/drivers" class="nav-link menu-link">
+            <i class="ri-steering-2-line"></i>
+            <span>Driver</span>
+          </Link>
+        </li>
+
+        <!-- Committenti -->
+        <li class="nav-item">
+          <Link href="/easyncc/committenti" class="nav-link menu-link">
+            <i class="ri-building-4-line"></i>
+            <span>Committenti</span>
+          </Link>
+        </li>
+
+        <!-- Fornitori -->
+        <li class="nav-item">
+          <Link href="/easyncc/fornitori" class="nav-link menu-link">
+            <i class="ri-store-2-line"></i>
+            <span>Fornitori</span>
           </Link>
         </li>
 
@@ -272,6 +290,14 @@ export default {
         <li class="menu-title">
           <i class="ri-more-fill"></i>
           <span data-key="t-configuration">Configurazione</span>
+        </li>
+
+        <!-- Utenti -->
+        <li class="nav-item">
+          <Link href="/easyncc/users" class="nav-link menu-link">
+            <i class="ri-user-line"></i>
+            <span>Utenti</span>
+          </Link>
         </li>
 
         <!-- Dizionari -->

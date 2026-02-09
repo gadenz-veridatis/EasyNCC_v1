@@ -4,12 +4,55 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Service;
+use App\Services\ServiceOverlapService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 
 class ServiceController extends Controller
 {
+    protected ServiceOverlapService $overlapService;
+
+    public function __construct(ServiceOverlapService $overlapService)
+    {
+        $this->overlapService = $overlapService;
+    }
+
+    /**
+     * Check for overlaps before saving a service.
+     * Returns overlap information for user confirmation.
+     */
+    public function checkOverlaps(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'vehicle_departure_datetime' => 'required|date',
+            'vehicle_return_datetime' => 'required|date',
+            'vehicle_id' => 'nullable|exists:vehicles,id',
+            'driver_ids' => 'nullable|array',
+            'driver_ids.*' => 'exists:users,id',
+            'company_id' => 'required|exists:companies,id',
+            'exclude_service_id' => 'nullable|exists:services,id',
+        ]);
+
+        $serviceData = [
+            'vehicle_departure_datetime' => $validated['vehicle_departure_datetime'],
+            'vehicle_return_datetime' => $validated['vehicle_return_datetime'],
+            'vehicle_id' => $validated['vehicle_id'] ?? null,
+            'driver_ids' => $validated['driver_ids'] ?? [],
+            'company_id' => $validated['company_id'],
+        ];
+
+        $overlaps = $this->overlapService->checkOverlaps(
+            $serviceData,
+            $validated['exclude_service_id'] ?? null
+        );
+
+        return response()->json([
+            'has_overlaps' => count($overlaps) > 0,
+            'overlaps' => $overlaps,
+        ]);
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -32,8 +75,14 @@ class ServiceController extends Controller
             $relationships[] = 'accountingTransactions:id,service_id';
             $relationships[] = 'tasks:id,service_id,status';
             $relationships[] = 'activities.activityType:id,name';
-            $relationships[] = 'activities.supplier:id,name';
+            $relationships[] = 'activities.supplier:id,name,surname';
             $relationships[] = 'passengers:id,service_id,name,surname,phone,origin,nationality';
+            $relationships[] = 'overlaps.overlappingService:id,reference_number,vehicle_departure_datetime,vehicle_return_datetime';
+            $relationships[] = 'overlaps.vehicle:id,license_plate,brand,model';
+            $relationships[] = 'overlaps.driver:id,name,surname';
+            $relationships[] = 'overlappedBy.service:id,reference_number,vehicle_departure_datetime,vehicle_return_datetime';
+            $relationships[] = 'overlappedBy.vehicle:id,license_plate,brand,model';
+            $relationships[] = 'overlappedBy.driver:id,name,surname';
         }
 
         $query = Service::with($relationships);
@@ -45,7 +94,9 @@ class ServiceController extends Controller
                 'tasks',
                 'tasks as incomplete_tasks_count' => function ($query) {
                     $query->where('status', '!=', 'completed');
-                }
+                },
+                'overlaps',
+                'overlappedBy'
             ]);
         }
 
@@ -153,8 +204,39 @@ class ServiceController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        // Validate temporal conflicts
-        $this->checkConflicts($request);
+        // Check for overlaps (unless user has confirmed them)
+        $confirmOverlaps = $request->boolean('confirm_overlaps', false);
+        $overlaps = [];
+
+        if (!$confirmOverlaps) {
+            $serviceData = [
+                'vehicle_departure_datetime' => $request->input('vehicle_departure_datetime'),
+                'vehicle_return_datetime' => $request->input('vehicle_return_datetime'),
+                'vehicle_id' => $request->input('vehicle_id'),
+                'driver_ids' => $request->input('driver_ids', []),
+                'company_id' => $request->input('company_id'),
+            ];
+
+            $overlaps = $this->overlapService->checkOverlaps($serviceData);
+
+            if (count($overlaps) > 0) {
+                return response()->json([
+                    'requires_confirmation' => true,
+                    'overlaps' => $overlaps,
+                    'message' => 'Sono state rilevate sovrapposizioni. Confermare per procedere.',
+                ], 422);
+            }
+        } else {
+            // User confirmed, get overlaps to save them after service creation
+            $serviceData = [
+                'vehicle_departure_datetime' => $request->input('vehicle_departure_datetime'),
+                'vehicle_return_datetime' => $request->input('vehicle_return_datetime'),
+                'vehicle_id' => $request->input('vehicle_id'),
+                'driver_ids' => $request->input('driver_ids', []),
+                'company_id' => $request->input('company_id'),
+            ];
+            $overlaps = $this->overlapService->checkOverlaps($serviceData);
+        }
 
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
@@ -239,6 +321,11 @@ class ServiceController extends Controller
             $service->passengers()->create($passengerData);
         }
 
+        // Save overlaps if user confirmed them
+        if ($confirmOverlaps && count($overlaps) > 0) {
+            $this->overlapService->saveOverlaps($service, $overlaps, true);
+        }
+
         return response()->json($service->load([
             'vehicle',
             'client',
@@ -283,7 +370,13 @@ class ServiceController extends Controller
             'tasks.assignedUsers',
             'company',
             'creator',
-            'updater'
+            'updater',
+            'overlaps.overlappingService:id,reference_number,vehicle_departure_datetime,vehicle_return_datetime',
+            'overlaps.vehicle:id,license_plate,brand,model',
+            'overlaps.driver:id,name,surname',
+            'overlappedBy.service:id,reference_number,vehicle_departure_datetime,vehicle_return_datetime',
+            'overlappedBy.vehicle:id,license_plate,brand,model',
+            'overlappedBy.driver:id,name,surname'
         ]));
     }
 
@@ -292,9 +385,43 @@ class ServiceController extends Controller
      */
     public function update(Request $request, Service $service): JsonResponse
     {
-        // Validate temporal conflicts if pickup/dropoff dates are being updated
-        if ($request->has('pickup_datetime') || $request->has('dropoff_datetime')) {
-            $this->checkConflicts($request, $service->id);
+        // Check for overlaps if relevant fields are being updated
+        $confirmOverlaps = $request->boolean('confirm_overlaps', false);
+        $overlaps = [];
+
+        $relevantFieldsChanged = $request->has('vehicle_departure_datetime')
+            || $request->has('vehicle_return_datetime')
+            || $request->has('vehicle_id')
+            || $request->has('driver_ids');
+
+        if ($relevantFieldsChanged && !$confirmOverlaps) {
+            $serviceData = [
+                'vehicle_departure_datetime' => $request->input('vehicle_departure_datetime', $service->vehicle_departure_datetime?->format('Y-m-d H:i:s')),
+                'vehicle_return_datetime' => $request->input('vehicle_return_datetime', $service->vehicle_return_datetime?->format('Y-m-d H:i:s')),
+                'vehicle_id' => $request->input('vehicle_id', $service->vehicle_id),
+                'driver_ids' => $request->input('driver_ids', $service->drivers()->pluck('users.id')->toArray()),
+                'company_id' => $service->company_id,
+            ];
+
+            $overlaps = $this->overlapService->checkOverlaps($serviceData, $service->id);
+
+            if (count($overlaps) > 0) {
+                return response()->json([
+                    'requires_confirmation' => true,
+                    'overlaps' => $overlaps,
+                    'message' => 'Sono state rilevate sovrapposizioni. Confermare per procedere.',
+                ], 422);
+            }
+        } elseif ($relevantFieldsChanged && $confirmOverlaps) {
+            // User confirmed, get overlaps to save them after service update
+            $serviceData = [
+                'vehicle_departure_datetime' => $request->input('vehicle_departure_datetime', $service->vehicle_departure_datetime?->format('Y-m-d H:i:s')),
+                'vehicle_return_datetime' => $request->input('vehicle_return_datetime', $service->vehicle_return_datetime?->format('Y-m-d H:i:s')),
+                'vehicle_id' => $request->input('vehicle_id', $service->vehicle_id),
+                'driver_ids' => $request->input('driver_ids', $service->drivers()->pluck('users.id')->toArray()),
+                'company_id' => $service->company_id,
+            ];
+            $overlaps = $this->overlapService->checkOverlaps($serviceData, $service->id);
         }
 
         $validated = $request->validate([
@@ -389,6 +516,14 @@ class ServiceController extends Controller
 
         // Update service
         $service->update($validated);
+
+        // Save or recalculate overlaps
+        if ($confirmOverlaps && count($overlaps) > 0) {
+            $this->overlapService->saveOverlaps($service, $overlaps, true);
+        } elseif ($relevantFieldsChanged) {
+            // Recalculate overlaps if relevant fields changed (even if no overlaps found, clear old ones)
+            $this->overlapService->recalculateOverlapsForService($service);
+        }
 
         return response()->json($service->load([
             'vehicle',

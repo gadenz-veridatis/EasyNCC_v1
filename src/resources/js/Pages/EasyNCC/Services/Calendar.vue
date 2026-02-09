@@ -124,6 +124,29 @@
                     <div class="small text-truncate">{{ selectedService.notes }}</div>
                 </div>
 
+                <!-- Sovrapposizioni -->
+                <div v-if="hasSelectedServiceOverlaps" class="mb-2">
+                    <div class="text-warning small fw-bold">
+                        <i class="ri-error-warning-line me-1"></i>Sovrapposizioni
+                    </div>
+                    <div v-for="overlap in selectedServiceOverlaps" :key="overlap.id" class="small border-start border-warning ps-2 mt-1">
+                        <div class="fw-bold">
+                            #{{ overlap.related_service_reference || overlap.related_service_id }}
+                        </div>
+                        <div class="text-muted">
+                            <span v-if="overlap.overlap_type === 'vehicle'" class="badge bg-info me-1">Veicolo</span>
+                            <span v-else-if="overlap.overlap_type === 'driver'" class="badge bg-warning text-dark me-1">Autista</span>
+                            <span v-else-if="overlap.overlap_type === 'both'" class="badge bg-danger me-1">Entrambi</span>
+                        </div>
+                        <div v-if="overlap.vehicle" class="text-info">
+                            <i class="ri-car-line me-1"></i>{{ overlap.vehicle.license_plate }}
+                        </div>
+                        <div v-if="overlap.driver" class="text-warning">
+                            <i class="ri-user-line me-1"></i>{{ overlap.driver.surname }} {{ overlap.driver.name }}
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Actions -->
                 <div class="d-flex gap-2 mt-3">
                     <Link
@@ -145,7 +168,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
 import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
@@ -235,6 +258,14 @@ const initializeCalendar = async () => {
             backgroundColor = colors[0];
             borderColor = colors[0];
 
+            // Check for overlaps
+            const hasOverlaps = (service.overlaps_count || 0) + (service.overlapped_by_count || 0) > 0;
+
+            // If service has overlaps, use black border
+            if (hasOverlaps) {
+                borderColor = '#000000';
+            }
+
             return {
                 id: service.id,
                 title: title,
@@ -242,9 +273,11 @@ const initializeCalendar = async () => {
                 end: service.dropoff_datetime,
                 backgroundColor: backgroundColor,
                 borderColor: borderColor,
+                classNames: hasOverlaps ? ['fc-event-overlap'] : [],
                 extendedProps: {
                     service: service,
-                    driverColors: colors
+                    driverColors: colors,
+                    hasOverlaps: hasOverlaps
                 }
             };
         });
@@ -416,6 +449,51 @@ const closePopover = () => {
     selectedEvent.value = null;
 };
 
+// Computed properties for overlaps
+const hasSelectedServiceOverlaps = computed(() => {
+    if (!selectedService.value) return false;
+    const overlapsCount = (selectedService.value.overlaps_count || 0) + (selectedService.value.overlapped_by_count || 0);
+    return overlapsCount > 0 ||
+           (selectedService.value.overlaps && selectedService.value.overlaps.length > 0) ||
+           (selectedService.value.overlapped_by && selectedService.value.overlapped_by.length > 0);
+});
+
+const selectedServiceOverlaps = computed(() => {
+    if (!selectedService.value) return [];
+
+    const overlaps = [];
+
+    // Add overlaps (where this service overlaps others)
+    if (selectedService.value.overlaps && selectedService.value.overlaps.length > 0) {
+        selectedService.value.overlaps.forEach(o => {
+            overlaps.push({
+                id: o.id,
+                overlap_type: o.overlap_type,
+                related_service_id: o.overlapping_service?.id || o.overlapping_service_id,
+                related_service_reference: o.overlapping_service?.reference_number,
+                vehicle: o.vehicle,
+                driver: o.driver
+            });
+        });
+    }
+
+    // Add overlappedBy (where other services overlap this one)
+    if (selectedService.value.overlapped_by && selectedService.value.overlapped_by.length > 0) {
+        selectedService.value.overlapped_by.forEach(o => {
+            overlaps.push({
+                id: `by_${o.id}`,
+                overlap_type: o.overlap_type,
+                related_service_id: o.service?.id || o.service_id,
+                related_service_reference: o.service?.reference_number,
+                vehicle: o.vehicle,
+                driver: o.driver
+            });
+        });
+    }
+
+    return overlaps;
+});
+
 const formatDateTime = (datetime) => {
     return moment(datetime).format('DD/MM/YYYY HH:mm');
 };
@@ -508,6 +586,13 @@ onUnmounted(() => {
     padding: 2px 4px;
     font-size: 0.7rem;
     line-height: 1.3;
+}
+
+:deep(.fc-event.fc-event-overlap) {
+    border-width: 2px !important;
+    border-style: solid !important;
+    border-color: #000000 !important;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
 }
 
 :deep(.fc-event-title) {

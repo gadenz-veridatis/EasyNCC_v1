@@ -79,6 +79,7 @@ class User extends Authenticatable // implements MustVerifyEmail
      */
     protected $appends = [
         'profile_photo_url',
+        'nearest_expiry',
     ];
 
     // Relationships
@@ -169,5 +170,28 @@ class User extends Authenticatable // implements MustVerifyEmail
     public function hasAnyRole(array $roles): bool
     {
         return in_array($this->role, $roles);
+    }
+
+    // Accessors
+    public function getNearestExpiryAttribute()
+    {
+        if (!$this->isDriver() || !$this->relationLoaded('driverAttachments')) {
+            return null;
+        }
+
+        $nearestAttachment = $this->driverAttachments
+            ->filter(fn($attachment) => $attachment->expiration_date !== null)
+            ->sortBy('expiration_date')
+            ->first();
+
+        if (!$nearestAttachment) {
+            return null;
+        }
+
+        return [
+            'id' => $nearestAttachment->id,
+            'document_type' => $nearestAttachment->attachment_type ?? 'N/A',
+            'expiry_date' => $nearestAttachment->expiration_date,
+        ];
     }
 }
