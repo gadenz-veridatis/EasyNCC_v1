@@ -48,6 +48,7 @@
                     <th scope="col" v-if="hasAbbreviation" style="white-space: nowrap;">Sigla</th>
                     <th scope="col" v-if="hasIsDefault" style="white-space: nowrap;">Default</th>
                     <th scope="col" v-if="hasIsActive" style="white-space: nowrap;">Stato</th>
+                    <th scope="col" v-if="hasType" style="white-space: nowrap;">Tipo</th>
                     <th scope="col" v-if="isSuperAdmin" style="white-space: nowrap;">Azienda</th>
                     <th scope="col" style="white-space: nowrap;">Azioni</th>
                   </tr>
@@ -77,6 +78,11 @@
                     <td v-if="hasIsActive" style="white-space: nowrap;">
                       <BBadge :variant="item.is_active ? 'success' : 'danger'">
                         {{ item.is_active ? 'Attivo' : 'Inattivo' }}
+                      </BBadge>
+                    </td>
+                    <td v-if="hasType" style="white-space: nowrap;">
+                      <BBadge :variant="item.type === 'debit' ? 'info' : 'warning'">
+                        {{ item.type === 'debit' ? 'Dare' : 'Avere' }}
                       </BBadge>
                     </td>
                     <td v-if="isSuperAdmin" style="white-space: nowrap;">{{ item.company?.name || '-' }}</td>
@@ -174,6 +180,19 @@
           </div>
         </div>
 
+        <div class="mb-3" v-if="hasType">
+          <label class="form-label">Tipo <span class="text-danger">*</span></label>
+          <select
+            class="form-select"
+            v-model="form.type"
+            required
+          >
+            <option value="">Seleziona tipo</option>
+            <option value="debit">Dare (Debit)</option>
+            <option value="credit">Avere (Credit)</option>
+          </select>
+        </div>
+
         <div class="text-end">
           <BButton variant="light" @click="showModal = false" class="me-2">
             Annulla
@@ -222,6 +241,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    hasType: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
@@ -265,6 +288,7 @@ export default {
       if (this.hasAbbreviation) count++;
       if (this.hasIsDefault) count++;
       if (this.hasIsActive) count++;
+      if (this.hasType) count++;
       if (this.isSuperAdmin) count++; // company column
       return count;
     },
@@ -306,6 +330,7 @@ export default {
       if (this.hasAbbreviation) form.abbreviation = "";
       if (this.hasIsDefault) form.is_default = false;
       if (this.hasIsActive) form.is_active = true;
+      if (this.hasType) form.type = "";
 
       return form;
     },

@@ -61,6 +61,11 @@ class Service extends Model
         'driver_compensation',
         'intermediary_commission',
         'expenses',
+        'fuel_cost',
+        'toll_cost',
+        'parking_cost',
+        'other_vehicle_costs',
+        'colleague_cost',
         'notes',
         'created_by',
         'updated_by',
@@ -95,6 +100,11 @@ class Service extends Model
         'driver_compensation' => 'decimal:2',
         'intermediary_commission' => 'decimal:2',
         'expenses' => 'decimal:2',
+        'fuel_cost' => 'decimal:2',
+        'toll_cost' => 'decimal:2',
+        'parking_cost' => 'decimal:2',
+        'other_vehicle_costs' => 'decimal:2',
+        'colleague_cost' => 'decimal:2',
     ];
 
     // Relationships

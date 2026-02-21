@@ -39,9 +39,15 @@ class DictionaryController extends Controller
     {
         $model = $this->getModel($type);
 
+        // Determine eager-load relationships
+        $relationships = ['company:id,name'];
+        if ($type === 'ztl') {
+            $relationships[] = 'vehicles:id,license_plate,brand,model';
+        }
+
         // Super-admin can filter by company_id or see all
         if ($request->user()->hasRole('super-admin')) {
-            $query = $model->newQuery()->with('company:id,name');
+            $query = $model->newQuery()->with($relationships);
 
             if ($request->has('company_id') && $request->company_id) {
                 $query->where('company_id', $request->company_id);
@@ -54,7 +60,7 @@ class DictionaryController extends Controller
             // Other users see only their company's items
             $orderField = $type === 'ztl' ? 'city' : 'name';
             $items = $model->where('company_id', $request->user()->company_id)
-                ->with('company:id,name')
+                ->with($relationships)
                 ->orderBy($orderField)
                 ->get();
         }
@@ -92,7 +98,17 @@ class DictionaryController extends Controller
                 ->update(['is_default' => false]);
         }
 
+        // Remove vehicle_ids from validated data before creating
+        $vehicleIds = $validated['vehicle_ids'] ?? null;
+        unset($validated['vehicle_ids']);
+
         $item = $model->create($validated);
+
+        // Sync vehicles for ZTL
+        if ($type === 'ztl' && $vehicleIds !== null) {
+            $item->vehicles()->sync($vehicleIds);
+            $item->load('vehicles:id,license_plate,brand,model');
+        }
 
         return response()->json([
             'success' => true,
@@ -151,7 +167,17 @@ class DictionaryController extends Controller
                 ->update(['is_default' => false]);
         }
 
+        // Remove vehicle_ids from validated data before updating
+        $vehicleIds = $validated['vehicle_ids'] ?? null;
+        unset($validated['vehicle_ids']);
+
         $item->update($validated);
+
+        // Sync vehicles for ZTL
+        if ($type === 'ztl' && $vehicleIds !== null) {
+            $item->vehicles()->sync($vehicleIds);
+            $item->load('vehicles:id,license_plate,brand,model');
+        }
 
         return response()->json([
             'success' => true,
@@ -209,9 +235,12 @@ class DictionaryController extends Controller
             case 'ztl':
                 $baseRules = [
                     'city' => 'required|string|max:255',
-                    'duration' => 'required|numeric|min:0',
-                    'cost' => 'required|numeric|min:0',
+                    'periodicity' => 'nullable|string|max:255',
+                    'expiration_date' => 'nullable|date',
+                    'notes' => 'nullable|string',
                     'is_active' => 'boolean',
+                    'vehicle_ids' => 'nullable|array',
+                    'vehicle_ids.*' => 'exists:vehicles,id',
                 ];
                 break;
 

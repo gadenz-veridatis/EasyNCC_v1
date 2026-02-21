@@ -58,8 +58,8 @@ class ServiceController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        // For list view, load essential relationships with minimal fields
-        // If with_counts is requested, load additional relationships for counts
+        // For list view, load essential relationships for display
+        // Overlap details, transactions, tasks loaded on-demand via show()
         $relationships = [
             'vehicle:id,license_plate,brand,model',
             'client:id,name,surname,email,phone',
@@ -68,26 +68,15 @@ class ServiceController extends Controller
             'status:id,name',
             'company:id,name',
             'drivers.driverProfile:user_id,color',
-            'dressCode:id,name'
+            'dressCode:id,name',
+            'passengers:id,service_id,name,surname,phone,nationality',
+            'activities.activityType:id,name',
+            'activities.supplier:id,name,surname',
         ];
-
-        if ($request->filled('with_counts') && $request->with_counts) {
-            $relationships[] = 'accountingTransactions:id,service_id';
-            $relationships[] = 'tasks:id,service_id,status';
-            $relationships[] = 'activities.activityType:id,name';
-            $relationships[] = 'activities.supplier:id,name,surname';
-            $relationships[] = 'passengers:id,service_id,name,surname,phone,origin,nationality';
-            $relationships[] = 'overlaps.overlappingService:id,reference_number,vehicle_departure_datetime,vehicle_return_datetime';
-            $relationships[] = 'overlaps.vehicle:id,license_plate,brand,model';
-            $relationships[] = 'overlaps.driver:id,name,surname';
-            $relationships[] = 'overlappedBy.service:id,reference_number,vehicle_departure_datetime,vehicle_return_datetime';
-            $relationships[] = 'overlappedBy.vehicle:id,license_plate,brand,model';
-            $relationships[] = 'overlappedBy.driver:id,name,surname';
-        }
 
         $query = Service::with($relationships);
 
-        // Add counts for notifications
+        // Add counts for notifications (lightweight counts only)
         if ($request->filled('with_counts') && $request->with_counts) {
             $query->withCount([
                 'accountingTransactions',
@@ -175,6 +164,15 @@ class ServiceController extends Controller
             $query->where('dropoff_datetime', '>=', $request->dropoff_date_from . ' 00:00:00');
         } elseif ($request->filled('dropoff_date_to')) {
             $query->where('dropoff_datetime', '<=', $request->dropoff_date_to . ' 23:59:59');
+        }
+
+        // Filter by passenger name
+        if ($request->filled('passenger_name')) {
+            $passengerName = $request->passenger_name;
+            $query->whereHas('passengers', function($q) use ($passengerName) {
+                $q->where('name', 'ilike', '%' . $passengerName . '%')
+                  ->orWhere('surname', 'ilike', '%' . $passengerName . '%');
+            });
         }
 
         // Search
@@ -298,6 +296,14 @@ class ServiceController extends Controller
             'balance_taxable' => 'nullable|numeric|min:0',
             'balance_handling_fees' => 'nullable|numeric|min:0',
             'balance_card_fees' => 'nullable|numeric|min:0',
+            'driver_compensation' => 'nullable|numeric|min:0',
+            'intermediary_commission' => 'nullable|numeric|min:0',
+            'expenses' => 'nullable|numeric|min:0',
+            'fuel_cost' => 'nullable|numeric|min:0',
+            'toll_cost' => 'nullable|numeric|min:0',
+            'parking_cost' => 'nullable|numeric|min:0',
+            'other_vehicle_costs' => 'nullable|numeric|min:0',
+            'colleague_cost' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
         ]);
 
@@ -485,6 +491,14 @@ class ServiceController extends Controller
             'balance_taxable' => 'nullable|numeric|min:0',
             'balance_handling_fees' => 'nullable|numeric|min:0',
             'balance_card_fees' => 'nullable|numeric|min:0',
+            'driver_compensation' => 'nullable|numeric|min:0',
+            'intermediary_commission' => 'nullable|numeric|min:0',
+            'expenses' => 'nullable|numeric|min:0',
+            'fuel_cost' => 'nullable|numeric|min:0',
+            'toll_cost' => 'nullable|numeric|min:0',
+            'parking_cost' => 'nullable|numeric|min:0',
+            'other_vehicle_costs' => 'nullable|numeric|min:0',
+            'colleague_cost' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
         ]);
 

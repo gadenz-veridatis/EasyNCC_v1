@@ -26,6 +26,9 @@
                                     <a href="#section-committenti" class="btn btn-sm btn-soft-primary px-2 py-1" title="Committenti">
                                         <i class="ri-building-line"></i>
                                     </a>
+                                    <a href="#section-intermediari" class="btn btn-sm btn-soft-primary px-2 py-1" title="Intermediari">
+                                        <i class="ri-links-line"></i>
+                                    </a>
                                     <a href="#section-veicolo" class="btn btn-sm btn-soft-primary px-2 py-1" title="Veicolo">
                                         <i class="ri-car-line"></i>
                                     </a>
@@ -215,13 +218,13 @@
                                     </button>
                                 </fieldset>
 
-                                <!-- FIELDSET 3: COMMITTENTI/INTERMEDIARI -->
+                                <!-- FIELDSET 3: COMMITTENTI -->
                                 <fieldset id="section-committenti" class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
-                                        <i class="ri-building-line me-2"></i>Committenti/Intermediari
+                                        <i class="ri-building-line me-2"></i>Committenti
                                     </legend>
                                     <BRow>
-                                        <BCol md="6" class="mb-3">
+                                        <BCol md="12" class="mb-3">
                                             <label for="client_id" class="form-label">Committente *</label>
                                             <div class="d-flex gap-2">
                                                 <Multiselect
@@ -262,7 +265,16 @@
                                                 </button>
                                             </div>
                                         </BCol>
-                                        <BCol md="6" class="mb-3">
+                                    </BRow>
+                                </fieldset>
+
+                                <!-- FIELDSET 3b: INTERMEDIARI -->
+                                <fieldset id="section-intermediari" class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-links-line me-2"></i>Intermediari
+                                    </legend>
+                                    <BRow>
+                                        <BCol md="8" class="mb-3">
                                             <label for="intermediary_id" class="form-label">Intermediario</label>
                                             <div class="d-flex gap-2">
                                                 <Multiselect
@@ -291,6 +303,18 @@
                                                     <i class="ri-add-line"></i>
                                                 </button>
                                             </div>
+                                        </BCol>
+                                        <BCol md="4" class="mb-3">
+                                            <label for="intermediary_commission" class="form-label">Commissione (&euro;)</label>
+                                            <input
+                                                id="intermediary_commission"
+                                                v-model.number="form.intermediary_commission"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                class="form-control"
+                                                placeholder="0.00"
+                                            />
                                         </BCol>
                                     </BRow>
                                 </fieldset>
@@ -361,6 +385,63 @@
                                             </div>
                                         </BCol>
                                     </BRow>
+
+                                    <!-- Sub-fieldset: Spese Veicolo -->
+                                    <fieldset class="border rounded p-3 mt-2 bg-light">
+                                        <legend class="fs-6 fw-semibold text-secondary mb-2">
+                                            <i class="ri-money-euro-circle-line me-1"></i>Spese
+                                        </legend>
+                                        <BRow>
+                                            <BCol md="3" class="mb-3">
+                                                <label for="fuel_cost" class="form-label">Costo Carburanti (&euro;)</label>
+                                                <input
+                                                    id="fuel_cost"
+                                                    v-model.number="form.fuel_cost"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    class="form-control form-control-sm"
+                                                    placeholder="0.00"
+                                                />
+                                            </BCol>
+                                            <BCol md="3" class="mb-3">
+                                                <label for="toll_cost" class="form-label">Costo Pedaggio (&euro;)</label>
+                                                <input
+                                                    id="toll_cost"
+                                                    v-model.number="form.toll_cost"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    class="form-control form-control-sm"
+                                                    placeholder="0.00"
+                                                />
+                                            </BCol>
+                                            <BCol md="3" class="mb-3">
+                                                <label for="parking_cost" class="form-label">Costo Parcheggio (&euro;)</label>
+                                                <input
+                                                    id="parking_cost"
+                                                    v-model.number="form.parking_cost"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    class="form-control form-control-sm"
+                                                    placeholder="0.00"
+                                                />
+                                            </BCol>
+                                            <BCol md="3" class="mb-3">
+                                                <label for="other_vehicle_costs" class="form-label">Altri costi veicolo (&euro;)</label>
+                                                <input
+                                                    id="other_vehicle_costs"
+                                                    v-model.number="form.other_vehicle_costs"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    class="form-control form-control-sm"
+                                                    placeholder="0.00"
+                                                />
+                                            </BCol>
+                                        </BRow>
+                                    </fieldset>
                                 </fieldset>
 
                                 <!-- FIELDSET 5: DRIVER -->
@@ -477,6 +558,39 @@
                                             </select>
                                         </BCol>
                                     </BRow>
+
+                                    <!-- Sub-fieldset: Spese Driver -->
+                                    <fieldset class="border rounded p-3 mt-2 bg-light">
+                                        <legend class="fs-6 fw-semibold text-secondary mb-2">
+                                            <i class="ri-money-euro-circle-line me-1"></i>Spese
+                                        </legend>
+                                        <BRow>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="driver_compensation" class="form-label">Costo Driver (&euro;)</label>
+                                                <input
+                                                    id="driver_compensation"
+                                                    v-model.number="form.driver_compensation"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    class="form-control form-control-sm"
+                                                    placeholder="0.00"
+                                                />
+                                            </BCol>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="colleague_cost" class="form-label">Costo Collega (&euro;)</label>
+                                                <input
+                                                    id="colleague_cost"
+                                                    v-model.number="form.colleague_cost"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    class="form-control form-control-sm"
+                                                    placeholder="0.00"
+                                                />
+                                            </BCol>
+                                        </BRow>
+                                    </fieldset>
                                 </fieldset>
 
                                 <!-- FIELDSET 6: BAGAGLI -->
@@ -2975,6 +3089,13 @@ const form = ref({
     balance_taxable: null,
     balance_handling_fees: null,
     balance_card_fees: null,
+    intermediary_commission: null,
+    driver_compensation: null,
+    colleague_cost: null,
+    fuel_cost: null,
+    toll_cost: null,
+    parking_cost: null,
+    other_vehicle_costs: null,
     accounting_transactions: [],
     notes: ''
 });
@@ -5115,6 +5236,75 @@ const processAccountingTransactions = async () => {
             }
         }
 
+        // Handle Intermediazione (commission)
+        const existingIntermediation = form.value.accounting_transactions.find(
+            t => t.transaction_type === 'intermediation' && t.installment === 'balance'
+        );
+
+        if (form.value.intermediary_commission && form.value.intermediary_commission > 0 && form.value.intermediary_id) {
+            const intermediationPayload = {
+                service_id: serviceId,
+                transaction_date: today,
+                amount: form.value.intermediary_commission,
+                transaction_type: 'intermediation',
+                installment: 'balance',
+                accounting_entry_id: settings.value.commission_accounting_entry_id,
+                counterpart_id: form.value.intermediary_id,
+                document_number: null,
+                document_due_date: null,
+                payment_date: null,
+                payment_type: null,
+                payment_reason: settings.value.commission_reason,
+                iban: null,
+                status: 'to_pay',
+                notes: null
+            };
+
+            if (existingIntermediation) {
+                await axios.put(`/api/accounting-transactions/${existingIntermediation.id}`, intermediationPayload);
+            } else {
+                await axios.post('/api/accounting-transactions', intermediationPayload);
+            }
+        } else if (existingIntermediation) {
+            // Commission is 0 or not set - remove existing intermediation transaction
+            await axios.delete(`/api/accounting-transactions/${existingIntermediation.id}`);
+        }
+
+        // Handle Carburante (fuel cost)
+        const existingFuel = form.value.accounting_transactions.find(
+            t => t.transaction_type === 'purchase' && t.installment === 'balance'
+                && t.accounting_entry_id === settings.value.fuel_accounting_entry_id
+        );
+
+        if (form.value.fuel_cost && form.value.fuel_cost > 0 && form.value.supplier_id) {
+            const fuelPayload = {
+                service_id: serviceId,
+                transaction_date: today,
+                amount: form.value.fuel_cost,
+                transaction_type: 'purchase',
+                installment: 'balance',
+                accounting_entry_id: settings.value.fuel_accounting_entry_id,
+                counterpart_id: form.value.supplier_id,
+                document_number: null,
+                document_due_date: null,
+                payment_date: null,
+                payment_type: null,
+                payment_reason: settings.value.fuel_reason,
+                iban: null,
+                status: 'to_pay',
+                notes: null
+            };
+
+            if (existingFuel) {
+                await axios.put(`/api/accounting-transactions/${existingFuel.id}`, fuelPayload);
+            } else {
+                await axios.post('/api/accounting-transactions', fuelPayload);
+            }
+        } else if (existingFuel) {
+            // Fuel cost is 0 or not set - remove existing fuel transaction
+            await axios.delete(`/api/accounting-transactions/${existingFuel.id}`);
+        }
+
         return true;
     } catch (error) {
         console.error('Error processing accounting transactions:', error);
@@ -5122,21 +5312,24 @@ const processAccountingTransactions = async () => {
     }
 };
 
-// Remove sale accounting transactions (deposit and balance)
+// Remove sale, intermediation, and auto-generated purchase accounting transactions
 const removeAccountingTransactions = async () => {
     try {
-        // Find sale transactions (deposit and balance)
-        const saleTransactions = form.value.accounting_transactions.filter(
-            t => t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance')
+        // Find sale transactions (deposit and balance), intermediation, and fuel purchase transactions
+        const fuelEntryId = settings.value ? settings.value.fuel_accounting_entry_id : null;
+        const transactionsToRemove = form.value.accounting_transactions.filter(
+            t => (t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance'))
+                || t.transaction_type === 'intermediation'
+                || (t.transaction_type === 'purchase' && t.accounting_entry_id === fuelEntryId)
         );
 
-        if (saleTransactions.length === 0) {
-            console.warn('No sale transactions to remove');
+        if (transactionsToRemove.length === 0) {
+            console.warn('No accounting transactions to remove');
             return false;
         }
 
-        // Delete all sale transactions
-        for (const transaction of saleTransactions) {
+        // Delete all matching transactions
+        for (const transaction of transactionsToRemove) {
             await axios.delete(`/api/accounting-transactions/${transaction.id}`);
         }
 
@@ -5196,18 +5389,17 @@ const submitForm = async (confirmOverlaps = false) => {
             }
 
             // Handle accounting transactions after successful save
-            const hasSaleTransactions = form.value.accounting_transactions.some(
-                t => t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance')
+            const hasAccountingTransactions = form.value.accounting_transactions.some(
+                t => (t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance'))
+                    || t.transaction_type === 'intermediation'
+                    || t.transaction_type === 'purchase'
             );
 
-            if (accountingEnabled.value && !hasSaleTransactions) {
-                // Toggle is ON and no sale transactions exist - create them
+            if (accountingEnabled.value) {
+                // Toggle is ON - create or update all accounting transactions
                 await processAccountingTransactions();
-            } else if (accountingEnabled.value && hasSaleTransactions) {
-                // Toggle is ON and sale transactions exist - update them
-                await processAccountingTransactions();
-            } else if (!accountingEnabled.value && hasSaleTransactions) {
-                // Toggle is OFF and sale transactions exist - delete them
+            } else if (!accountingEnabled.value && hasAccountingTransactions) {
+                // Toggle is OFF and transactions exist - delete them
                 await removeAccountingTransactions();
             }
         }
@@ -5374,12 +5566,13 @@ onMounted(async () => {
             activityConfirmationEnabled.value = hasConfirmationTasks;
         }
 
-        // Initialize accountingEnabled based on existing sale transactions
+        // Initialize accountingEnabled based on existing sale or intermediation transactions
         if (props.service.accounting_transactions) {
-            const hasSaleTransactions = props.service.accounting_transactions.some(
-                t => t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance')
+            const hasAccountingTransactions = props.service.accounting_transactions.some(
+                t => (t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance'))
+                    || t.transaction_type === 'intermediation'
             );
-            accountingEnabled.value = hasSaleTransactions;
+            accountingEnabled.value = hasAccountingTransactions;
         }
 
         // Set default values if not present

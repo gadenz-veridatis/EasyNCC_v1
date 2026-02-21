@@ -6,6 +6,7 @@ use App\Traits\HasCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -55,6 +56,11 @@ class Vehicle extends Model
     public function unavailabilities(): HasMany
     {
         return $this->hasMany(VehicleUnavailability::class);
+    }
+
+    public function ztls(): BelongsToMany
+    {
+        return $this->belongsToMany(Ztl::class, 'ztl_vehicle')->withTimestamps();
     }
 
     // Audit relationships

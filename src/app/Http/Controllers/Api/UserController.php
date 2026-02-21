@@ -16,12 +16,18 @@ class UserController extends Controller
     public function index(Request $request): JsonResponse
     {
         // For list view, load company, clientProfile for collaboratore users, and driverProfile for drivers
-        $query = User::with([
+        $relationships = [
             'company:id,name',
             'clientProfile:user_id,is_committente,is_fornitore',
             'driverProfile:user_id,color,fiscal_code,vat_number,allow_overlapping',
-            'driverAttachments'
-        ]);
+        ];
+
+        // Only load driverAttachments when filtering for drivers
+        if ($request->get('role') === 'driver') {
+            $relationships[] = 'driverAttachments';
+        }
+
+        $query = User::with($relationships);
 
         // Multi-tenancy: Filter by company
         // Super-admin can see all companies or filter by company_id

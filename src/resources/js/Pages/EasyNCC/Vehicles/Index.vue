@@ -101,7 +101,10 @@
                                             <i v-if="sortBy === 'passenger_capacity'" :class="`bx bx-${sortOrder === 'asc' ? 'up' : 'down'}-arrow-alt`"></i>
                                         </th>
                                         <th scope="col" v-if="isSuperAdmin">Azienda</th>
-                                        <th scope="col">Allegati</th>
+                                        <th scope="col">Scadenza Bollo</th>
+                                        <th scope="col">Scadenza Assicurazione</th>
+                                        <th scope="col">Scadenza Revisione</th>
+                                        <th scope="col">Altre Scadenze</th>
                                         <th scope="col">Prossima Inattività</th>
                                         <th scope="col">Azioni</th>
                                     </tr>
@@ -123,26 +126,72 @@
                                                 {{ vehicle.company?.name || 'N/A' }}
                                             </span>
                                         </td>
+                                        <!-- Scadenza Bollo -->
+                                        <td>
+                                            <div v-if="getAttachmentByType(vehicle, 'Bollo')" @click="showAttachmentsModal(vehicle)" class="cursor-pointer" style="cursor: pointer;">
+                                                <div class="small" :class="getExpiryColorClass(getAttachmentByType(vehicle, 'Bollo').expiration_date)">
+                                                    <i class="ri-calendar-line"></i>
+                                                    {{ formatDate(getAttachmentByType(vehicle, 'Bollo').expiration_date) }}
+                                                </div>
+                                                <div class="small text-muted">
+                                                    {{ getDaysUntilExpiry(getAttachmentByType(vehicle, 'Bollo').expiration_date) }}
+                                                </div>
+                                            </div>
+                                            <span v-else class="text-warning" title="Bollo mancante">
+                                                <i class="ri-error-warning-line fs-5"></i>
+                                            </span>
+                                        </td>
+                                        <!-- Scadenza Assicurazione -->
+                                        <td>
+                                            <div v-if="getAttachmentByType(vehicle, 'Assicurazione')" @click="showAttachmentsModal(vehicle)" class="cursor-pointer" style="cursor: pointer;">
+                                                <div class="small" :class="getExpiryColorClass(getAttachmentByType(vehicle, 'Assicurazione').expiration_date)">
+                                                    <i class="ri-calendar-line"></i>
+                                                    {{ formatDate(getAttachmentByType(vehicle, 'Assicurazione').expiration_date) }}
+                                                </div>
+                                                <div class="small text-muted">
+                                                    {{ getDaysUntilExpiry(getAttachmentByType(vehicle, 'Assicurazione').expiration_date) }}
+                                                </div>
+                                            </div>
+                                            <span v-else class="text-warning" title="Assicurazione mancante">
+                                                <i class="ri-error-warning-line fs-5"></i>
+                                            </span>
+                                        </td>
+                                        <!-- Scadenza Revisione -->
+                                        <td>
+                                            <div v-if="getAttachmentByType(vehicle, 'Revisione')" @click="showAttachmentsModal(vehicle)" class="cursor-pointer" style="cursor: pointer;">
+                                                <div class="small" :class="getExpiryColorClass(getAttachmentByType(vehicle, 'Revisione').expiration_date)">
+                                                    <i class="ri-calendar-line"></i>
+                                                    {{ formatDate(getAttachmentByType(vehicle, 'Revisione').expiration_date) }}
+                                                </div>
+                                                <div class="small text-muted">
+                                                    {{ getDaysUntilExpiry(getAttachmentByType(vehicle, 'Revisione').expiration_date) }}
+                                                </div>
+                                            </div>
+                                            <span v-else class="text-warning" title="Revisione mancante">
+                                                <i class="ri-error-warning-line fs-5"></i>
+                                            </span>
+                                        </td>
+                                        <!-- Altre Scadenze -->
                                         <td>
                                             <div
-                                                v-if="getNextExpiringAttachment(vehicle)"
+                                                v-if="getNextExpiringAttachmentOther(vehicle)"
                                                 @click="showAttachmentsModal(vehicle)"
                                                 class="cursor-pointer"
                                                 style="cursor: pointer;"
                                             >
-                                                <div class="small fw-bold">{{ getNextExpiringAttachment(vehicle).attachment_type }}</div>
+                                                <div class="small fw-bold">{{ getNextExpiringAttachmentOther(vehicle).attachment_type }}</div>
                                                 <div
                                                     class="small"
-                                                    :class="getExpiryColorClass(getNextExpiringAttachment(vehicle).expiration_date)"
+                                                    :class="getExpiryColorClass(getNextExpiringAttachmentOther(vehicle).expiration_date)"
                                                 >
                                                     <i class="ri-calendar-line"></i>
-                                                    {{ formatDate(getNextExpiringAttachment(vehicle).expiration_date) }}
+                                                    {{ formatDate(getNextExpiringAttachmentOther(vehicle).expiration_date) }}
                                                 </div>
                                                 <div class="small text-muted">
-                                                    {{ getDaysUntilExpiry(getNextExpiringAttachment(vehicle).expiration_date) }}
+                                                    {{ getDaysUntilExpiry(getNextExpiringAttachmentOther(vehicle).expiration_date) }}
                                                 </div>
                                             </div>
-                                            <span v-else class="text-muted small">Nessun allegato</span>
+                                            <span v-else class="text-muted small">-</span>
                                         </td>
                                         <td>
                                             <div
@@ -617,6 +666,21 @@ const showUnavailabilitiesModal = async (vehicle) => {
     }
 };
 
+const excludedTypes = ['Bollo', 'Assicurazione', 'Revisione'];
+
+const getAttachmentByType = (vehicle, typeName) => {
+    if (!vehicle.vehicle_attachments || vehicle.vehicle_attachments.length === 0) {
+        return null;
+    }
+
+    const attachments = vehicle.vehicle_attachments
+        .filter(att => att.attachment_type === typeName && att.expiration_date)
+        .sort((a, b) => moment(a.expiration_date).diff(moment(b.expiration_date)));
+
+    // Return the one with the closest expiration date
+    return attachments.length > 0 ? attachments[0] : null;
+};
+
 const getNextExpiringAttachment = (vehicle) => {
     if (!vehicle.vehicle_attachments || vehicle.vehicle_attachments.length === 0) {
         return null;
@@ -633,6 +697,27 @@ const getNextExpiringAttachment = (vehicle) => {
                if (!b.expiration_date) return -1;
                return moment(a.expiration_date).diff(moment(b.expiration_date));
            })[0];
+};
+
+const getNextExpiringAttachmentOther = (vehicle) => {
+    if (!vehicle.vehicle_attachments || vehicle.vehicle_attachments.length === 0) {
+        return null;
+    }
+
+    const today = moment();
+    const otherAttachments = vehicle.vehicle_attachments
+        .filter(att => !excludedTypes.includes(att.attachment_type));
+
+    if (otherAttachments.length === 0) return null;
+
+    const futureAttachments = otherAttachments
+        .filter(att => att.expiration_date && moment(att.expiration_date).isAfter(today))
+        .sort((a, b) => moment(a.expiration_date).diff(moment(b.expiration_date)));
+
+    return futureAttachments.length > 0 ? futureAttachments[0] :
+           otherAttachments
+               .filter(att => att.expiration_date)
+               .sort((a, b) => moment(a.expiration_date).diff(moment(b.expiration_date)))[0] || null;
 };
 
 const getNextUnavailability = (vehicle) => {

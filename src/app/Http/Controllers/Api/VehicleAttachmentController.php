@@ -71,7 +71,7 @@ class VehicleAttachmentController extends Controller
     }
 
     /**
-     * Update the specified attachment (metadata only).
+     * Update the specified attachment (metadata and optionally file).
      */
     public function update(Request $request, Vehicle $vehicle, VehicleAttachment $attachment): JsonResponse
     {
@@ -84,8 +84,27 @@ class VehicleAttachmentController extends Controller
             'attachment_type' => 'sometimes|string',
             'expiration_date' => 'nullable|date',
             'notes' => 'nullable|string',
+            'file' => 'nullable|file|max:10240',
         ]);
 
+        // Handle file replacement
+        if ($request->hasFile('file')) {
+            // Delete old file
+            if ($attachment->file_path && Storage::disk('private')->exists($attachment->file_path)) {
+                Storage::disk('private')->delete($attachment->file_path);
+            }
+
+            // Store new file
+            $file = $request->file('file');
+            $filePath = $file->store('vehicle_attachments/' . $vehicle->id, 'private');
+
+            $validated['file_path'] = $filePath;
+            $validated['file_name'] = $file->getClientOriginalName();
+            $validated['file_mime_type'] = $file->getMimeType();
+            $validated['file_size'] = $file->getSize();
+        }
+
+        unset($validated['file']);
         $attachment->update($validated);
 
         return response()->json($attachment);

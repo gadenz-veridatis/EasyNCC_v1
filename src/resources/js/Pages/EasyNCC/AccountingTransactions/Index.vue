@@ -666,7 +666,7 @@ export default {
                 if (filters.value.company_id) {
                     params.company_id = filters.value.company_id;
                 }
-                const response = await axios.get('/api/services', { params });
+                const response = await axios.get('/api/accounting-transactions/services', { params });
                 services.value = response.data.data || [];
             } catch (error) {
                 console.error('Error loading services:', error);
@@ -675,41 +675,12 @@ export default {
 
         const loadCounterparts = async () => {
             try {
-                const params = {
-                    per_page: 1000, // Load all counterparts
-                };
+                const params = {};
                 if (filters.value.company_id) {
                     params.company_id = filters.value.company_id;
                 }
-                const response = await axios.get('/api/users', { params });
-                // Laravel pagination returns data in response.data.data
-                const users = response.data.data || [];
-
-                // Map users to include their counterpart type based on flags and role
-                counterparts.value = users.map(u => {
-                    const types = [];
-
-                    // Check if user is intermediario
-                    if (u.is_intermediario) {
-                        types.push('intermediario');
-                    }
-
-                    // Check client profile flags
-                    if (u.client_profile) {
-                        if (u.client_profile.is_committente) {
-                            types.push('committente');
-                        }
-                        if (u.client_profile.is_fornitore) {
-                            types.push('fornitore');
-                        }
-                    }
-
-                    return {
-                        ...u,
-                        counterpart_types: types,
-                    };
-                }).filter(u => u.counterpart_types.length > 0); // Only users with at least one type
-
+                const response = await axios.get('/api/accounting-transactions/counterparts', { params });
+                counterparts.value = response.data.data || [];
             } catch (error) {
                 console.error('Error loading counterparts:', error);
             }
@@ -742,14 +713,15 @@ export default {
                     ...filters.value,
                 };
 
-                const response = await axios.get('/api/accounting-transactions', { params });
+                // Load paginated transactions and summary totals in parallel
+                const [transResponse] = await Promise.all([
+                    axios.get('/api/accounting-transactions', { params }),
+                    loadSummary(),
+                ]);
 
-                if (response.data.success) {
-                    transactions.value = response.data.data;
-                    pagination.value = response.data.meta;
-
-                    // Calculate summary from all transactions (not just current page)
-                    await calculateSummary();
+                if (transResponse.data.success) {
+                    transactions.value = transResponse.data.data;
+                    pagination.value = transResponse.data.meta;
                 }
             } catch (error) {
                 console.error('Error loading transactions:', error);
@@ -758,59 +730,16 @@ export default {
             }
         };
 
-        const calculateSummary = async () => {
+        const loadSummary = async () => {
             try {
-                // Load all transactions matching filters to calculate totals
-                const params = {
-                    per_page: 999999, // Get all records
-                    ...filters.value,
-                };
-
-                const response = await axios.get('/api/accounting-transactions', { params });
+                const params = { ...filters.value };
+                const response = await axios.get('/api/accounting-transactions/summary', { params });
 
                 if (response.data.success) {
-                    const allTransactions = response.data.data;
-
-                    let sales = 0;
-                    let purchases = 0;
-                    let intermediations = 0;
-                    let supplierRefunds = 0;
-                    let customerRefunds = 0;
-
-                    allTransactions.forEach(t => {
-                        const amount = parseFloat(t.amount);
-
-                        if (t.transaction_type === 'sale') {
-                            if (t.installment === 'customer_refund') {
-                                customerRefunds += amount;
-                            } else {
-                                sales += amount;
-                            }
-                        } else if (t.transaction_type === 'purchase') {
-                            if (t.installment === 'supplier_refund') {
-                                supplierRefunds += amount;
-                            } else {
-                                purchases += amount;
-                            }
-                        } else if (t.transaction_type === 'intermediation') {
-                            intermediations += amount;
-                        }
-                    });
-
-                    // Risultato = Vendite + Resi Fornitore - Acquisti - Intermediazioni - Rimborsi Cliente
-                    const total = sales + supplierRefunds - purchases - intermediations - customerRefunds;
-
-                    summary.value = {
-                        total,
-                        sales,
-                        purchases,
-                        intermediations,
-                        supplierRefunds,
-                        customerRefunds,
-                    };
+                    summary.value = response.data.data;
                 }
             } catch (error) {
-                console.error('Error calculating summary:', error);
+                console.error('Error loading summary:', error);
             }
         };
 
@@ -1017,13 +946,18 @@ export default {
 
         onMounted(async () => {
             await loadUser();
+
+            // Load all dropdown data and transactions in parallel
+            const promises = [
+                loadServices(),
+                loadAccountingEntries(),
+                loadCounterparts(),
+                loadTransactions(),
+            ];
             if (isSuperAdmin.value) {
-                await loadCompanies();
+                promises.push(loadCompanies());
             }
-            await loadServices();
-            await loadAccountingEntries();
-            await loadCounterparts();
-            await loadTransactions();
+            await Promise.all(promises);
         });
 
         return {

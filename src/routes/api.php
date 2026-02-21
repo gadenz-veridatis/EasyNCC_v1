@@ -133,6 +133,9 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
     // Accounting Transactions - admin and operator can CRU, only admin can delete
     Route::middleware(['role:super-admin,admin,operator'])->group(function () {
         Route::get('accounting-transactions', [AccountingTransactionController::class, 'index']);
+        Route::get('accounting-transactions/summary', [AccountingTransactionController::class, 'summary']);
+        Route::get('accounting-transactions/services', [AccountingTransactionController::class, 'servicesForDropdown']);
+        Route::get('accounting-transactions/counterparts', [AccountingTransactionController::class, 'counterpartsForDropdown']);
         Route::post('accounting-transactions', [AccountingTransactionController::class, 'store']);
         Route::get('accounting-transactions/{accountingTransaction}', [AccountingTransactionController::class, 'show']);
         Route::put('accounting-transactions/{accountingTransaction}', [AccountingTransactionController::class, 'update']);

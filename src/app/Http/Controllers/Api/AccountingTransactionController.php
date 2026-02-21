@@ -4,23 +4,20 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AccountingTransaction;
+use App\Models\Service;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class AccountingTransactionController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Apply common filters to the query based on request parameters.
      */
-    public function index(Request $request): JsonResponse
+    protected function applyFilters(Builder $query, Request $request): Builder
     {
-        $query = AccountingTransaction::with([
-            'service:id,reference_number',
-            'accountingEntry:id,name,abbreviation',
-            'counterpart:id,name,surname,username,email',
-            'company:id,name'
-        ]);
-
         // Multi-tenancy: Filter by company
         if ($request->user()->isSuperAdmin()) {
             if ($request->filled('company_id')) {
@@ -73,6 +70,23 @@ class AccountingTransactionController extends Controller
             $query->whereDate('transaction_date', '<=', $request->end_date);
         }
 
+        return $query;
+    }
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $query = AccountingTransaction::with([
+            'service:id,reference_number',
+            'accountingEntry:id,name,abbreviation',
+            'counterpart:id,name,surname,username,email',
+            'company:id,name'
+        ]);
+
+        $this->applyFilters($query, $request);
+
         // Sorting
         $sortBy = $request->get('sort_by', 'transaction_date');
         $sortOrder = $request->get('sort_order', 'desc');
@@ -90,6 +104,63 @@ class AccountingTransactionController extends Controller
                 'last_page' => $transactions->lastPage(),
                 'per_page' => $transactions->perPage(),
                 'total' => $transactions->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Get aggregated summary totals (SQL-level aggregation, no record loading).
+     */
+    public function summary(Request $request): JsonResponse
+    {
+        $query = AccountingTransaction::query();
+        $this->applyFilters($query, $request);
+
+        $results = $query->select(
+            'transaction_type',
+            'installment',
+            DB::raw('SUM(amount) as total_amount')
+        )
+        ->groupBy('transaction_type', 'installment')
+        ->get();
+
+        $sales = 0;
+        $purchases = 0;
+        $intermediations = 0;
+        $supplierRefunds = 0;
+        $customerRefunds = 0;
+
+        foreach ($results as $row) {
+            $amount = (float) $row->total_amount;
+
+            if ($row->transaction_type === 'sale') {
+                if ($row->installment === 'customer_refund') {
+                    $customerRefunds += $amount;
+                } else {
+                    $sales += $amount;
+                }
+            } elseif ($row->transaction_type === 'purchase') {
+                if ($row->installment === 'supplier_refund') {
+                    $supplierRefunds += $amount;
+                } else {
+                    $purchases += $amount;
+                }
+            } elseif ($row->transaction_type === 'intermediation') {
+                $intermediations += $amount;
+            }
+        }
+
+        $total = $sales + $supplierRefunds - $purchases - $intermediations - $customerRefunds;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'sales' => round($sales, 2),
+                'purchases' => round($purchases, 2),
+                'intermediations' => round($intermediations, 2),
+                'supplierRefunds' => round($supplierRefunds, 2),
+                'customerRefunds' => round($customerRefunds, 2),
+                'total' => round($total, 2),
             ],
         ]);
     }
@@ -173,6 +244,62 @@ class AccountingTransactionController extends Controller
             'success' => true,
             'message' => 'Transaction updated successfully',
             'data' => $accountingTransaction->load(['service', 'accountingEntry', 'counterpart', 'company']),
+        ]);
+    }
+
+    /**
+     * Lightweight endpoint for services dropdown (only id + reference_number).
+     */
+    public function servicesForDropdown(Request $request): JsonResponse
+    {
+        $query = Service::select('id', 'reference_number', 'company_id');
+
+        if ($request->user()->isSuperAdmin()) {
+            if ($request->filled('company_id')) {
+                $query->where('company_id', $request->company_id);
+            }
+        } else {
+            $query->where('company_id', $request->user()->company_id);
+        }
+
+        $services = $query->orderBy('reference_number', 'desc')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $services,
+        ]);
+    }
+
+    /**
+     * Lightweight endpoint for counterparts dropdown (only id, name, surname, role).
+     */
+    public function counterpartsForDropdown(Request $request): JsonResponse
+    {
+        $query = User::select('id', 'name', 'surname', 'username', 'email', 'role', 'is_intermediario', 'company_id')
+            ->with(['clientProfile:user_id,is_committente,is_fornitore']);
+
+        if ($request->user()->isSuperAdmin()) {
+            if ($request->filled('company_id')) {
+                $query->where('company_id', $request->company_id);
+            }
+        } else {
+            $query->where('company_id', $request->user()->company_id);
+        }
+
+        // Only return users that can be counterparts (have intermediario, committente, or fornitore flags)
+        $query->where(function ($q) {
+            $q->where('is_intermediario', true)
+              ->orWhereHas('clientProfile', function ($sub) {
+                  $sub->where('is_committente', true)
+                      ->orWhere('is_fornitore', true);
+              });
+        });
+
+        $users = $query->orderBy('surname')->orderBy('name')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $users,
         ]);
     }
 

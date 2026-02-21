@@ -28,7 +28,15 @@ class SettingsController extends Controller
             'company',
             'depositAccountingEntry',
             'balanceAccountingEntry',
-            'defaultSupplier'
+            'defaultSupplier',
+            'commissionAccountingEntry',
+            'fuelAccountingEntry',
+            'tollAccountingEntry',
+            'parkingAccountingEntry',
+            'otherVehicleAccountingEntry',
+            'driverCostAccountingEntry',
+            'colleagueCostAccountingEntry',
+            'experienceAccountingEntry',
         ])
         ->where('company_id', $companyId)
         ->first();
@@ -47,6 +55,22 @@ class SettingsController extends Controller
                     'activity_confirmation_text' => null,
                     'activity_confirmation_role' => null,
                     'default_supplier_id' => null,
+                    'commission_accounting_entry_id' => null,
+                    'commission_reason' => null,
+                    'fuel_accounting_entry_id' => null,
+                    'fuel_reason' => null,
+                    'toll_accounting_entry_id' => null,
+                    'toll_reason' => null,
+                    'parking_accounting_entry_id' => null,
+                    'parking_reason' => null,
+                    'other_vehicle_accounting_entry_id' => null,
+                    'other_vehicle_reason' => null,
+                    'driver_cost_accounting_entry_id' => null,
+                    'driver_cost_reason' => null,
+                    'colleague_cost_accounting_entry_id' => null,
+                    'colleague_cost_reason' => null,
+                    'experience_accounting_entry_id' => null,
+                    'experience_reason' => null,
                 ]
             ]);
         }
@@ -72,6 +96,22 @@ class SettingsController extends Controller
             'activity_confirmation_text' => 'nullable|string',
             'activity_confirmation_role' => 'nullable|string|in:super-admin,admin,operator,driver,collaboratore,contabilita',
             'default_supplier_id' => 'nullable|exists:users,id',
+            'commission_accounting_entry_id' => 'nullable|exists:accounting_entries,id',
+            'commission_reason' => 'nullable|string|max:255',
+            'fuel_accounting_entry_id' => 'nullable|exists:accounting_entries,id',
+            'fuel_reason' => 'nullable|string|max:255',
+            'toll_accounting_entry_id' => 'nullable|exists:accounting_entries,id',
+            'toll_reason' => 'nullable|string|max:255',
+            'parking_accounting_entry_id' => 'nullable|exists:accounting_entries,id',
+            'parking_reason' => 'nullable|string|max:255',
+            'other_vehicle_accounting_entry_id' => 'nullable|exists:accounting_entries,id',
+            'other_vehicle_reason' => 'nullable|string|max:255',
+            'driver_cost_accounting_entry_id' => 'nullable|exists:accounting_entries,id',
+            'driver_cost_reason' => 'nullable|string|max:255',
+            'colleague_cost_accounting_entry_id' => 'nullable|exists:accounting_entries,id',
+            'colleague_cost_reason' => 'nullable|string|max:255',
+            'experience_accounting_entry_id' => 'nullable|exists:accounting_entries,id',
+            'experience_reason' => 'nullable|string|max:255',
         ]);
 
         $user = Auth::user();
@@ -96,6 +136,22 @@ class SettingsController extends Controller
                 'activity_confirmation_text' => $validated['activity_confirmation_text'] ?? null,
                 'activity_confirmation_role' => $validated['activity_confirmation_role'] ?? null,
                 'default_supplier_id' => $validated['default_supplier_id'] ?? null,
+                'commission_accounting_entry_id' => $validated['commission_accounting_entry_id'] ?? null,
+                'commission_reason' => $validated['commission_reason'] ?? null,
+                'fuel_accounting_entry_id' => $validated['fuel_accounting_entry_id'] ?? null,
+                'fuel_reason' => $validated['fuel_reason'] ?? null,
+                'toll_accounting_entry_id' => $validated['toll_accounting_entry_id'] ?? null,
+                'toll_reason' => $validated['toll_reason'] ?? null,
+                'parking_accounting_entry_id' => $validated['parking_accounting_entry_id'] ?? null,
+                'parking_reason' => $validated['parking_reason'] ?? null,
+                'other_vehicle_accounting_entry_id' => $validated['other_vehicle_accounting_entry_id'] ?? null,
+                'other_vehicle_reason' => $validated['other_vehicle_reason'] ?? null,
+                'driver_cost_accounting_entry_id' => $validated['driver_cost_accounting_entry_id'] ?? null,
+                'driver_cost_reason' => $validated['driver_cost_reason'] ?? null,
+                'colleague_cost_accounting_entry_id' => $validated['colleague_cost_accounting_entry_id'] ?? null,
+                'colleague_cost_reason' => $validated['colleague_cost_reason'] ?? null,
+                'experience_accounting_entry_id' => $validated['experience_accounting_entry_id'] ?? null,
+                'experience_reason' => $validated['experience_reason'] ?? null,
             ]
         );
 
@@ -103,7 +159,15 @@ class SettingsController extends Controller
             'company',
             'depositAccountingEntry',
             'balanceAccountingEntry',
-            'defaultSupplier'
+            'defaultSupplier',
+            'commissionAccountingEntry',
+            'fuelAccountingEntry',
+            'tollAccountingEntry',
+            'parkingAccountingEntry',
+            'otherVehicleAccountingEntry',
+            'driverCostAccountingEntry',
+            'colleagueCostAccountingEntry',
+            'experienceAccountingEntry',
         ]);
 
         return response()->json([

@@ -16,6 +16,7 @@ class AccountingEntry extends Model
         'abbreviation',
         'type',
         'notes',
+        'description',
     ];
 
     protected $appends = ['description'];

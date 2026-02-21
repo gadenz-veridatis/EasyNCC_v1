@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\HasCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Ztl extends Model
@@ -16,14 +17,19 @@ class Ztl extends Model
     protected $fillable = [
         'company_id',
         'city',
-        'duration',
-        'cost',
+        'periodicity',
+        'expiration_date',
+        'notes',
         'is_active',
     ];
 
     protected $casts = [
-        'duration' => 'float',
-        'cost' => 'decimal:2',
+        'expiration_date' => 'date',
         'is_active' => 'boolean',
     ];
+
+    public function vehicles(): BelongsToMany
+    {
+        return $this->belongsToMany(Vehicle::class, 'ztl_vehicle')->withTimestamps();
+    }
 }

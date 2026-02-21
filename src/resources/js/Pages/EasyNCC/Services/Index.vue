@@ -45,7 +45,7 @@
                                     v-model="filters.pickup_date_from"
                                     type="date"
                                     class="form-control form-control-sm"
-                                    @change="loadServices"
+                                    @change="loadServicesFromFilter"
                                 />
                             </BCol>
                             <BCol md="2">
@@ -54,7 +54,7 @@
                                     v-model="filters.pickup_date_to"
                                     type="date"
                                     class="form-control form-control-sm"
-                                    @change="loadServices"
+                                    @change="loadServicesFromFilter"
                                 />
                             </BCol>
                             <BCol md="2">
@@ -63,7 +63,7 @@
                                     v-model="filters.dropoff_date_from"
                                     type="date"
                                     class="form-control form-control-sm"
-                                    @change="loadServices"
+                                    @change="loadServicesFromFilter"
                                 />
                             </BCol>
                             <BCol md="2">
@@ -72,12 +72,12 @@
                                     v-model="filters.dropoff_date_to"
                                     type="date"
                                     class="form-control form-control-sm"
-                                    @change="loadServices"
+                                    @change="loadServicesFromFilter"
                                 />
                             </BCol>
                             <BCol md="2">
                                 <label class="form-label">Tipo Servizio</label>
-                                <select v-model="filters.service_type_id" class="form-select form-select-sm" @change="loadServices">
+                                <select v-model="filters.service_type_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
                                     <option value="">Tutti i tipi</option>
                                     <option v-for="type in serviceTypes" :key="type.id" :value="type.id">
                                         {{ type.name }}
@@ -89,7 +89,7 @@
                         <BRow class="mb-4">
                             <BCol md="2">
                                 <label class="form-label">Committente</label>
-                                <select v-model="filters.client_id" class="form-select form-select-sm" @change="loadServices">
+                                <select v-model="filters.client_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
                                     <option value="">Tutti i committenti</option>
                                     <option v-for="client in clients" :key="client.id" :value="client.id">
                                         {{ client.name }} {{ client.surname }}
@@ -98,7 +98,7 @@
                             </BCol>
                             <BCol md="2">
                                 <label class="form-label">Intermediario</label>
-                                <select v-model="filters.intermediary_id" class="form-select form-select-sm" @change="loadServices">
+                                <select v-model="filters.intermediary_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
                                     <option value="">Tutti gli intermediari</option>
                                     <option v-for="intermediary in intermediaries" :key="intermediary.id" :value="intermediary.id">
                                         {{ intermediary.name }} {{ intermediary.surname }}
@@ -107,7 +107,7 @@
                             </BCol>
                             <BCol md="2">
                                 <label class="form-label">Autista</label>
-                                <select v-model="filters.driver_id" class="form-select form-select-sm" @change="loadServices">
+                                <select v-model="filters.driver_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
                                     <option value="">Tutti gli autisti</option>
                                     <option v-for="driver in drivers" :key="driver.id" :value="driver.id">
                                         {{ driver.name }} {{ driver.surname }}
@@ -116,7 +116,7 @@
                             </BCol>
                             <BCol md="2">
                                 <label class="form-label">Veicolo</label>
-                                <select v-model="filters.vehicle_id" class="form-select form-select-sm" @change="loadServices">
+                                <select v-model="filters.vehicle_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
                                     <option value="">Tutti i veicoli</option>
                                     <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
                                         {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
@@ -125,7 +125,7 @@
                             </BCol>
                             <BCol md="2">
                                 <label class="form-label">Stato</label>
-                                <select v-model="filters.status" class="form-select form-select-sm" @change="loadServices">
+                                <select v-model="filters.status" class="form-select form-select-sm" @change="loadServicesFromFilter">
                                     <option value="">Tutti gli stati</option>
                                     <option value="preventivo">Preventivo</option>
                                     <option value="confermato">Confermato</option>
@@ -137,7 +137,7 @@
                             </BCol>
                             <BCol md="2" v-if="isSuperAdmin">
                                 <label class="form-label">Azienda</label>
-                                <select v-model="filters.company_id" class="form-select form-select-sm" @change="loadServices">
+                                <select v-model="filters.company_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
                                     <option value="">Tutte le aziende</option>
                                     <option v-for="company in companies" :key="company.id" :value="company.id">
                                         {{ company.name }}
@@ -159,6 +159,42 @@
                                 </button>
                             </BCol>
                         </BRow>
+                        </div>
+
+                        <!-- Preset Filter Buttons -->
+                        <div class="d-flex gap-2 mb-3">
+                            <button
+                                type="button"
+                                class="btn btn-sm"
+                                :class="activePreset === 'oggi' ? 'btn-primary' : 'btn-soft-primary'"
+                                @click="filterToday"
+                            >
+                                Oggi
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-sm"
+                                :class="activePreset === 'domani' ? 'btn-primary' : 'btn-soft-primary'"
+                                @click="filterTomorrow"
+                            >
+                                Domani
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-sm"
+                                :class="activePreset === 'settimana' ? 'btn-primary' : 'btn-soft-primary'"
+                                @click="filterWeek"
+                            >
+                                Settimana
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-sm"
+                                :class="activePreset === 'tutti' ? 'btn-primary' : 'btn-soft-primary'"
+                                @click="filterAll"
+                            >
+                                Tutti
+                            </button>
                         </div>
 
                         <!-- Bulk Actions Area (Collapsible) -->
@@ -224,7 +260,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="service in sortedServices" :key="service.id" :class="{ 'table-active': selectedServices.includes(service.id) }">
+                                    <tr v-for="service in services" :key="service.id" :class="{ 'table-active': selectedServices.includes(service.id) }">
                                         <td>
                                             <input type="checkbox" v-model="selectedServices" :value="service.id" class="form-check-input">
                                         </td>
@@ -268,19 +304,15 @@
                                         </td>
                                         <!-- Data -->
                                         <td>
-                                            <div class="d-flex align-items-start gap-2 mb-2">
-                                                <i class="ri-map-pin-add-line text-success" style="font-size: 1.1rem;" title="Pickup"></i>
-                                                <div>
-                                                    <div class="fw-bold">{{ formatDate(service.pickup_datetime) }}</div>
-                                                    <div class="small text-primary">{{ service.pickup_address }}</div>
-                                                </div>
+                                            <div class="mb-2">
+                                                <div class="fw-bold text-success" style="font-size: 0.75rem;">Partenza:</div>
+                                                <div class="fw-bold">{{ formatDate(service.pickup_datetime) }}</div>
+                                                <div class="small text-primary">{{ service.pickup_address }}</div>
                                             </div>
-                                            <div class="d-flex align-items-start gap-2">
-                                                <i class="ri-map-pin-line text-danger" style="font-size: 1.1rem;" title="Dropoff"></i>
-                                                <div>
-                                                    <div class="small text-muted">{{ formatDate(service.dropoff_datetime) }}</div>
-                                                    <div class="small text-muted">{{ service.dropoff_address }}</div>
-                                                </div>
+                                            <div>
+                                                <div class="fw-bold text-danger" style="font-size: 0.75rem;">Arrivo:</div>
+                                                <div class="small text-muted">{{ formatDate(service.dropoff_datetime) }}</div>
+                                                <div class="small text-muted">{{ service.dropoff_address }}</div>
                                             </div>
                                         </td>
                                         <!-- Passeggeri -->
@@ -290,20 +322,13 @@
                                                 <!-- Display mode -->
                                                 <div
                                                     v-if="editingPassengerCount !== service.id"
-                                                    class="d-flex align-items-center gap-1"
+                                                    class="d-flex align-items-center gap-1 inline-editable"
+                                                    @click="startEditPassengerCount(service)"
+                                                    title="Clicca per modificare"
                                                 >
                                                     <div class="fw-bold">
                                                         <i class="ri-user-line"></i> {{ service.passenger_count || 0 }}
                                                     </div>
-                                                    <button
-                                                        type="button"
-                                                        @click="startEditPassengerCount(service)"
-                                                        class="btn btn-link btn-sm p-0 text-muted"
-                                                        title="Modifica numero passeggeri"
-                                                        style="line-height: 1;"
-                                                    >
-                                                        <i class="ri-edit-line" style="font-size: 0.9rem;"></i>
-                                                    </button>
                                                 </div>
 
                                                 <!-- Edit mode -->
@@ -313,28 +338,13 @@
                                                         :ref="el => passengerCountInputRefs[service.id] = el"
                                                         @keydown.enter="savePassengerCount(service)"
                                                         @keydown.escape="cancelEditPassengerCount"
+                                                        @blur="savePassengerCount(service)"
                                                         type="number"
                                                         min="0"
                                                         class="form-control form-control-sm"
                                                         placeholder="N. passeggeri"
                                                         style="font-size: 0.85rem; width: 80px;"
                                                     />
-                                                    <button
-                                                        type="button"
-                                                        @click="savePassengerCount(service)"
-                                                        class="btn btn-sm btn-success"
-                                                        title="Salva"
-                                                    >
-                                                        <i class="ri-check-line"></i>
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        @click="cancelEditPassengerCount"
-                                                        class="btn btn-sm btn-secondary"
-                                                        title="Annulla"
-                                                    >
-                                                        <i class="ri-close-line"></i>
-                                                    </button>
                                                 </div>
                                             </div>
                                             <!-- Bagagli -->
@@ -354,7 +364,7 @@
                                             </div>
                                             <!-- Babyseat -->
                                             <div class="small mb-1">
-                                                <span class="text-muted me-2" style="font-size: 0.7rem;">Baby Seat:</span>
+                                                <span class="text-muted me-2" style="font-size: 0.7rem;">Carryons:</span>
                                                 <span class="d-inline-flex align-items-center gap-2">
                                                     <span :title="`Ovetto: ${service.babyseat_egg || 0}`" style="cursor: help;">
                                                         <i class="ri-bear-smile-line"></i>{{ service.babyseat_egg || 0 }}
@@ -399,7 +409,7 @@
                                         <!-- Autista -->
                                         <td>
                                             <!-- Display mode -->
-                                            <div v-if="editingDrivers !== service.id">
+                                            <div v-if="editingDrivers !== service.id" class="inline-editable" @click="startEditDrivers(service)" title="Clicca per modificare">
                                                 <div v-if="service.drivers && service.drivers.length > 0">
                                                     <div v-for="driver in service.drivers" :key="driver.id" class="mb-2">
                                                         <span class="badge text-start" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'}; padding: 0.5rem 0.75rem;`">
@@ -411,15 +421,6 @@
                                                 <div v-else class="text-muted small">
                                                     Nessun autista
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    @click="startEditDrivers(service)"
-                                                    class="btn btn-link btn-sm p-0 text-muted mt-2"
-                                                    title="Modifica autisti"
-                                                    style="line-height: 1;"
-                                                >
-                                                    <i class="ri-edit-line" style="font-size: 0.9rem;"></i>
-                                                </button>
                                             </div>
 
                                             <!-- Edit mode -->
@@ -460,21 +461,14 @@
                                                 <!-- Display mode -->
                                                 <div
                                                     v-if="editingDressCode !== service.id"
-                                                    class="d-flex align-items-center gap-1"
+                                                    class="d-flex align-items-center gap-1 inline-editable"
+                                                    @click="startEditDressCode(service)"
+                                                    title="Clicca per modificare"
                                                 >
                                                         <div style="font-size: 0.75rem;">
                                                             <i class="ri-shirt-line me-1"></i>
                                                             {{ service.dress_code ? service.dress_code.name : 'Nessun dress code' }}
                                                         </div>
-                                                        <button
-                                                            type="button"
-                                                            @click="startEditDressCode(service)"
-                                                            class="btn btn-link btn-sm p-0 text-muted"
-                                                            title="Modifica dress code"
-                                                            style="line-height: 1;"
-                                                        >
-                                                            <i class="ri-edit-line" style="font-size: 0.9rem;"></i>
-                                                        </button>
                                                     </div>
 
                                                     <!-- Edit mode -->
@@ -484,6 +478,7 @@
                                                             :ref="el => dressCodeInputRefs[service.id] = el"
                                                             @keydown.enter="saveDressCode(service)"
                                                             @keydown.escape="cancelEditDressCode"
+                                                            @change="saveDressCode(service)"
                                                             class="form-select form-select-sm"
                                                             style="font-size: 0.75rem; min-width: 150px;"
                                                         >
@@ -496,22 +491,6 @@
                                                                 {{ dressCode.name }}
                                                             </option>
                                                         </select>
-                                                        <button
-                                                            type="button"
-                                                            @click="saveDressCode(service)"
-                                                            class="btn btn-sm btn-success"
-                                                            title="Salva"
-                                                        >
-                                                            <i class="ri-check-line"></i>
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            @click="cancelEditDressCode"
-                                                            class="btn btn-sm btn-secondary"
-                                                            title="Annulla"
-                                                        >
-                                                            <i class="ri-close-line"></i>
-                                                        </button>
                                                     </div>
                                                 </div>
                                         </td>
@@ -521,24 +500,16 @@
                                                 <!-- Display mode -->
                                                 <div
                                                     v-if="editingVehicle !== service.id"
-                                                    class="d-flex align-items-center gap-1"
+                                                    class="inline-editable"
+                                                    @click="startEditVehicle(service)"
+                                                    title="Clicca per modificare"
                                                 >
                                                     <div
                                                         class="targa-auto"
                                                         :title="`${service.vehicle.brand} ${service.vehicle.model} - ${service.vehicle.passenger_capacity} posti`"
-                                                        style="cursor: help;"
                                                     >
                                                         <span class="codice-targa">{{ service.vehicle.license_plate }}</span>
                                                     </div>
-                                                    <button
-                                                        type="button"
-                                                        @click="startEditVehicle(service)"
-                                                        class="btn btn-link btn-sm p-0 text-muted"
-                                                        title="Modifica veicolo"
-                                                        style="line-height: 1;"
-                                                    >
-                                                        <i class="ri-edit-line" style="font-size: 0.9rem;"></i>
-                                                    </button>
                                                 </div>
 
                                                 <!-- Edit mode -->
@@ -546,6 +517,8 @@
                                                     <select
                                                         v-model="editingVehicleValue"
                                                         :ref="el => vehicleInputRefs[service.id] = el"
+                                                        @change="saveVehicle(service)"
+                                                        @keydown.escape="cancelEditVehicle"
                                                         class="form-select form-select-sm"
                                                         style="min-width: 150px;"
                                                     >
@@ -554,33 +527,10 @@
                                                             {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
                                                         </option>
                                                     </select>
-                                                    <button
-                                                        type="button"
-                                                        @click="saveVehicle(service)"
-                                                        class="btn btn-sm btn-success"
-                                                        title="Salva"
-                                                    >
-                                                        <i class="ri-check-line"></i>
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        @click="cancelEditVehicle"
-                                                        class="btn btn-sm btn-secondary"
-                                                        title="Annulla"
-                                                    >
-                                                        <i class="ri-close-line"></i>
-                                                    </button>
                                                 </div>
                                             </div>
-                                            <div v-else class="text-muted">
-                                                <button
-                                                    type="button"
-                                                    @click="startEditVehicle(service)"
-                                                    class="btn btn-link btn-sm p-0 text-muted"
-                                                    title="Assegna veicolo"
-                                                >
-                                                    <i class="ri-add-line"></i> Assegna
-                                                </button>
+                                            <div v-else class="text-muted inline-editable" @click="startEditVehicle(service)" title="Clicca per assegnare">
+                                                <i class="ri-add-line"></i> Assegna
                                             </div>
 
                                             <!-- Fornitore trasporto -->
@@ -655,14 +605,13 @@
                                                     {{ getCompletedTasksCount(service) }}/{{ service.tasks_count || 0 }}
                                                 </div>
                                                 <!-- Sovrapposizioni -->
-                                                <div v-if="getTotalOverlapsCount(service) > 0" class="mt-1">
+                                                <div v-if="getTotalOverlapsCount(service) > 0" class="mb-1">
                                                     <i
-                                                        class="ri-error-warning-line text-warning"
+                                                        class="ri-alert-fill text-warning"
                                                         style="cursor: pointer;"
                                                         @click="showOverlapsPopup(service)"
                                                         title="Clicca per vedere le sovrapposizioni"
-                                                    ></i>
-                                                    <span class="badge bg-warning text-dark ms-1">{{ getTotalOverlapsCount(service) }}</span>
+                                                    ></i> {{ getTotalOverlapsCount(service) }}
                                                 </div>
                                             </div>
                                         </td>
@@ -685,6 +634,58 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div v-if="services.length > 0" class="d-flex justify-content-between align-items-center mt-3 px-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-muted small">Righe per pagina:</span>
+                                <select
+                                    :value="perPage"
+                                    @change="changePerPage(Number($event.target.value))"
+                                    class="form-select form-select-sm"
+                                    style="width: auto;"
+                                >
+                                    <option :value="15">15</option>
+                                    <option :value="30">30</option>
+                                    <option :value="50">50</option>
+                                </select>
+                                <span class="text-muted small">
+                                    {{ (currentPage - 1) * perPage + 1 }}-{{ Math.min(currentPage * perPage, totalItems) }} di {{ totalItems }}
+                                </span>
+                            </div>
+                            <nav v-if="totalPages > 1">
+                                <ul class="pagination pagination-sm mb-0">
+                                    <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                                        <a class="page-link" href="#" @click.prevent="goToPage(1)" title="Prima pagina">
+                                            <i class="ri-skip-back-mini-line"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                                        <a class="page-link" href="#" @click.prevent="goToPage(currentPage - 1)">
+                                            <i class="ri-arrow-left-s-line"></i>
+                                        </a>
+                                    </li>
+                                    <li
+                                        v-for="page in paginationPages"
+                                        :key="page"
+                                        class="page-item"
+                                        :class="{ active: page === currentPage }"
+                                    >
+                                        <a class="page-link" href="#" @click.prevent="goToPage(page)">{{ page }}</a>
+                                    </li>
+                                    <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                                        <a class="page-link" href="#" @click.prevent="goToPage(currentPage + 1)">
+                                            <i class="ri-arrow-right-s-line"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                                        <a class="page-link" href="#" @click.prevent="goToPage(totalPages)" title="Ultima pagina">
+                                            <i class="ri-skip-forward-mini-line"></i>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </nav>
                         </div>
 
                         <!-- Popup Movimenti Contabili -->
@@ -1047,7 +1048,7 @@ const currentUser = ref(null);
 // Filters
 const filters = ref({
     reference_name: '',
-    pickup_date_from: '',
+    pickup_date_from: moment().format('YYYY-MM-DD'),
     pickup_date_to: '',
     dropoff_date_from: '',
     dropoff_date_to: '',
@@ -1060,6 +1061,9 @@ const filters = ref({
     company_id: ''
 });
 
+// Active preset filter tracking
+const activePreset = ref('oggi');
+
 // Show/Hide filters
 const showFilters = ref(true);
 
@@ -1071,36 +1075,17 @@ const activeFiltersCount = computed(() => {
     return Object.values(filters.value).filter(value => value !== '').length;
 });
 
-// Sorting
+// Sorting (server-side)
 const sortField = ref('pickup_datetime');
 const sortDirection = ref('asc');
 
+// Pagination (server-side)
+const currentPage = ref(1);
+const totalPages = ref(1);
+const totalItems = ref(0);
+const perPage = ref(15);
+
 const isSuperAdmin = computed(() => currentUser.value?.role === 'super-admin');
-
-const sortedServices = computed(() => {
-    const sorted = [...services.value];
-    sorted.sort((a, b) => {
-        let aVal = a[sortField.value];
-        let bVal = b[sortField.value];
-
-        // Handle nested objects
-        if (sortField.value === 'client_id') {
-            aVal = a.client?.name || '';
-            bVal = b.client?.name || '';
-        } else if (sortField.value === 'vehicle_id') {
-            aVal = a.vehicle?.license_plate || '';
-            bVal = b.vehicle?.license_plate || '';
-        } else if (sortField.value === 'company_id') {
-            aVal = a.company?.name || '';
-            bVal = b.company?.name || '';
-        }
-
-        if (aVal < bVal) return sortDirection.value === 'asc' ? -1 : 1;
-        if (aVal > bVal) return sortDirection.value === 'asc' ? 1 : -1;
-        return 0;
-    });
-    return sorted;
-});
 
 const loadCurrentUser = async () => {
     try {
@@ -1116,16 +1101,16 @@ const loadDictionaries = async () => {
         console.log('Loading dictionaries...');
         const requests = [
             axios.get('/api/dictionaries/service-types'),
-            axios.get('/api/users', { params: { role: 'collaboratore', is_client: true, per_page: 1000 } }),
-            axios.get('/api/users', { params: { is_intermediary: true, per_page: 1000 } }),
-            axios.get('/api/users', { params: { role: 'driver', per_page: 1000 } }),
-            axios.get('/api/vehicles', { params: { per_page: 1000 } }),
+            axios.get('/api/users', { params: { role: 'collaboratore', is_committente: true, per_page: 200 } }),
+            axios.get('/api/users', { params: { is_intermediario: true, per_page: 200 } }),
+            axios.get('/api/users', { params: { role: 'driver', per_page: 200 } }),
+            axios.get('/api/vehicles', { params: { per_page: 200 } }),
             axios.get('/api/dictionaries/dress-codes')
         ];
 
         // Se l'utente è super-admin, carica anche le aziende
         if (isSuperAdmin.value) {
-            requests.push(axios.get('/api/companies', { params: { per_page: 1000 } }));
+            requests.push(axios.get('/api/companies', { params: { per_page: 200 } }));
         }
 
         const responses = await Promise.all(requests);
@@ -1156,10 +1141,66 @@ const loadDictionaries = async () => {
     }
 };
 
+const loadServicesFromFilter = () => {
+    activePreset.value = null;
+    currentPage.value = 1;
+    loadServices();
+};
+
+// Preset filter functions
+const filterToday = () => {
+    const today = moment().format('YYYY-MM-DD');
+    filters.value.pickup_date_from = today;
+    filters.value.pickup_date_to = today;
+    activePreset.value = 'oggi';
+    currentPage.value = 1;
+    loadServices();
+};
+
+const filterTomorrow = () => {
+    const tomorrow = moment().add(1, 'days').format('YYYY-MM-DD');
+    filters.value.pickup_date_from = tomorrow;
+    filters.value.pickup_date_to = tomorrow;
+    activePreset.value = 'domani';
+    currentPage.value = 1;
+    loadServices();
+};
+
+const filterWeek = () => {
+    const startOfWeek = moment().startOf('isoWeek').format('YYYY-MM-DD');
+    const endOfWeek = moment().endOf('isoWeek').format('YYYY-MM-DD');
+    filters.value.pickup_date_from = startOfWeek;
+    filters.value.pickup_date_to = endOfWeek;
+    activePreset.value = 'settimana';
+    currentPage.value = 1;
+    loadServices();
+};
+
+const filterAll = () => {
+    filters.value = {
+        reference_name: '',
+        pickup_date_from: '',
+        pickup_date_to: '',
+        dropoff_date_from: '',
+        dropoff_date_to: '',
+        service_type_id: '',
+        client_id: '',
+        intermediary_id: '',
+        driver_id: '',
+        vehicle_id: '',
+        status: '',
+        company_id: ''
+    };
+    activePreset.value = 'tutti';
+    currentPage.value = 1;
+    loadServices();
+};
+
 let debounceTimer = null;
 const debouncedLoadServices = () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
+        currentPage.value = 1;
         loadServices();
     }, 500);
 };
@@ -1179,21 +1220,23 @@ const loadServices = async () => {
     error.value = '';
 
     try {
-        console.log('Loading services with filters:', filters.value);
         const response = await axios.get('/api/services', {
             params: {
                 ...filters.value,
                 with_counts: true,
-                per_page: 1000
+                per_page: perPage.value,
+                page: currentPage.value,
+                sort_by: sortField.value,
+                sort_order: sortDirection.value,
             }
         });
-        console.log('Services API response:', response.data);
         services.value = response.data.data || [];
-        console.log('Loaded services:', services.value.length);
+        currentPage.value = response.data.current_page;
+        totalPages.value = response.data.last_page;
+        totalItems.value = response.data.total;
     } catch (err) {
         error.value = 'Errore nel caricamento dei servizi';
         console.error('Error loading services:', err);
-        console.error('Error response:', err.response?.data);
     } finally {
         loading.value = false;
     }
@@ -1504,7 +1547,36 @@ const sortBy = (field) => {
         sortField.value = field;
         sortDirection.value = 'asc';
     }
+    currentPage.value = 1;
+    loadServices();
 };
+
+const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages.value) {
+        currentPage.value = page;
+        loadServices();
+    }
+};
+
+const changePerPage = (newPerPage) => {
+    perPage.value = newPerPage;
+    currentPage.value = 1;
+    loadServices();
+};
+
+const paginationPages = computed(() => {
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages.value, start + maxVisible - 1);
+    if (end - start + 1 < maxVisible) {
+        start = Math.max(1, end - maxVisible + 1);
+    }
+    for (let i = start; i <= end; i++) {
+        pages.push(i);
+    }
+    return pages;
+});
 
 const resetFilters = () => {
     filters.value = {
@@ -1518,8 +1590,11 @@ const resetFilters = () => {
         intermediary_id: '',
         driver_id: '',
         vehicle_id: '',
-        status: ''
+        status: '',
+        company_id: ''
     };
+    activePreset.value = null;
+    currentPage.value = 1;
     loadServices();
 };
 
@@ -1711,16 +1786,17 @@ const getTotalOverlapsCount = (service) => {
 
 const showOverlapsPopup = async (service) => {
     try {
-        // Load full service data with overlaps
+        // Load full service data with overlaps from show() endpoint
         const response = await axios.get(`/api/services/${service.id}`);
-        selectedServiceForOverlaps.value = response.data;
+        const fullService = response.data;
+        selectedServiceForOverlaps.value = fullService;
 
         // Combine overlaps and overlappedBy into a single array
         const overlaps = [];
 
         // Add overlaps (where this service overlaps others)
-        if (service.overlaps && service.overlaps.length > 0) {
-            service.overlaps.forEach(o => {
+        if (fullService.overlaps && fullService.overlaps.length > 0) {
+            fullService.overlaps.forEach(o => {
                 overlaps.push({
                     id: o.id,
                     overlap_type: o.overlap_type,
@@ -1735,8 +1811,8 @@ const showOverlapsPopup = async (service) => {
         }
 
         // Add overlappedBy (where other services overlap this one)
-        if (service.overlapped_by && service.overlapped_by.length > 0) {
-            service.overlapped_by.forEach(o => {
+        if (fullService.overlapped_by && fullService.overlapped_by.length > 0) {
+            fullService.overlapped_by.forEach(o => {
                 overlaps.push({
                     id: `by_${o.id}`,
                     overlap_type: o.overlap_type,
@@ -1784,8 +1860,7 @@ const getOverlapTypeLabel = (type) => {
 
 onMounted(async () => {
     await loadCurrentUser();
-    await loadDictionaries();
-    await loadServices();
+    await Promise.all([loadDictionaries(), loadServices()]);
 });
 </script>
 
@@ -1842,6 +1917,17 @@ onMounted(async () => {
 
 .table th {
     white-space: nowrap;
+}
+
+/* Inline editable cells */
+.inline-editable {
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.15s;
+}
+
+.inline-editable:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.08);
 }
 
 /* Popup Styles */

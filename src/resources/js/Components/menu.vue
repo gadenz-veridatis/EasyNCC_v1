@@ -278,6 +278,14 @@ export default {
           </Link>
         </li>
 
+        <!-- ZTL -->
+        <li class="nav-item">
+          <Link href="/easyncc/dictionaries/ztl" class="nav-link menu-link">
+            <i class="ri-road-map-line"></i>
+            <span>ZTL</span>
+          </Link>
+        </li>
+
         <!-- Aziende (solo per super-admin) -->
         <li class="nav-item" v-if="$page.props.auth?.user?.role === 'super-admin'">
           <Link href="/easyncc/companies" class="nav-link menu-link">
@@ -332,11 +340,6 @@ export default {
               <li class="nav-item">
                 <Link href="/easyncc/dictionaries/service-statuses" class="nav-link">
                   Stati Servizi
-                </Link>
-              </li>
-              <li class="nav-item">
-                <Link href="/easyncc/dictionaries/ztl" class="nav-link">
-                  ZTL
                 </Link>
               </li>
               <li class="nav-item">

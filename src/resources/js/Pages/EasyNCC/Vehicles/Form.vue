@@ -121,7 +121,7 @@
 
                                 <!-- Telepass License Number -->
                                 <BCol md="6" class="mb-3">
-                                    <label for="telepass_license_number" class="form-label">Numero Licenza Telepass</label>
+                                    <label for="telepass_license_number" class="form-label">Numero Telepass</label>
                                     <input
                                         id="telepass_license_number"
                                         v-model="form.telepass_license_number"
@@ -151,7 +151,7 @@
 
                                 <!-- License City -->
                                 <BCol md="6" class="mb-3">
-                                    <label for="license_city" class="form-label">Città Licenza NCC</label>
+                                    <label for="license_city" class="form-label">Comune Licenza NCC</label>
                                     <input
                                         id="license_city"
                                         v-model="form.license_city"
@@ -196,6 +196,42 @@
                                 </BCol>
                             </BRow>
                         </form>
+
+                        <!-- ZTL Section -->
+                        <div v-if="isEdit && props.vehicle?.id" class="mt-4 pt-4 border-top">
+                            <h6 class="text-muted mb-3">
+                                <i class="ri-road-map-line me-2"></i>ZTL
+                            </h6>
+                            <div v-if="ztlLoading" class="text-center py-3">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span class="visually-hidden">Caricamento...</span>
+                                </div>
+                            </div>
+                            <div v-else-if="ztlItems.length === 0" class="text-muted small">
+                                Nessuna ZTL configurata per questa azienda.
+                            </div>
+                            <div v-else class="d-flex flex-wrap gap-2">
+                                <span
+                                    v-for="ztl in sortedZtlItems"
+                                    :key="ztl.id"
+                                    class="badge fs-6 ztl-tag"
+                                    :class="isVehicleEnabledForZtl(ztl) ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'"
+                                    @click="openZtlModal(ztl)"
+                                >
+                                    <i :class="isVehicleEnabledForZtl(ztl) ? 'ri-check-line me-1' : 'ri-close-line me-1'"></i>
+                                    {{ ztl.city }}
+                                </span>
+                            </div>
+                        </div>
+                        <div v-else class="mt-4 pt-4 border-top">
+                            <h6 class="text-muted mb-3">
+                                <i class="ri-road-map-line me-2"></i>ZTL
+                            </h6>
+                            <div class="alert alert-info mb-0">
+                                <i class="ri-information-line me-2"></i>
+                                La sezione ZTL sarà disponibile dopo aver creato il veicolo.
+                            </div>
+                        </div>
 
                         <!-- Vehicle Attachments -->
                         <div v-if="isEdit && props.vehicle?.id">
@@ -292,6 +328,100 @@
                 </BCard>
             </BCol>
         </BRow>
+        <!-- ZTL Edit Modal -->
+        <BModal v-model="showZtlModal" :title="ztlModalTitle" hide-footer size="lg">
+            <form @submit.prevent="saveZtl">
+                <BRow>
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Comune</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                :value="ztlForm.city"
+                                disabled
+                            />
+                        </div>
+                    </BCol>
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Periodicità</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                :value="ztlForm.periodicity || '-'"
+                                disabled
+                            />
+                        </div>
+                    </BCol>
+                </BRow>
+                <BRow>
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Scadenza</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                :value="ztlForm.expiration_date ? formatDate(ztlForm.expiration_date) : '-'"
+                                disabled
+                            />
+                        </div>
+                    </BCol>
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Stato</label>
+                            <div class="mt-1">
+                                <span class="badge" :class="ztlForm.is_active ? 'bg-success' : 'bg-danger'">
+                                    {{ ztlForm.is_active ? 'Attivo' : 'Inattivo' }}
+                                </span>
+                            </div>
+                        </div>
+                    </BCol>
+                </BRow>
+                <div v-if="ztlForm.notes" class="mb-3">
+                    <label class="form-label">Note</label>
+                    <p class="text-muted mb-0">{{ ztlForm.notes }}</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Veicoli Abilitati</label>
+                    <div v-if="allVehicles.length === 0" class="text-muted">
+                        Nessun veicolo disponibile
+                    </div>
+                    <div v-else class="border rounded p-3" style="max-height: 250px; overflow-y: auto;">
+                        <div
+                            v-for="v in allVehicles"
+                            :key="v.id"
+                            class="form-check mb-2"
+                        >
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                :id="'ztl-vehicle-' + v.id"
+                                :value="v.id"
+                                v-model="ztlForm.vehicle_ids"
+                            />
+                            <label class="form-check-label" :for="'ztl-vehicle-' + v.id">
+                                <span class="targa-auto targa-sm me-2">
+                                    <span class="codice-targa">{{ v.license_plate }}</span>
+                                </span>
+                                {{ v.brand }} {{ v.model }}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-end">
+                    <button type="button" class="btn btn-light me-2" @click="showZtlModal = false">
+                        Annulla
+                    </button>
+                    <button type="submit" class="btn btn-primary" :disabled="ztlSaving">
+                        <span v-if="ztlSaving" class="spinner-border spinner-border-sm me-1"></span>
+                        Salva
+                    </button>
+                </div>
+            </form>
+        </BModal>
     </Layout>
 </template>
 
@@ -322,6 +452,22 @@ const submitting = ref(false);
 const error = ref('');
 const errors = ref({});
 const companies = ref([]);
+
+// ZTL state
+const ztlItems = ref([]);
+const ztlLoading = ref(false);
+const showZtlModal = ref(false);
+const ztlSaving = ref(false);
+const ztlEditingId = ref(null);
+const allVehicles = ref([]);
+const ztlForm = ref({
+    city: '',
+    periodicity: '',
+    expiration_date: '',
+    notes: '',
+    is_active: true,
+    vehicle_ids: [],
+});
 
 const form = ref({
     company_id: props.vehicle?.company_id || '',
@@ -385,9 +531,92 @@ const loadCompanies = async () => {
     }
 };
 
+// ZTL computed
+const sortedZtlItems = computed(() => {
+    return [...ztlItems.value].sort((a, b) =>
+        (a.city || '').localeCompare(b.city || '')
+    );
+});
+
+const ztlModalTitle = computed(() => {
+    return ztlForm.value.city ? `ZTL - ${ztlForm.value.city}` : 'Modifica ZTL';
+});
+
+const isVehicleEnabledForZtl = (ztl) => {
+    if (!ztl.vehicles || !props.vehicle?.id) return false;
+    return ztl.vehicles.some(v => v.id === props.vehicle.id);
+};
+
+// ZTL methods
+const loadZtlItems = async () => {
+    ztlLoading.value = true;
+    try {
+        const response = await axios.get('/api/dictionaries/ztl');
+        ztlItems.value = response.data.data || [];
+    } catch (err) {
+        console.error('Error loading ZTL items:', err);
+        ztlItems.value = [];
+    } finally {
+        ztlLoading.value = false;
+    }
+};
+
+const loadAllVehicles = async () => {
+    try {
+        const response = await axios.get('/api/vehicles', { params: { per_page: 200 } });
+        allVehicles.value = response.data.data || [];
+    } catch (err) {
+        console.error('Error loading vehicles for ZTL:', err);
+        allVehicles.value = [];
+    }
+};
+
+const openZtlModal = (ztl) => {
+    ztlEditingId.value = ztl.id;
+    ztlForm.value = {
+        city: ztl.city || '',
+        periodicity: ztl.periodicity || '',
+        expiration_date: ztl.expiration_date || '',
+        notes: ztl.notes || '',
+        is_active: ztl.is_active,
+        vehicle_ids: ztl.vehicles ? ztl.vehicles.map(v => v.id) : [],
+    };
+    showZtlModal.value = true;
+};
+
+const saveZtl = async () => {
+    ztlSaving.value = true;
+    try {
+        await axios.put(`/api/dictionaries/ztl/${ztlEditingId.value}`, {
+            city: ztlForm.value.city,
+            periodicity: ztlForm.value.periodicity,
+            expiration_date: ztlForm.value.expiration_date || null,
+            notes: ztlForm.value.notes,
+            is_active: ztlForm.value.is_active,
+            vehicle_ids: ztlForm.value.vehicle_ids,
+        });
+        showZtlModal.value = false;
+        await loadZtlItems();
+    } catch (err) {
+        console.error('Error saving ZTL:', err);
+        alert('Errore durante il salvataggio della ZTL');
+    } finally {
+        ztlSaving.value = false;
+    }
+};
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    return moment(dateStr).format('DD/MM/YYYY');
+};
+
 onMounted(() => {
     loading.value = false;
     loadCompanies();
+    if (isEdit.value && props.vehicle?.id) {
+        loadZtlItems();
+        loadAllVehicles();
+    }
 });
 
 // Utility function for formatting datetime
@@ -396,3 +625,43 @@ const formatDateTime = (date) => {
     return moment(date).format('DD/MM/YYYY HH:mm');
 };
 </script>
+
+<style scoped>
+.ztl-tag {
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.ztl-tag:hover {
+    opacity: 0.75;
+}
+
+.targa-auto {
+    background: linear-gradient(to right, #003399 0%, #003399 8%, #ffffff 8%, #ffffff 92%, #003399 92%, #003399 100%);
+    border: 1px solid #000;
+    border-radius: 3px;
+    padding: 3px 8px;
+    display: inline-block;
+    font-family: 'Arial', sans-serif;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    min-width: 90px;
+}
+
+.targa-sm {
+    padding: 2px 6px;
+    min-width: 70px;
+}
+
+.targa-sm .codice-targa {
+    font-size: 12px;
+}
+
+.codice-targa {
+    font-size: 14px;
+    font-weight: bold;
+    color: #000;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+</style>

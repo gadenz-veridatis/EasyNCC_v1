@@ -42,10 +42,10 @@
                             </BRow>
 
                             <div v-if="selectedCompanyId || !isSuperAdmin">
-                                <!-- Sezione Vendite -->
+                                <!-- Sezione Ricavi -->
                                 <fieldset class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
-                                        <i class="ri-money-dollar-circle-line me-2"></i>Vendite
+                                        <i class="ri-money-dollar-circle-line me-2"></i>Ricavi
                                     </legend>
 
                                     <BRow>
@@ -164,6 +164,301 @@
                                             />
                                             <small class="text-muted">
                                                 Testo da usare come causale del movimento di saldo
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+                                </fieldset>
+
+                                <!-- Sezione Costi -->
+                                <fieldset class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-shopping-cart-line me-2"></i>Costi
+                                    </legend>
+
+                                    <!-- A: Commissioni -->
+                                    <BRow>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Contabile Commissioni</label>
+                                            <select
+                                                v-model="form.commission_accounting_entry_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">Seleziona causale contabile</option>
+                                                <option
+                                                    v-for="entry in accountingEntries"
+                                                    :key="entry.id"
+                                                    :value="entry.id"
+                                                >
+                                                    {{ entry.abbreviation }} - {{ entry.name }}
+                                                </option>
+                                            </select>
+                                            <small class="text-muted">
+                                                Causale contabile da utilizzare per i movimenti di commissioni
+                                            </small>
+                                        </BCol>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Movimento Commissioni</label>
+                                            <input
+                                                v-model="form.commission_reason"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Es. Commissioni intermediario"
+                                                maxlength="255"
+                                            />
+                                            <small class="text-muted">
+                                                Testo da usare come causale del movimento di commissioni
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+
+                                    <!-- B: Acquisto Carburanti -->
+                                    <BRow>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Contabile Acquisto Carburanti</label>
+                                            <select
+                                                v-model="form.fuel_accounting_entry_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">Seleziona causale contabile</option>
+                                                <option
+                                                    v-for="entry in accountingEntries"
+                                                    :key="entry.id"
+                                                    :value="entry.id"
+                                                >
+                                                    {{ entry.abbreviation }} - {{ entry.name }}
+                                                </option>
+                                            </select>
+                                            <small class="text-muted">
+                                                Causale contabile da utilizzare per i movimenti di acquisto carburanti
+                                            </small>
+                                        </BCol>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Movimento Acquisto Carburanti</label>
+                                            <input
+                                                v-model="form.fuel_reason"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Es. Acquisto carburante"
+                                                maxlength="255"
+                                            />
+                                            <small class="text-muted">
+                                                Testo da usare come causale del movimento di acquisto carburanti
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+
+                                    <!-- C: Acquisto Pedaggio -->
+                                    <BRow>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Contabile Acquisto Pedaggio</label>
+                                            <select
+                                                v-model="form.toll_accounting_entry_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">Seleziona causale contabile</option>
+                                                <option
+                                                    v-for="entry in accountingEntries"
+                                                    :key="entry.id"
+                                                    :value="entry.id"
+                                                >
+                                                    {{ entry.abbreviation }} - {{ entry.name }}
+                                                </option>
+                                            </select>
+                                            <small class="text-muted">
+                                                Causale contabile da utilizzare per i movimenti di acquisto pedaggio
+                                            </small>
+                                        </BCol>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Movimento Acquisto Pedaggio</label>
+                                            <input
+                                                v-model="form.toll_reason"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Es. Pedaggio autostradale"
+                                                maxlength="255"
+                                            />
+                                            <small class="text-muted">
+                                                Testo da usare come causale del movimento di acquisto pedaggio
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+
+                                    <!-- D: Acquisto Parcheggio -->
+                                    <BRow>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Contabile Acquisto Parcheggio</label>
+                                            <select
+                                                v-model="form.parking_accounting_entry_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">Seleziona causale contabile</option>
+                                                <option
+                                                    v-for="entry in accountingEntries"
+                                                    :key="entry.id"
+                                                    :value="entry.id"
+                                                >
+                                                    {{ entry.abbreviation }} - {{ entry.name }}
+                                                </option>
+                                            </select>
+                                            <small class="text-muted">
+                                                Causale contabile da utilizzare per i movimenti di acquisto parcheggio
+                                            </small>
+                                        </BCol>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Movimento Acquisto Parcheggio</label>
+                                            <input
+                                                v-model="form.parking_reason"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Es. Parcheggio"
+                                                maxlength="255"
+                                            />
+                                            <small class="text-muted">
+                                                Testo da usare come causale del movimento di acquisto parcheggio
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+
+                                    <!-- E: Altri Costi del Veicolo -->
+                                    <BRow>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Contabile per Altri Costi del Veicolo</label>
+                                            <select
+                                                v-model="form.other_vehicle_accounting_entry_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">Seleziona causale contabile</option>
+                                                <option
+                                                    v-for="entry in accountingEntries"
+                                                    :key="entry.id"
+                                                    :value="entry.id"
+                                                >
+                                                    {{ entry.abbreviation }} - {{ entry.name }}
+                                                </option>
+                                            </select>
+                                            <small class="text-muted">
+                                                Causale contabile da utilizzare per altri costi veicolo
+                                            </small>
+                                        </BCol>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Movimento Altri Costi del Veicolo</label>
+                                            <input
+                                                v-model="form.other_vehicle_reason"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Es. Altri costi veicolo"
+                                                maxlength="255"
+                                            />
+                                            <small class="text-muted">
+                                                Testo da usare come causale del movimento di altri costi veicolo
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+
+                                    <!-- F: Costi Driver -->
+                                    <BRow>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Contabile Costi Driver</label>
+                                            <select
+                                                v-model="form.driver_cost_accounting_entry_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">Seleziona causale contabile</option>
+                                                <option
+                                                    v-for="entry in accountingEntries"
+                                                    :key="entry.id"
+                                                    :value="entry.id"
+                                                >
+                                                    {{ entry.abbreviation }} - {{ entry.name }}
+                                                </option>
+                                            </select>
+                                            <small class="text-muted">
+                                                Causale contabile da utilizzare per i costi driver
+                                            </small>
+                                        </BCol>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Movimento Costi Driver</label>
+                                            <input
+                                                v-model="form.driver_cost_reason"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Es. Compenso driver"
+                                                maxlength="255"
+                                            />
+                                            <small class="text-muted">
+                                                Testo da usare come causale del movimento di costi driver
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+
+                                    <!-- G: Costi Collega -->
+                                    <BRow>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Contabile Costi Collega</label>
+                                            <select
+                                                v-model="form.colleague_cost_accounting_entry_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">Seleziona causale contabile</option>
+                                                <option
+                                                    v-for="entry in accountingEntries"
+                                                    :key="entry.id"
+                                                    :value="entry.id"
+                                                >
+                                                    {{ entry.abbreviation }} - {{ entry.name }}
+                                                </option>
+                                            </select>
+                                            <small class="text-muted">
+                                                Causale contabile da utilizzare per i costi collega
+                                            </small>
+                                        </BCol>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Movimento Acquisto da Collega</label>
+                                            <input
+                                                v-model="form.colleague_cost_reason"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Es. Acquisto da collega"
+                                                maxlength="255"
+                                            />
+                                            <small class="text-muted">
+                                                Testo da usare come causale del movimento di acquisto da collega
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+
+                                    <!-- H: Acquisto Esperienze -->
+                                    <BRow>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Contabile per Acquisto Esperienze</label>
+                                            <select
+                                                v-model="form.experience_accounting_entry_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">Seleziona causale contabile</option>
+                                                <option
+                                                    v-for="entry in accountingEntries"
+                                                    :key="entry.id"
+                                                    :value="entry.id"
+                                                >
+                                                    {{ entry.abbreviation }} - {{ entry.name }}
+                                                </option>
+                                            </select>
+                                            <small class="text-muted">
+                                                Causale contabile da utilizzare per i movimenti di acquisto esperienze
+                                            </small>
+                                        </BCol>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Movimento Acquisto Esperienze</label>
+                                            <input
+                                                v-model="form.experience_reason"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Es. Acquisto esperienza"
+                                                maxlength="255"
+                                            />
+                                            <small class="text-muted">
+                                                Testo da usare come causale del movimento di acquisto esperienze
                                             </small>
                                         </BCol>
                                     </BRow>
@@ -306,6 +601,22 @@ export default {
                 deposit_reason: null,
                 balance_accounting_entry_id: null,
                 balance_reason: null,
+                commission_accounting_entry_id: null,
+                commission_reason: null,
+                fuel_accounting_entry_id: null,
+                fuel_reason: null,
+                toll_accounting_entry_id: null,
+                toll_reason: null,
+                parking_accounting_entry_id: null,
+                parking_reason: null,
+                other_vehicle_accounting_entry_id: null,
+                other_vehicle_reason: null,
+                driver_cost_accounting_entry_id: null,
+                driver_cost_reason: null,
+                colleague_cost_accounting_entry_id: null,
+                colleague_cost_reason: null,
+                experience_accounting_entry_id: null,
+                experience_reason: null,
                 activity_confirmation_text: null,
                 activity_confirmation_role: null,
                 default_supplier_id: null,
@@ -364,6 +675,22 @@ export default {
                     deposit_reason: data.deposit_reason || null,
                     balance_accounting_entry_id: data.balance_accounting_entry_id || null,
                     balance_reason: data.balance_reason || null,
+                    commission_accounting_entry_id: data.commission_accounting_entry_id || null,
+                    commission_reason: data.commission_reason || null,
+                    fuel_accounting_entry_id: data.fuel_accounting_entry_id || null,
+                    fuel_reason: data.fuel_reason || null,
+                    toll_accounting_entry_id: data.toll_accounting_entry_id || null,
+                    toll_reason: data.toll_reason || null,
+                    parking_accounting_entry_id: data.parking_accounting_entry_id || null,
+                    parking_reason: data.parking_reason || null,
+                    other_vehicle_accounting_entry_id: data.other_vehicle_accounting_entry_id || null,
+                    other_vehicle_reason: data.other_vehicle_reason || null,
+                    driver_cost_accounting_entry_id: data.driver_cost_accounting_entry_id || null,
+                    driver_cost_reason: data.driver_cost_reason || null,
+                    colleague_cost_accounting_entry_id: data.colleague_cost_accounting_entry_id || null,
+                    colleague_cost_reason: data.colleague_cost_reason || null,
+                    experience_accounting_entry_id: data.experience_accounting_entry_id || null,
+                    experience_reason: data.experience_reason || null,
                     activity_confirmation_text: data.activity_confirmation_text || null,
                     activity_confirmation_role: data.activity_confirmation_role || null,
                     default_supplier_id: data.default_supplier_id || null,

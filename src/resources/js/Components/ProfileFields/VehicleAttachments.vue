@@ -27,7 +27,25 @@
                 </thead>
                 <tbody>
                     <tr v-for="attachment in attachments" :key="attachment.id">
-                        <td>{{ attachment.attachment_type }}</td>
+                        <!-- Tipo Allegato - inline editable -->
+                        <td @click="startInlineEdit(attachment, 'attachment_type')" class="inline-editable">
+                            <template v-if="inlineEditing.id === attachment.id && inlineEditing.field === 'attachment_type'">
+                                <select
+                                    v-model="inlineEditing.value"
+                                    class="form-select form-select-sm"
+                                    @blur="saveInlineEdit(attachment)"
+                                    @change="saveInlineEdit(attachment)"
+                                    @keyup.escape="cancelInlineEdit"
+                                    ref="inlineInput"
+                                >
+                                    <option v-for="type in attachmentTypes" :key="type.id" :value="type.name">
+                                        {{ type.displayLabel }}
+                                    </option>
+                                </select>
+                            </template>
+                            <template v-else>{{ attachment.attachment_type }}</template>
+                        </td>
+                        <!-- Nome File - non editable -->
                         <td>
                             <i class="ri-file-line me-1"></i>
                             {{ attachment.file_name }}
@@ -35,14 +53,42 @@
                                 {{ formatFileSize(attachment.file_size) }}
                             </small>
                         </td>
-                        <td>
-                            <span v-if="attachment.expiration_date" :class="getExpirationClass(attachment.expiration_date)">
-                                {{ formatDate(attachment.expiration_date) }}
-                            </span>
-                            <span v-else class="text-muted">-</span>
+                        <!-- Scadenza - inline editable -->
+                        <td @click="startInlineEdit(attachment, 'expiration_date')" class="inline-editable">
+                            <template v-if="inlineEditing.id === attachment.id && inlineEditing.field === 'expiration_date'">
+                                <input
+                                    type="date"
+                                    v-model="inlineEditing.value"
+                                    class="form-control form-control-sm"
+                                    @blur="saveInlineEdit(attachment)"
+                                    @keyup.enter="saveInlineEdit(attachment)"
+                                    @keyup.escape="cancelInlineEdit"
+                                    ref="inlineInput"
+                                />
+                            </template>
+                            <template v-else>
+                                <span v-if="attachment.expiration_date" :class="getExpirationClass(attachment.expiration_date)">
+                                    {{ formatDate(attachment.expiration_date) }}
+                                </span>
+                                <span v-else class="text-muted">-</span>
+                            </template>
                         </td>
-                        <td>
-                            <small>{{ attachment.notes || '-' }}</small>
+                        <!-- Note - inline editable -->
+                        <td @click="startInlineEdit(attachment, 'notes')" class="inline-editable">
+                            <template v-if="inlineEditing.id === attachment.id && inlineEditing.field === 'notes'">
+                                <input
+                                    type="text"
+                                    v-model="inlineEditing.value"
+                                    class="form-control form-control-sm"
+                                    @blur="saveInlineEdit(attachment)"
+                                    @keyup.enter="saveInlineEdit(attachment)"
+                                    @keyup.escape="cancelInlineEdit"
+                                    ref="inlineInput"
+                                />
+                            </template>
+                            <template v-else>
+                                <small>{{ attachment.notes || '-' }}</small>
+                            </template>
                         </td>
                         <td class="text-end">
                             <button
@@ -196,6 +242,28 @@
                         </small>
                     </BCol>
 
+                    <BCol cols="12" class="mb-3">
+                        <label class="form-label">File attuale</label>
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="ri-file-line me-2"></i>
+                            <span>{{ editingAttachment?.file_name }}</span>
+                            <small class="text-muted ms-2">({{ formatFileSize(editingAttachment?.file_size) }})</small>
+                        </div>
+                        <label for="edit_file" class="form-label">Sostituisci file</label>
+                        <input
+                            id="edit_file"
+                            ref="editFileInput"
+                            type="file"
+                            class="form-control"
+                            :class="{ 'is-invalid': formErrors.file }"
+                            @change="handleEditFileChange"
+                        />
+                        <small class="text-muted">Lascia vuoto per mantenere il file attuale. Max 10MB.</small>
+                        <small v-if="formErrors.file" class="text-danger d-block">
+                            {{ formErrors.file[0] }}
+                        </small>
+                    </BCol>
+
                     <BCol md="6" class="mb-3">
                         <label for="edit_expiration_date" class="form-label">Scadenza</label>
                         <input
@@ -246,7 +314,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, nextTick, onMounted } from 'vue';
 import axios from 'axios';
 import moment from 'moment';
 
@@ -264,7 +332,15 @@ const showEditModal = ref(false);
 const uploading = ref(false);
 const formErrors = ref({});
 const selectedFile = ref(null);
+const editSelectedFile = ref(null);
 const editingAttachment = ref(null);
+const inlineInput = ref(null);
+
+const inlineEditing = ref({
+    id: null,
+    field: null,
+    value: null,
+});
 
 const formData = ref({
     attachment_type: '',
@@ -355,7 +431,12 @@ const editAttachment = (attachment) => {
         expiration_date: attachment.expiration_date || '',
         notes: attachment.notes || '',
     };
+    editSelectedFile.value = null;
     showEditModal.value = true;
+};
+
+const handleEditFileChange = (event) => {
+    editSelectedFile.value = event.target.files[0] || null;
 };
 
 const submitEdit = async () => {
@@ -363,14 +444,33 @@ const submitEdit = async () => {
     formErrors.value = {};
 
     try {
-        await axios.put(
+        const formDataToSend = new FormData();
+        formDataToSend.append('_method', 'PUT');
+        formDataToSend.append('attachment_type', editFormData.value.attachment_type);
+        if (editFormData.value.expiration_date) {
+            formDataToSend.append('expiration_date', editFormData.value.expiration_date);
+        }
+        if (editFormData.value.notes) {
+            formDataToSend.append('notes', editFormData.value.notes);
+        }
+        if (editSelectedFile.value) {
+            formDataToSend.append('file', editSelectedFile.value);
+        }
+
+        await axios.post(
             `/api/vehicles/${props.vehicleId}/attachments/${editingAttachment.value.id}`,
-            editFormData.value
+            formDataToSend,
+            {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            }
         );
 
         await loadAttachments();
         showEditModal.value = false;
         editingAttachment.value = null;
+        editSelectedFile.value = null;
     } catch (error) {
         if (error.response?.status === 422) {
             formErrors.value = error.response.data.errors || {};
@@ -381,6 +481,50 @@ const submitEdit = async () => {
     } finally {
         uploading.value = false;
     }
+};
+
+const startInlineEdit = (attachment, field) => {
+    if (inlineEditing.value.id === attachment.id && inlineEditing.value.field === field) return;
+    inlineEditing.value = {
+        id: attachment.id,
+        field: field,
+        value: attachment[field] || '',
+    };
+    nextTick(() => {
+        if (inlineInput.value) {
+            const el = Array.isArray(inlineInput.value) ? inlineInput.value[0] : inlineInput.value;
+            if (el) el.focus();
+        }
+    });
+};
+
+const saveInlineEdit = async (attachment) => {
+    if (inlineEditing.value.id !== attachment.id) return;
+    const field = inlineEditing.value.field;
+    const newValue = inlineEditing.value.value;
+
+    // Skip if unchanged
+    if ((attachment[field] || '') === (newValue || '')) {
+        cancelInlineEdit();
+        return;
+    }
+
+    try {
+        const payload = {};
+        payload[field] = newValue || null;
+        await axios.put(
+            `/api/vehicles/${props.vehicleId}/attachments/${attachment.id}`,
+            payload
+        );
+        attachment[field] = newValue || null;
+    } catch (error) {
+        console.error('Error saving inline edit:', error);
+    }
+    cancelInlineEdit();
+};
+
+const cancelInlineEdit = () => {
+    inlineEditing.value = { id: null, field: null, value: null };
 };
 
 const downloadAttachment = async (attachment) => {
@@ -460,3 +604,13 @@ onMounted(() => {
     loadAttachmentTypes();
 });
 </script>
+
+<style scoped>
+.inline-editable {
+    cursor: pointer;
+    position: relative;
+}
+.inline-editable:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.05);
+}
+</style>
