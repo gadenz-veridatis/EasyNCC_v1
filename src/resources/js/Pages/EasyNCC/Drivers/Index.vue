@@ -66,6 +66,22 @@
                                     </select>
                                 </BCol>
                             </BRow>
+                            <BRow class="mb-3">
+                                <BCol md="3">
+                                    <div class="form-check form-switch mt-2">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            id="showDeletedSwitch"
+                                            v-model="showDeleted"
+                                            @change="applyFilters"
+                                        />
+                                        <label class="form-check-label" for="showDeletedSwitch">
+                                            Mostra cancellati
+                                        </label>
+                                    </div>
+                                </BCol>
+                            </BRow>
 
                             <!-- Reset Filters Button -->
                             <BRow v-if="hasActiveFilters">
@@ -111,7 +127,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="driver in drivers" :key="driver.id">
+                                    <tr v-for="driver in drivers" :key="driver.id" :class="{ 'row-deleted': driver.deleted_at }">
                                         <td class="fw-medium">{{ driver.username }}</td>
                                         <td>
                                             <span
@@ -172,19 +188,31 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <Link :href="route('easyncc.users.show', driver.id)" class="btn btn-sm btn-soft-info me-1" title="Visualizza Dettagli">
-                                                <i class="bx bx-show"></i>
-                                            </Link>
-                                            <Link :href="route('easyncc.users.edit', driver.id)" class="btn btn-sm btn-soft-primary me-1" title="Modifica">
-                                                <i class="bx bx-edit"></i>
-                                            </Link>
-                                            <button
-                                                class="btn btn-sm btn-soft-danger"
-                                                @click="deleteDriver(driver.id)"
-                                                title="Elimina"
-                                            >
-                                                <i class="bx bx-trash"></i>
-                                            </button>
+                                            <template v-if="driver.deleted_at">
+                                                <span class="badge bg-danger me-2">Cancellato</span>
+                                                <button
+                                                    class="btn btn-sm btn-soft-success"
+                                                    @click="restoreDriver(driver.id)"
+                                                    title="Ripristina"
+                                                >
+                                                    <i class="bx bx-undo"></i> Ripristina
+                                                </button>
+                                            </template>
+                                            <template v-else>
+                                                <Link :href="route('easyncc.users.show', driver.id)" class="btn btn-sm btn-soft-info me-1" title="Visualizza Dettagli">
+                                                    <i class="bx bx-show"></i>
+                                                </Link>
+                                                <Link :href="route('easyncc.users.edit', driver.id)" class="btn btn-sm btn-soft-primary me-1" title="Modifica">
+                                                    <i class="bx bx-edit"></i>
+                                                </Link>
+                                                <button
+                                                    class="btn btn-sm btn-soft-danger"
+                                                    @click="deleteDriver(driver.id)"
+                                                    title="Elimina"
+                                                >
+                                                    <i class="bx bx-trash"></i>
+                                                </button>
+                                            </template>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -292,6 +320,7 @@ const companies = ref([]);
 const loading = ref(false);
 const error = ref('');
 const showFilters = ref(false);
+const showDeleted = ref(false);
 
 // Documents modal
 const showDocumentsModalFlag = ref(false);
@@ -367,7 +396,8 @@ const loadDrivers = async () => {
             role: 'driver',
             ...filters.value,
             sort_field: sortField.value,
-            sort_direction: sortDirection.value
+            sort_direction: sortDirection.value,
+            with_trashed: showDeleted.value ? 1 : 0
         };
 
         const response = await axios.get('/api/users', { params });
@@ -424,6 +454,30 @@ const deleteDriver = async (id) => {
         } catch (err) {
             Swal.fire('Errore!', 'Si è verificato un errore durante l\'eliminazione.', 'error');
             console.error('Error deleting driver:', err);
+        }
+    }
+};
+
+const restoreDriver = async (id) => {
+    const result = await Swal.fire({
+        title: 'Ripristina driver?',
+        text: 'Vuoi ripristinare questo driver?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sì, ripristina!',
+        cancelButtonText: 'Annulla'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            await axios.post(`/api/users/${id}/restore`);
+            Swal.fire('Ripristinato!', 'Il driver è stato ripristinato.', 'success');
+            loadDrivers();
+        } catch (err) {
+            Swal.fire('Errore!', 'Si è verificato un errore durante il ripristino.', 'error');
+            console.error('Error restoring driver:', err);
         }
     }
 };
@@ -492,5 +546,19 @@ onMounted(async () => {
 
 .sortable:hover {
     background-color: rgba(255, 255, 255, 0.1);
+}
+
+.row-deleted {
+    opacity: 0.5;
+    background-color: #f8d7da !important;
+}
+
+.row-deleted td {
+    text-decoration: line-through;
+    color: #6c757d;
+}
+
+.row-deleted td:last-child {
+    text-decoration: none;
 }
 </style>

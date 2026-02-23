@@ -1,7 +1,7 @@
 <template>
     <div class="mt-4 pt-3 border-top">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="card-subtitle mb-0 text-muted">Allegati Veicolo</h6>
+            <h6 class="card-subtitle mb-0 text-muted">Allegati e Scadenze Veicolo</h6>
             <button type="button" class="btn btn-sm btn-soft-primary" @click="showAddModal = true">
                 <i class="ri-add-line me-1"></i> Aggiungi Allegato
             </button>
@@ -45,13 +45,28 @@
                             </template>
                             <template v-else>{{ attachment.attachment_type }}</template>
                         </td>
-                        <!-- Nome File - non editable -->
+                        <!-- Nome File - clickable for preview -->
                         <td>
-                            <i class="ri-file-line me-1"></i>
-                            {{ attachment.file_name }}
-                            <small class="text-muted d-block">
-                                {{ formatFileSize(attachment.file_size) }}
-                            </small>
+                            <template v-if="attachment.file_name">
+                                <i class="ri-file-line me-1"></i>
+                                <a
+                                    href="javascript:void(0)"
+                                    class="link-primary"
+                                    @click="showAttachmentPreview(attachment)"
+                                    title="Visualizza anteprima"
+                                >
+                                    {{ attachment.file_name }}
+                                </a>
+                                <small class="text-muted d-block">
+                                    {{ formatFileSize(attachment.file_size) }}
+                                </small>
+                            </template>
+                            <template v-else>
+                                <span class="text-warning">
+                                    <i class="ri-error-warning-line me-1"></i>
+                                    Nessun file allegato
+                                </span>
+                            </template>
                         </td>
                         <!-- Scadenza - inline editable -->
                         <td @click="startInlineEdit(attachment, 'expiration_date')" class="inline-editable">
@@ -92,6 +107,7 @@
                         </td>
                         <td class="text-end">
                             <button
+                                v-if="attachment.file_name"
                                 type="button"
                                 class="btn btn-sm btn-soft-info me-1"
                                 @click="downloadAttachment(attachment)"
@@ -150,7 +166,7 @@
                     </BCol>
 
                     <BCol cols="12" class="mb-3">
-                        <label for="file" class="form-label">File *</label>
+                        <label for="file" class="form-label">File</label>
                         <input
                             id="file"
                             ref="fileInput"
@@ -158,9 +174,8 @@
                             class="form-control"
                             :class="{ 'is-invalid': formErrors.file }"
                             @change="handleFileChange"
-                            required
                         />
-                        <small class="text-muted">Dimensione massima: 10MB</small>
+                        <small class="text-muted">Opzionale. Dimensione massima: 10MB</small>
                         <small v-if="formErrors.file" class="text-danger d-block">
                             {{ formErrors.file[0] }}
                         </small>
@@ -212,6 +227,91 @@
                     </button>
                 </div>
             </form>
+        </BModal>
+
+        <!-- Preview Modal -->
+        <BModal
+            v-model="showPreviewModal"
+            :title="previewAttachment?.file_name || 'Anteprima'"
+            size="xl"
+            hide-footer
+            @hidden="cleanupPreview"
+        >
+            <div v-if="loadingPreview" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Caricamento anteprima...</span>
+                </div>
+            </div>
+
+            <div v-else-if="previewUrl && previewAttachment">
+                <!-- PDF Preview -->
+                <div v-if="isPDF(previewAttachment)" class="pdf-preview">
+                    <iframe
+                        :src="previewUrl"
+                        style="width: 100%; height: 70vh; border: 1px solid #ddd;"
+                        frameborder="0"
+                    ></iframe>
+                </div>
+
+                <!-- Image Preview -->
+                <div v-else-if="isImage(previewAttachment)" class="image-preview text-center">
+                    <img
+                        :src="previewUrl"
+                        :alt="previewAttachment.file_name"
+                        class="img-fluid"
+                        style="max-height: 70vh; border: 1px solid #ddd;"
+                    />
+                </div>
+
+                <!-- Unsupported file type -->
+                <div v-else class="alert alert-info">
+                    <i class="ri-information-line me-2"></i>
+                    <strong>Anteprima non disponibile</strong><br>
+                    <small>
+                        L'anteprima non è disponibile per questo tipo di file ({{ previewAttachment.file_mime_type }}).
+                        Puoi scaricarlo usando il pulsante qui sotto.
+                    </small>
+                </div>
+
+                <!-- File info -->
+                <div class="mt-3 p-3 bg-light rounded">
+                    <BRow>
+                        <BCol md="4">
+                            <small class="text-muted">Tipo allegato:</small><br>
+                            <strong>{{ previewAttachment.attachment_type }}</strong>
+                        </BCol>
+                        <BCol md="4">
+                            <small class="text-muted">Dimensione:</small><br>
+                            <strong>{{ formatFileSize(previewAttachment.file_size) }}</strong>
+                        </BCol>
+                        <BCol md="4">
+                            <small class="text-muted">Tipo file:</small><br>
+                            <strong>{{ previewAttachment.file_mime_type || '-' }}</strong>
+                        </BCol>
+                    </BRow>
+                    <BRow v-if="previewAttachment.expiration_date || previewAttachment.notes" class="mt-2">
+                        <BCol md="4" v-if="previewAttachment.expiration_date">
+                            <small class="text-muted">Scadenza:</small><br>
+                            <span :class="getExpirationClass(previewAttachment.expiration_date)">
+                                {{ formatDate(previewAttachment.expiration_date) }}
+                            </span>
+                        </BCol>
+                        <BCol v-if="previewAttachment.notes">
+                            <small class="text-muted">Note:</small><br>
+                            <span>{{ previewAttachment.notes }}</span>
+                        </BCol>
+                    </BRow>
+                    <div class="mt-3 text-end">
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-primary"
+                            @click="downloadAttachment(previewAttachment)"
+                        >
+                            <i class="ri-download-line me-1"></i> Scarica
+                        </button>
+                    </div>
+                </div>
+            </div>
         </BModal>
 
         <!-- Edit Modal -->
@@ -329,11 +429,16 @@ const attachments = ref([]);
 const attachmentTypes = ref([]);
 const showAddModal = ref(false);
 const showEditModal = ref(false);
+const showPreviewModal = ref(false);
 const uploading = ref(false);
+const loadingPreview = ref(false);
 const formErrors = ref({});
 const selectedFile = ref(null);
 const editSelectedFile = ref(null);
 const editingAttachment = ref(null);
+const previewAttachment = ref(null);
+const previewUrl = ref(null);
+const fileInput = ref(null);
 const inlineInput = ref(null);
 
 const inlineEditing = ref({
@@ -385,16 +490,13 @@ const handleFileChange = (event) => {
 };
 
 const submitAttachment = async () => {
-    if (!selectedFile.value) {
-        formErrors.value.file = ['Seleziona un file da caricare'];
-        return;
-    }
-
     uploading.value = true;
     formErrors.value = {};
 
     const formDataToSend = new FormData();
-    formDataToSend.append('file', selectedFile.value);
+    if (selectedFile.value) {
+        formDataToSend.append('file', selectedFile.value);
+    }
     formDataToSend.append('attachment_type', formData.value.attachment_type);
     if (formData.value.expiration_date) {
         formDataToSend.append('expiration_date', formData.value.expiration_date);
@@ -562,6 +664,47 @@ const deleteAttachment = async (attachment) => {
     }
 };
 
+const showAttachmentPreview = async (attachment) => {
+    previewAttachment.value = attachment;
+    showPreviewModal.value = true;
+    loadingPreview.value = true;
+
+    try {
+        const response = await axios.get(
+            `/api/vehicles/${props.vehicleId}/attachments/${attachment.id}/download`,
+            { responseType: 'blob' }
+        );
+
+        const blob = new Blob([response.data], { type: attachment.file_mime_type });
+        previewUrl.value = window.URL.createObjectURL(blob);
+    } catch (error) {
+        console.error('Error loading preview:', error);
+        alert('Errore durante il caricamento dell\'anteprima');
+        showPreviewModal.value = false;
+    } finally {
+        loadingPreview.value = false;
+    }
+};
+
+const cleanupPreview = () => {
+    if (previewUrl.value) {
+        window.URL.revokeObjectURL(previewUrl.value);
+        previewUrl.value = null;
+    }
+    previewAttachment.value = null;
+};
+
+const isPDF = (attachment) => {
+    return attachment.file_mime_type === 'application/pdf' ||
+           attachment.file_name?.toLowerCase().endsWith('.pdf');
+};
+
+const isImage = (attachment) => {
+    const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    return imageTypes.includes(attachment.file_mime_type) ||
+           /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(attachment.file_name || '');
+};
+
 const closeModal = () => {
     showAddModal.value = false;
     formData.value = {
@@ -571,6 +714,9 @@ const closeModal = () => {
     };
     selectedFile.value = null;
     formErrors.value = {};
+    if (fileInput.value) {
+        fileInput.value.value = '';
+    }
 };
 
 const formatDate = (date) => {

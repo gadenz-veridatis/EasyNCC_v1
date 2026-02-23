@@ -30,23 +30,25 @@ class DriverAttachmentController extends Controller
             'attachment_type' => 'required|string',
             'expiration_date' => 'nullable|date',
             'notes' => 'nullable|string',
-            'file' => 'required|file|max:10240', // Max 10MB
+            'file' => 'nullable|file|max:10240', // Max 10MB
         ]);
 
-        // Handle file upload
-        $file = $request->file('file');
-        $fileName = $file->getClientOriginalName();
-        $filePath = $file->store('driver_attachments/' . $user->id, 'private');
-
-        $attachment = $user->driverAttachments()->create([
+        $data = [
             'attachment_type' => $validated['attachment_type'],
             'expiration_date' => $validated['expiration_date'] ?? null,
             'notes' => $validated['notes'] ?? null,
-            'file_path' => $filePath,
-            'file_name' => $fileName,
-            'file_mime_type' => $file->getMimeType(),
-            'file_size' => $file->getSize(),
-        ]);
+        ];
+
+        // Handle file upload if provided
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $data['file_path'] = $file->store('driver_attachments/' . $user->id, 'private');
+            $data['file_name'] = $file->getClientOriginalName();
+            $data['file_mime_type'] = $file->getMimeType();
+            $data['file_size'] = $file->getSize();
+        }
+
+        $attachment = $user->driverAttachments()->create($data);
 
         return response()->json($attachment, 201);
     }
@@ -61,7 +63,7 @@ class DriverAttachmentController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        if (!Storage::disk('private')->exists($attachment->file_path)) {
+        if (!$attachment->file_path || !Storage::disk('private')->exists($attachment->file_path)) {
             abort(404, 'File not found');
         }
 
@@ -102,8 +104,8 @@ class DriverAttachmentController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        // Delete file from storage
-        if (Storage::disk('private')->exists($attachment->file_path)) {
+        // Delete file from storage if exists
+        if ($attachment->file_path && Storage::disk('private')->exists($attachment->file_path)) {
             Storage::disk('private')->delete($attachment->file_path);
         }
 

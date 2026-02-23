@@ -44,8 +44,8 @@
                                     <a href="#section-note" class="btn btn-sm btn-soft-primary px-2 py-1" title="Note">
                                         <i class="ri-file-text-line"></i>
                                     </a>
-                                    <a href="#section-prezzi" class="btn btn-sm btn-soft-primary px-2 py-1" title="Prezzi">
-                                        <i class="ri-money-euro-circle-line"></i>
+                                    <a href="#section-prezzi" class="btn btn-sm btn-soft-primary px-2 py-1" title="Economics">
+                                        <i class="ri-money-euro-box-line"></i>
                                     </a>
                                     <a href="#section-contabilita" class="btn btn-sm btn-soft-primary px-2 py-1" title="Contabilità">
                                         <i class="ri-calculator-line"></i>
@@ -304,18 +304,6 @@
                                                 </button>
                                             </div>
                                         </BCol>
-                                        <BCol md="4" class="mb-3">
-                                            <label for="intermediary_commission" class="form-label">Commissione (&euro;)</label>
-                                            <input
-                                                id="intermediary_commission"
-                                                v-model.number="form.intermediary_commission"
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                class="form-control"
-                                                placeholder="0.00"
-                                            />
-                                        </BCol>
                                     </BRow>
                                 </fieldset>
 
@@ -386,62 +374,6 @@
                                         </BCol>
                                     </BRow>
 
-                                    <!-- Sub-fieldset: Spese Veicolo -->
-                                    <fieldset class="border rounded p-3 mt-2 bg-light">
-                                        <legend class="fs-6 fw-semibold text-secondary mb-2">
-                                            <i class="ri-money-euro-circle-line me-1"></i>Spese
-                                        </legend>
-                                        <BRow>
-                                            <BCol md="3" class="mb-3">
-                                                <label for="fuel_cost" class="form-label">Costo Carburanti (&euro;)</label>
-                                                <input
-                                                    id="fuel_cost"
-                                                    v-model.number="form.fuel_cost"
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    class="form-control form-control-sm"
-                                                    placeholder="0.00"
-                                                />
-                                            </BCol>
-                                            <BCol md="3" class="mb-3">
-                                                <label for="toll_cost" class="form-label">Costo Pedaggio (&euro;)</label>
-                                                <input
-                                                    id="toll_cost"
-                                                    v-model.number="form.toll_cost"
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    class="form-control form-control-sm"
-                                                    placeholder="0.00"
-                                                />
-                                            </BCol>
-                                            <BCol md="3" class="mb-3">
-                                                <label for="parking_cost" class="form-label">Costo Parcheggio (&euro;)</label>
-                                                <input
-                                                    id="parking_cost"
-                                                    v-model.number="form.parking_cost"
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    class="form-control form-control-sm"
-                                                    placeholder="0.00"
-                                                />
-                                            </BCol>
-                                            <BCol md="3" class="mb-3">
-                                                <label for="other_vehicle_costs" class="form-label">Altri costi veicolo (&euro;)</label>
-                                                <input
-                                                    id="other_vehicle_costs"
-                                                    v-model.number="form.other_vehicle_costs"
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    class="form-control form-control-sm"
-                                                    placeholder="0.00"
-                                                />
-                                            </BCol>
-                                        </BRow>
-                                    </fieldset>
                                 </fieldset>
 
                                 <!-- FIELDSET 5: DRIVER -->
@@ -559,38 +491,6 @@
                                         </BCol>
                                     </BRow>
 
-                                    <!-- Sub-fieldset: Spese Driver -->
-                                    <fieldset class="border rounded p-3 mt-2 bg-light">
-                                        <legend class="fs-6 fw-semibold text-secondary mb-2">
-                                            <i class="ri-money-euro-circle-line me-1"></i>Spese
-                                        </legend>
-                                        <BRow>
-                                            <BCol md="4" class="mb-3">
-                                                <label for="driver_compensation" class="form-label">Costo Driver (&euro;)</label>
-                                                <input
-                                                    id="driver_compensation"
-                                                    v-model.number="form.driver_compensation"
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    class="form-control form-control-sm"
-                                                    placeholder="0.00"
-                                                />
-                                            </BCol>
-                                            <BCol md="4" class="mb-3">
-                                                <label for="colleague_cost" class="form-label">Costo Collega (&euro;)</label>
-                                                <input
-                                                    id="colleague_cost"
-                                                    v-model.number="form.colleague_cost"
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    class="form-control form-control-sm"
-                                                    placeholder="0.00"
-                                                />
-                                            </BCol>
-                                        </BRow>
-                                    </fieldset>
                                 </fieldset>
 
                                 <!-- FIELDSET 6: BAGAGLI -->
@@ -953,193 +853,396 @@
                                     </BRow>
                                 </fieldset>
 
-                                <!-- FIELDSET 9: PREZZI -->
+                                <!-- FIELDSET: ECONOMICS -->
                                 <fieldset id="section-prezzi" class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
-                                        <i class="ri-price-tag-3-line me-2"></i>Prezzi
+                                        <i class="ri-money-euro-box-line me-2"></i>Economics
                                     </legend>
 
-                                    <!-- Riga 1: Prezzo base e parametri -->
-                                    <BRow>
-                                        <BCol md="4" class="mb-3">
-                                            <label for="service_price" class="form-label fw-bold text-primary">
-                                                <i class="ri-money-euro-circle-line me-1"></i>Prezzo Imponibile Totale
-                                            </label>
-                                            <div class="input-group">
-                                                <span class="input-group-text">€</span>
-                                                <input
-                                                    id="service_price"
-                                                    v-model.number="form.service_price"
-                                                    type="number"
-                                                    step="0.01"
-                                                    class="form-control border-primary"
-                                                    placeholder="0.00"
-                                                />
-                                            </div>
-                                        </BCol>
-                                        <BCol md="3" class="mb-3">
-                                            <label for="vat_rate" class="form-label">Aliquota IVA</label>
-                                            <select
-                                                id="vat_rate"
-                                                v-model.number="form.vat_rate"
-                                                class="form-select"
-                                            >
-                                                <option :value="10">10%</option>
-                                                <option :value="22">22%</option>
-                                            </select>
-                                        </BCol>
-                                        <BCol md="2" class="mb-3">
-                                            <label for="card_fees_percentage" class="form-label">Card Fees %</label>
-                                            <div class="input-group">
-                                                <input
-                                                    id="card_fees_percentage"
-                                                    v-model.number="form.card_fees_percentage"
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    max="100"
-                                                    class="form-control"
-                                                    placeholder="5"
-                                                />
-                                                <span class="input-group-text">%</span>
-                                            </div>
-                                        </BCol>
-                                        <BCol md="3" class="mb-3">
-                                            <label for="status_id" class="form-label">Stato Servizio *</label>
-                                            <select
-                                                id="status_id"
-                                                v-model="form.status_id"
-                                                class="form-select"
-                                                required
-                                            >
-                                                <option value="">Seleziona stato</option>
-                                                <option v-for="status in serviceStatuses" :key="status.id" :value="status.id">
-                                                    {{ status.name }}
-                                                </option>
-                                            </select>
-                                        </BCol>
-                                    </BRow>
+                                    <!-- Sub-fieldset: Costi del Servizio -->
+                                    <fieldset class="border rounded p-3 mb-3 bg-light">
+                                        <legend class="fs-6 fw-semibold text-secondary mb-2">
+                                            <i class="ri-money-euro-circle-line me-1"></i>Costi del Servizio
+                                        </legend>
 
-                                    <!-- Riga 2: Acconto -->
-                                    <BRow>
-                                        <BCol md="3" class="mb-3">
-                                            <label for="deposit_percentage" class="form-label">Acconto %</label>
-                                            <div class="input-group">
+                                        <!-- Commissione -->
+                                        <BRow>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="intermediary_commission" class="form-label">Commissione (&euro;)</label>
                                                 <input
-                                                    id="deposit_percentage"
-                                                    v-model.number="form.deposit_percentage"
-                                                    type="number"
-                                                    step="1"
-                                                    min="0"
-                                                    max="100"
-                                                    class="form-control"
-                                                    placeholder="30"
-                                                />
-                                                <span class="input-group-text">%</span>
-                                            </div>
-                                        </BCol>
-                                        <BCol md="9" class="mb-3">
-                                            <label for="deposit_amount" class="form-label">Acconto €</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text">€</span>
-                                                <input
-                                                    id="deposit_amount"
-                                                    v-model.number="form.deposit_amount"
+                                                    id="intermediary_commission"
+                                                    v-model.number="form.intermediary_commission"
                                                     type="number"
                                                     step="0.01"
                                                     min="0"
-                                                    class="form-control"
+                                                    class="form-control form-control-sm"
                                                     placeholder="0.00"
                                                 />
-                                            </div>
-                                            <small class="text-muted">Formula: (Imponibile × (100 + IVA%) / 100) × (100 + Card Fees%) / 100 × (Acconto% / 100)</small>
-                                        </BCol>
-                                    </BRow>
+                                            </BCol>
+                                        </BRow>
 
-                                    <!-- Riga 3: Saldi -->
-                                    <BRow>
-                                        <BCol md="4" class="mb-3">
-                                            <label for="balance_taxable" class="form-label">Saldo Imponibile</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text">€</span>
-                                                <input
-                                                    id="balance_taxable"
-                                                    v-model.number="form.balance_taxable"
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    class="form-control"
-                                                    placeholder="0.00"
-                                                />
-                                            </div>
-                                            <small class="text-muted">Formula: Imponibile × (100 - Acconto%) / 100</small>
-                                        </BCol>
-                                        <BCol md="4" class="mb-3">
-                                            <label for="balance_handling_fees" class="form-label">Saldo Handling Fees</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text">€</span>
-                                                <input
-                                                    id="balance_handling_fees"
-                                                    v-model.number="form.balance_handling_fees"
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    class="form-control"
-                                                    placeholder="0.00"
-                                                />
-                                            </div>
-                                            <small class="text-muted">Formula: (Imponibile × (100 + IVA%) / 100) × (100 - Acconto%) / 100</small>
-                                        </BCol>
-                                        <BCol md="4" class="mb-3">
-                                            <label for="balance_card_fees" class="form-label">Saldo Card Fees</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text">€</span>
-                                                <input
-                                                    id="balance_card_fees"
-                                                    v-model.number="form.balance_card_fees"
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    class="form-control"
-                                                    placeholder="0.00"
-                                                />
-                                            </div>
-                                            <small class="text-muted">Formula: (Imponibile × (100 + IVA%) / 100) × (100 + Card Fees%) / 100 × (100 - Acconto%) / 100</small>
-                                        </BCol>
-                                    </BRow>
+                                        <!-- Spese del Veicolo -->
+                                        <fieldset class="border rounded p-3 mt-2 bg-white">
+                                            <legend class="fs-6 fw-semibold text-secondary mb-2">
+                                                <i class="ri-car-line me-1"></i>Spese del Veicolo
+                                            </legend>
+                                            <BRow>
+                                                <BCol md="3" class="mb-3">
+                                                    <label for="fuel_cost" class="form-label">Costo Carburanti (&euro;)</label>
+                                                    <input
+                                                        id="fuel_cost"
+                                                        v-model.number="form.fuel_cost"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control form-control-sm"
+                                                        placeholder="0.00"
+                                                    />
+                                                </BCol>
+                                                <BCol md="3" class="mb-3">
+                                                    <label for="toll_cost" class="form-label">Costo Pedaggio (&euro;)</label>
+                                                    <input
+                                                        id="toll_cost"
+                                                        v-model.number="form.toll_cost"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control form-control-sm"
+                                                        placeholder="0.00"
+                                                    />
+                                                </BCol>
+                                                <BCol md="3" class="mb-3">
+                                                    <label for="parking_cost" class="form-label">Costo Parcheggio (&euro;)</label>
+                                                    <input
+                                                        id="parking_cost"
+                                                        v-model.number="form.parking_cost"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control form-control-sm"
+                                                        placeholder="0.00"
+                                                    />
+                                                </BCol>
+                                                <BCol md="3" class="mb-3">
+                                                    <label for="other_vehicle_costs" class="form-label">Altri costi veicolo (&euro;)</label>
+                                                    <input
+                                                        id="other_vehicle_costs"
+                                                        v-model.number="form.other_vehicle_costs"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control form-control-sm"
+                                                        placeholder="0.00"
+                                                    />
+                                                </BCol>
+                                            </BRow>
+                                        </fieldset>
 
-                                    <!-- Bottone Calcola Corrispettivi -->
-                                    <BRow class="mb-3">
-                                        <BCol md="12" class="text-end">
-                                            <button
-                                                type="button"
-                                                class="btn btn-soft-success"
-                                                @click="calculateTotals"
-                                            >
-                                                <i class="ri-calculator-line me-1"></i>Calcola Corrispettivi
-                                            </button>
-                                        </BCol>
-                                    </BRow>
+                                        <!-- Spese del Driver -->
+                                        <fieldset class="border rounded p-3 mt-2 bg-white">
+                                            <legend class="fs-6 fw-semibold text-secondary mb-2">
+                                                <i class="ri-user-line me-1"></i>Spese del Driver
+                                            </legend>
+                                            <BRow>
+                                                <BCol md="4" class="mb-3">
+                                                    <label for="driver_compensation" class="form-label">Costo Driver (&euro;)</label>
+                                                    <input
+                                                        id="driver_compensation"
+                                                        v-model.number="form.driver_compensation"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control form-control-sm"
+                                                        placeholder="0.00"
+                                                    />
+                                                </BCol>
+                                                <BCol md="4" class="mb-3">
+                                                    <label for="colleague_cost" class="form-label">Costo Fornitore (&euro;)</label>
+                                                    <input
+                                                        id="colleague_cost"
+                                                        v-model.number="form.colleague_cost"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control form-control-sm"
+                                                        placeholder="0.00"
+                                                    />
+                                                </BCol>
+                                            </BRow>
+                                        </fieldset>
+                                    </fieldset>
 
-                                    <!-- Interruttore Contabilizza il servizio -->
-                                    <BRow>
-                                        <BCol md="12">
-                                            <div class="form-check form-switch">
-                                                <input
-                                                    id="accounting_enabled"
-                                                    v-model="accountingEnabled"
-                                                    type="checkbox"
-                                                    class="form-check-input"
-                                                />
-                                                <label class="form-check-label" for="accounting_enabled">
-                                                    <strong>Contabilizza il servizio</strong>
+                                    <!-- Sub-fieldset: Prezzi di Vendita -->
+                                    <fieldset class="border rounded p-3 mb-3 bg-light">
+                                        <legend class="fs-6 fw-semibold text-secondary mb-2">
+                                            <i class="ri-price-tag-3-line me-1"></i>Prezzi di Vendita
+                                        </legend>
+
+                                        <!-- Riga 1: Prezzo base e parametri -->
+                                        <BRow>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="service_price" class="form-label fw-bold text-primary">
+                                                    <i class="ri-money-euro-circle-line me-1"></i>Prezzo Imponibile Totale
                                                 </label>
-                                                <small class="d-block text-muted">
-                                                    Quando attivo, crea/aggiorna automaticamente i movimenti contabili di vendita (acconto e saldo) al salvataggio del servizio
-                                                </small>
-                                            </div>
-                                        </BCol>
-                                    </BRow>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="service_price"
+                                                        v-model.number="form.service_price"
+                                                        type="number"
+                                                        step="0.01"
+                                                        class="form-control border-primary"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            </BCol>
+                                            <BCol md="2" class="mb-3">
+                                                <label for="vat_rate" class="form-label">Aliquota IVA</label>
+                                                <select
+                                                    id="vat_rate"
+                                                    v-model.number="form.vat_rate"
+                                                    class="form-select"
+                                                >
+                                                    <option :value="10">10%</option>
+                                                    <option :value="22">22%</option>
+                                                </select>
+                                            </BCol>
+                                            <BCol md="3" class="mb-3">
+                                                <label for="card_fees_percentage" class="form-label">Card Fees %</label>
+                                                <div class="input-group">
+                                                    <input
+                                                        id="card_fees_percentage"
+                                                        v-model.number="form.card_fees_percentage"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        max="100"
+                                                        class="form-control"
+                                                        placeholder="5"
+                                                    />
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                            </BCol>
+                                            <BCol md="3" class="mb-3">
+                                                <label for="deposit_percentage" class="form-label">Acconto %</label>
+                                                <div class="input-group">
+                                                    <input
+                                                        id="deposit_percentage"
+                                                        v-model.number="form.deposit_percentage"
+                                                        type="number"
+                                                        step="1"
+                                                        min="0"
+                                                        max="100"
+                                                        class="form-control"
+                                                        placeholder="30"
+                                                    />
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                            </BCol>
+                                        </BRow>
+
+                                        <!-- Riga 2: Acconto -->
+                                        <BRow>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="deposit_taxable" class="form-label">Acconto Imponibile €</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="deposit_taxable"
+                                                        v-model.number="form.deposit_taxable"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <small class="text-muted">Imponibile × Acconto% / 100 (arr. 5€)</small>
+                                            </BCol>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="deposit_handling_fees" class="form-label">Acconto Handling Fees €</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="deposit_handling_fees"
+                                                        v-model.number="form.deposit_handling_fees"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <small class="text-muted">Acconto Imponibile × (1 + IVA%) (arr. 5€)</small>
+                                            </BCol>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="deposit_amount" class="form-label">Acconto Totale €</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="deposit_amount"
+                                                        v-model.number="form.deposit_amount"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <small class="text-muted">Con IVA e Card Fees × Acconto% (arr. 5€)</small>
+                                            </BCol>
+                                        </BRow>
+
+                                        <!-- Riga 3: Saldi -->
+                                        <BRow>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="balance_taxable" class="form-label">Saldo Imponibile</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="balance_taxable"
+                                                        v-model.number="form.balance_taxable"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <small class="text-muted">Imponibile - Acconto Imponibile</small>
+                                            </BCol>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="balance_handling_fees" class="form-label">Saldo Handling Fees</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="balance_handling_fees"
+                                                        v-model.number="form.balance_handling_fees"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <small class="text-muted">Con IVA × (100 - Acconto%) (arr. 5€)</small>
+                                            </BCol>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="balance_card_fees" class="form-label">Saldo Card Fees</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="balance_card_fees"
+                                                        v-model.number="form.balance_card_fees"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <small class="text-muted">Con IVA e Card Fees × (100 - Acconto%) (arr. 5€)</small>
+                                            </BCol>
+                                        </BRow>
+
+                                        <!-- Riga 4: Radio Tipo di Saldo per Contabilizzazione -->
+                                        <BRow class="mb-3">
+                                            <BCol md="12">
+                                                <label class="form-label fw-semibold">Importo Saldo per Contabilizzazione</label>
+                                                <div class="d-flex gap-4">
+                                                    <div class="form-check">
+                                                        <input
+                                                            id="balance_sale_type_taxable"
+                                                            v-model="form.balance_sale_type"
+                                                            type="radio"
+                                                            value="balance_taxable"
+                                                            class="form-check-input"
+                                                        />
+                                                        <label class="form-check-label" for="balance_sale_type_taxable">
+                                                            Saldo Imponibile
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input
+                                                            id="balance_sale_type_handling"
+                                                            v-model="form.balance_sale_type"
+                                                            type="radio"
+                                                            value="balance_handling_fees"
+                                                            class="form-check-input"
+                                                        />
+                                                        <label class="form-check-label" for="balance_sale_type_handling">
+                                                            Saldo Handling Fees
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input
+                                                            id="balance_sale_type_card"
+                                                            v-model="form.balance_sale_type"
+                                                            type="radio"
+                                                            value="balance_card_fees"
+                                                            class="form-check-input"
+                                                        />
+                                                        <label class="form-check-label" for="balance_sale_type_card">
+                                                            Saldo Card Fees
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted">Seleziona quale importo di saldo utilizzare per il movimento contabile di saldo vendita</small>
+                                            </BCol>
+                                        </BRow>
+
+                                        <!-- Bottone Calcola Corrispettivi -->
+                                        <BRow class="mb-3">
+                                            <BCol md="12" class="text-end">
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-soft-success"
+                                                    @click="calculateTotals"
+                                                >
+                                                    <i class="ri-calculator-line me-1"></i>Calcola Corrispettivi di Vendita
+                                                </button>
+                                            </BCol>
+                                        </BRow>
+                                    </fieldset>
+
+                                    <!-- Sub-fieldset: Gestione -->
+                                    <fieldset class="border rounded p-3 mb-3 bg-light">
+                                        <legend class="fs-6 fw-semibold text-secondary mb-2">
+                                            <i class="ri-settings-4-line me-1"></i>Gestione
+                                        </legend>
+                                        <BRow>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="status_id" class="form-label">Stato Servizio *</label>
+                                                <select
+                                                    id="status_id"
+                                                    v-model="form.status_id"
+                                                    class="form-select"
+                                                    required
+                                                >
+                                                    <option value="">Seleziona stato</option>
+                                                    <option v-for="status in serviceStatuses" :key="status.id" :value="status.id">
+                                                        {{ status.name }}
+                                                    </option>
+                                                </select>
+                                            </BCol>
+                                            <BCol md="8" class="mb-3 d-flex align-items-center">
+                                                <div class="form-check form-switch">
+                                                    <input
+                                                        id="accounting_enabled"
+                                                        v-model="accountingEnabled"
+                                                        type="checkbox"
+                                                        class="form-check-input"
+                                                    />
+                                                    <label class="form-check-label" for="accounting_enabled">
+                                                        <strong>Contabilizza il servizio</strong>
+                                                    </label>
+                                                    <small class="d-block text-muted">
+                                                        Quando attivo, crea/aggiorna automaticamente i movimenti contabili di vendita (acconto e saldo) al salvataggio del servizio
+                                                    </small>
+                                                </div>
+                                            </BCol>
+                                        </BRow>
+                                    </fieldset>
                                 </fieldset>
 
                                 <!-- FIELDSET 10: CONTABILITÀ -->
@@ -1314,6 +1417,7 @@
                                                     <tr v-for="transaction in form.accounting_transactions" :key="transaction.id">
                                                         <td>
                                                             <input
+                                                                v-if="!transaction.is_automatic"
                                                                 type="checkbox"
                                                                 class="form-check-input"
                                                                 :value="transaction.id"
@@ -1328,48 +1432,11 @@
                                                             >
                                                                 {{ getTransactionTypeAbbr(transaction.transaction_type) }}
                                                             </span>
+                                                            <span v-if="transaction.is_automatic" class="badge bg-info-subtle text-info ms-1" title="Automatico">A</span>
+                                                            <span v-else class="badge bg-warning-subtle text-warning ms-1" title="Manuale">M</span>
                                                         </td>
                                                         <td class="fw-medium">
-                                                            <span
-                                                                v-if="editingTransactionPrice !== transaction.id"
-                                                                @click="startEditTransactionPrice(transaction)"
-                                                                class="cursor-pointer text-primary text-decoration-underline"
-                                                                title="Clicca per modificare"
-                                                            >
-                                                                € {{ parseFloat(transaction.amount).toFixed(2) }}
-                                                            </span>
-                                                            <div v-else>
-                                                                <div class="input-group input-group-sm mb-1" style="max-width: 120px;">
-                                                                    <span class="input-group-text">€</span>
-                                                                    <input
-                                                                        v-model="editingPriceValue"
-                                                                        type="number"
-                                                                        step="0.01"
-                                                                        min="0"
-                                                                        class="form-control form-control-sm"
-                                                                        @keyup.esc="cancelEditTransactionPrice"
-                                                                        :ref="el => { if (el) priceInputRefs[transaction.id] = el }"
-                                                                    />
-                                                                </div>
-                                                                <div class="d-flex gap-1">
-                                                                    <button
-                                                                        type="button"
-                                                                        class="btn btn-success btn-sm"
-                                                                        @click="saveTransactionPrice(transaction)"
-                                                                        title="Salva"
-                                                                    >
-                                                                        <i class="ri-check-line"></i> Salva
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        class="btn btn-secondary btn-sm"
-                                                                        @click="cancelEditTransactionPrice"
-                                                                        title="Annulla"
-                                                                    >
-                                                                        <i class="ri-close-line"></i> Annulla
-                                                                    </button>
-                                                                </div>
-                                                            </div>
+                                                            € {{ parseFloat(transaction.amount).toFixed(2) }}
                                                         </td>
                                                         <td>
                                                             <span
@@ -1471,6 +1538,7 @@
                                                                     <i class="ri-edit-line"></i>
                                                                 </button>
                                                                 <button
+                                                                    v-if="!transaction.is_automatic"
                                                                     type="button"
                                                                     class="btn btn-sm btn-soft-danger"
                                                                     @click="removeTransaction(transaction.id)"
@@ -1815,12 +1883,13 @@
                     <BCol md="6">
                         <div class="mb-3">
                             <label class="form-label">Tipo Movimento <span class="text-danger">*</span></label>
-                            <select v-model="transactionForm.transaction_type" class="form-select" @change="onTransactionTypeChange" required>
+                            <select v-model="transactionForm.transaction_type" class="form-select" @change="onTransactionTypeChange" required :disabled="transactionForm.is_automatic">
                                 <option value="">Seleziona tipo</option>
                                 <option value="purchase">Acquisto (Costi da Fornitore)</option>
                                 <option value="sale">Vendita (Ricavi da Committente)</option>
                                 <option value="intermediation">Intermediazione (Commissioni)</option>
                             </select>
+                            <small v-if="transactionForm.is_automatic" class="text-muted">Campo gestito automaticamente</small>
                         </div>
                     </BCol>
 
@@ -1833,7 +1902,9 @@
                                 type="date"
                                 class="form-control"
                                 required
+                                :disabled="transactionForm.is_automatic"
                             />
+                            <small v-if="transactionForm.is_automatic" class="text-muted">Campo gestito automaticamente</small>
                         </div>
                     </BCol>
 
@@ -1850,8 +1921,10 @@
                                     min="0"
                                     class="form-control"
                                     required
+                                    :disabled="transactionForm.is_automatic"
                                 />
                             </div>
+                            <small v-if="transactionForm.is_automatic" class="text-muted">Campo gestito automaticamente</small>
                         </div>
                     </BCol>
 
@@ -1928,12 +2001,13 @@
                     <BCol md="6">
                         <div class="mb-3">
                             <label class="form-label">Causale Contabile</label>
-                            <select v-model="transactionForm.accounting_entry_id" class="form-select">
+                            <select v-model="transactionForm.accounting_entry_id" class="form-select" :disabled="transactionForm.is_automatic">
                                 <option value="">Nessuna</option>
                                 <option v-for="entry in accountingEntries" :key="entry.id" :value="entry.id">
                                     {{ entry.name }} ({{ entry.abbreviation }})
                                 </option>
                             </select>
+                            <small v-if="transactionForm.is_automatic" class="text-muted">Campo gestito automaticamente</small>
                         </div>
                     </BCol>
 
@@ -1941,13 +2015,14 @@
                     <BCol md="6">
                         <div class="mb-3">
                             <label class="form-label">Controparte</label>
-                            <select v-model="transactionForm.counterpart_id" class="form-select">
+                            <select v-model="transactionForm.counterpart_id" class="form-select" :disabled="transactionForm.is_automatic">
                                 <option value="">Nessuna</option>
                                 <option v-for="user in filteredCounterparts" :key="user.id" :value="user.id">
                                     {{ user.name }} {{ user.surname }} - {{ user.email }}
                                 </option>
                             </select>
-                            <small class="text-muted d-block mt-1">
+                            <small v-if="transactionForm.is_automatic" class="text-muted d-block mt-1">Campo gestito automaticamente</small>
+                            <small v-else class="text-muted d-block mt-1">
                                 <span v-if="transactionForm.transaction_type === 'purchase'">Seleziona un Fornitore</span>
                                 <span v-else-if="transactionForm.transaction_type === 'sale'">Seleziona un Committente</span>
                                 <span v-else-if="transactionForm.transaction_type === 'intermediation'">Seleziona un Intermediario</span>
@@ -3085,10 +3160,13 @@ const form = ref({
     vat_rate: 10,
     card_fees_percentage: 5,
     deposit_percentage: 30,
+    deposit_taxable: null,
+    deposit_handling_fees: null,
     deposit_amount: null,
     balance_taxable: null,
     balance_handling_fees: null,
     balance_card_fees: null,
+    balance_sale_type: 'balance_taxable',
     intermediary_commission: null,
     driver_compensation: null,
     colleague_cost: null,
@@ -3129,16 +3207,14 @@ const transactionForm = ref({
     payment_reason: '',
     iban: '',
     status: '',
-    notes: ''
+    notes: '',
+    is_automatic: false,
 });
 
 // Selection and inline editing
 const selectedTransactions = ref([]);
-const editingTransactionPrice = ref(null);
-const editingPriceValue = ref(null);
 const editingTransactionStatus = ref(null);
 const editingStatusValue = ref('');
-const priceInputRefs = ref({});
 const statusInputRefs = ref({});
 
 // Additional lists for transaction modal
@@ -3752,7 +3828,12 @@ const removeActivity = async (activityId) => {
     }
 };
 
-// Calcola Corrispettivi
+// Arrotonda ai 5€ superiori
+const roundUpTo5 = (value) => {
+    return Math.ceil(value / 5) * 5;
+};
+
+// Calcola Corrispettivi di Vendita
 const calculateTotals = () => {
     // Validazione campi richiesti
     if (!form.value.service_price || form.value.service_price <= 0) {
@@ -3786,17 +3867,23 @@ const calculateTotals = () => {
     // Calcolo del prezzo con IVA e Card Fees
     const prezzoConIvaECardFees = prezzoConIva * (100 + cardFeesPerc) / 100;
 
-    // 1. Acconto € = (Imponibile × (100 + IVA%) / 100) × (100 + Card Fees%) / 100 × (Acconto% / 100)
-    form.value.deposit_amount = parseFloat((prezzoConIvaECardFees * (depositPerc / 100)).toFixed(2));
+    // 1. Acconto Imponibile = Imponibile × Acconto% / 100 (arrotondato ai 5€ superiori)
+    form.value.deposit_taxable = roundUpTo5(imponibile * depositPerc / 100);
 
-    // 2. Saldo Imponibile = Imponibile × (100 - Acconto%) / 100
-    form.value.balance_taxable = parseFloat((imponibile * (100 - depositPerc) / 100).toFixed(2));
+    // 1b. Acconto Handling Fees = Acconto Imponibile × (1 + Aliquota IVA / 100) arrotondato ai 5€ superiori
+    form.value.deposit_handling_fees = roundUpTo5(form.value.deposit_taxable * (1 + vatRate / 100));
 
-    // 3. Saldo Handling Fees = (Imponibile × (100 + IVA%) / 100) × (100 - Acconto%) / 100
-    form.value.balance_handling_fees = parseFloat((prezzoConIva * (100 - depositPerc) / 100).toFixed(2));
+    // 2. Acconto Totale € = (Imponibile × (100 + IVA%) / 100) × (100 + Card Fees%) / 100 × (Acconto% / 100) (arrotondato ai 5€ superiori)
+    form.value.deposit_amount = roundUpTo5(prezzoConIvaECardFees * (depositPerc / 100));
 
-    // 4. Saldo Card Fees = (Imponibile × (100 + IVA%) / 100) × (100 + Card Fees%) / 100 × (100 - Acconto%) / 100
-    form.value.balance_card_fees = parseFloat((prezzoConIvaECardFees * (100 - depositPerc) / 100).toFixed(2));
+    // 3. Saldo Imponibile = Imponibile - Acconto Imponibile
+    form.value.balance_taxable = parseFloat((imponibile - form.value.deposit_taxable).toFixed(2));
+
+    // 4. Saldo Handling Fees = (Imponibile × (100 + IVA%) / 100) × (100 - Acconto%) / 100 (arrotondato ai 5€ superiori)
+    form.value.balance_handling_fees = roundUpTo5(prezzoConIva * (100 - depositPerc) / 100);
+
+    // 5. Saldo Card Fees = (Imponibile × (100 + IVA%) / 100) × (100 + Card Fees%) / 100 × (100 - Acconto%) / 100 (arrotondato ai 5€ superiori)
+    form.value.balance_card_fees = roundUpTo5(prezzoConIvaECardFees * (100 - depositPerc) / 100);
 };
 
 const contabilizza = async () => {
@@ -4037,10 +4124,11 @@ const openTransactionModal = (transaction = null) => {
             payment_reason: transaction.payment_reason || '',
             iban: transaction.iban || '',
             status: transaction.status || '',
-            notes: transaction.notes || ''
+            notes: transaction.notes || '',
+            is_automatic: transaction.is_automatic || false,
         };
     } else {
-        // Create mode - reset form
+        // Create mode - always manual
         transactionForm.value = {
             id: null,
             transaction_date: moment().format('YYYY-MM-DD'),
@@ -4056,7 +4144,8 @@ const openTransactionModal = (transaction = null) => {
             payment_reason: '',
             iban: '',
             status: '',
-            notes: ''
+            notes: '',
+            is_automatic: false,
         };
     }
     showTransactionModal.value = true;
@@ -4082,7 +4171,8 @@ const cancelTransactionEdit = () => {
         payment_reason: '',
         iban: '',
         status: '',
-        notes: ''
+        notes: '',
+        is_automatic: false,
     };
     showTransactionModal.value = false;
 };
@@ -4116,7 +4206,8 @@ const saveTransaction = async () => {
             payment_reason: transactionForm.value.payment_reason || null,
             iban: transactionForm.value.iban || null,
             status: transactionForm.value.status,
-            notes: transactionForm.value.notes || null
+            notes: transactionForm.value.notes || null,
+            is_automatic: transactionForm.value.is_automatic,
         };
 
         let response;
@@ -4197,83 +4288,6 @@ const deleteSelectedTransactions = async () => {
             alert('Errore durante l\'eliminazione dei movimenti selezionati');
         }
     }
-};
-
-// Inline price editing functions
-const startEditTransactionPrice = (transaction) => {
-    editingTransactionPrice.value = transaction.id;
-    editingPriceValue.value = parseFloat(transaction.amount);
-    // Focus input in next tick using dynamic ref
-    nextTick(() => {
-        const input = priceInputRefs.value[transaction.id];
-        if (input) {
-            input.focus();
-            input.select();
-        }
-    });
-};
-
-const saveTransactionPrice = async (transaction) => {
-    // Prevent duplicate saves
-    if (!editingTransactionPrice.value || editingTransactionPrice.value !== transaction.id) {
-        return;
-    }
-
-    if (editingPriceValue.value === null || editingPriceValue.value < 0) {
-        alert('Inserisci un importo valido');
-        return;
-    }
-
-    try {
-        const payload = {
-            service_id: props.service.id,
-            transaction_date: transaction.transaction_date,
-            amount: editingPriceValue.value,
-            transaction_type: transaction.transaction_type,
-            installment: transaction.installment,
-            accounting_entry_id: transaction.accounting_entry_id || null,
-            counterpart_id: transaction.counterpart_id || null,
-            document_number: transaction.document_number || null,
-            document_due_date: transaction.document_due_date || null,
-            payment_date: transaction.payment_date || null,
-            payment_type: transaction.payment_type || null,
-            payment_reason: transaction.payment_reason || null,
-            iban: transaction.iban || null,
-            status: transaction.status,
-            notes: transaction.notes || null
-        };
-
-        const response = await axios.put(`/api/accounting-transactions/${transaction.id}`, payload);
-
-        // Update in local array with the full response data
-        const index = form.value.accounting_transactions.findIndex(t => t.id === transaction.id);
-        if (index !== -1) {
-            form.value.accounting_transactions[index] = response.data.data;
-        }
-
-        // Clear editing state
-        editingTransactionPrice.value = null;
-        editingPriceValue.value = null;
-    } catch (error) {
-        console.error('Error updating transaction price:', error);
-        if (error.response && error.response.status === 422) {
-            if (error.response.data.errors) {
-                const errorMessages = Object.entries(error.response.data.errors)
-                    .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
-                    .join('\n');
-                alert('Errori di validazione:\n\n' + errorMessages);
-            } else {
-                alert('Errore di validazione durante l\'aggiornamento del prezzo');
-            }
-        } else {
-            alert('Errore durante l\'aggiornamento del prezzo');
-        }
-    }
-};
-
-const cancelEditTransactionPrice = () => {
-    editingTransactionPrice.value = null;
-    editingPriceValue.value = null;
 };
 
 // Inline status editing functions
@@ -5153,6 +5167,35 @@ const removeActivityConfirmationTasks = async () => {
     }
 };
 
+// Helper to create or update an accounting transaction
+// For existing movements: only update restricted fields (amount, counterpart, type, entry, date)
+// For new movements: create with all fields + is_automatic: true
+const upsertAccountingTransaction = async (findFn, payload) => {
+    const existing = form.value.accounting_transactions.find(findFn);
+    if (existing) {
+        await axios.put(`/api/accounting-transactions/${existing.id}`, {
+            amount: payload.amount,
+            counterpart_id: payload.counterpart_id,
+            transaction_type: payload.transaction_type,
+            accounting_entry_id: payload.accounting_entry_id,
+            transaction_date: payload.transaction_date,
+        });
+    } else {
+        await axios.post('/api/accounting-transactions', {
+            ...payload,
+            is_automatic: true,
+        });
+    }
+};
+
+// Helper to remove an accounting transaction if it exists
+const removeAccountingTransaction = async (findFn) => {
+    const existing = form.value.accounting_transactions.find(findFn);
+    if (existing) {
+        await axios.delete(`/api/accounting-transactions/${existing.id}`);
+    }
+};
+
 // Process accounting transactions (create or update)
 const processAccountingTransactions = async () => {
     if (!form.value.client_id) {
@@ -5166,74 +5209,200 @@ const processAccountingTransactions = async () => {
     }
 
     try {
-        const today = moment().format('YYYY-MM-DD');
+        const pickupDate = form.value.pickup_datetime
+            ? moment(form.value.pickup_datetime).format('YYYY-MM-DD')
+            : moment().format('YYYY-MM-DD');
         const clientId = form.value.client_id;
         const serviceId = props.service.id;
+        const handlingFeesEntryId = settings.value.handling_fees_accounting_entry_id;
+        const cardFeesEntryId = settings.value.card_fees_accounting_entry_id;
 
-        // Handle Acconto (deposit)
-        if (form.value.deposit_amount && form.value.deposit_amount > 0) {
-            const existingAcconto = form.value.accounting_transactions.find(
+        // === ACCONTO VENDITA (deposit - componente imponibile) ===
+        if (form.value.deposit_taxable && form.value.deposit_taxable > 0) {
+            await upsertAccountingTransaction(
                 t => t.transaction_type === 'sale' && t.installment === 'deposit'
+                    && t.accounting_entry_id === settings.value.deposit_accounting_entry_id,
+                {
+                    service_id: serviceId,
+                    transaction_date: pickupDate,
+                    amount: form.value.deposit_taxable,
+                    transaction_type: 'sale',
+                    installment: 'deposit',
+                    accounting_entry_id: settings.value.deposit_accounting_entry_id,
+                    counterpart_id: clientId,
+                    document_number: null,
+                    document_due_date: null,
+                    payment_date: null,
+                    payment_type: 'carta_di_credito',
+                    payment_reason: settings.value.deposit_reason,
+                    iban: null,
+                    status: 'to_collect',
+                    notes: null
+                }
             );
-
-            const accontoPayload = {
-                service_id: serviceId,
-                transaction_date: today,
-                amount: form.value.deposit_amount,
-                transaction_type: 'sale',
-                installment: 'deposit',
-                accounting_entry_id: settings.value.deposit_accounting_entry_id,
-                counterpart_id: clientId,
-                document_number: null,
-                document_due_date: null,
-                payment_date: null,
-                payment_type: 'carta_di_credito',
-                payment_reason: settings.value.deposit_reason,
-                iban: null,
-                status: 'to_collect',
-                notes: null
-            };
-
-            if (existingAcconto) {
-                // Update existing acconto
-                await axios.put(`/api/accounting-transactions/${existingAcconto.id}`, accontoPayload);
-            } else {
-                // Create new acconto
-                await axios.post('/api/accounting-transactions', accontoPayload);
-            }
         }
 
-        // Handle Saldo (balance)
-        if (form.value.balance_taxable && form.value.balance_taxable > 0) {
-            const existingSaldo = form.value.accounting_transactions.find(
-                t => t.transaction_type === 'sale' && t.installment === 'balance'
+        // === ACCONTO HANDLING FEES (deposit - componente IVA - acquisto) ===
+        const accontoHandlingAmount = (form.value.deposit_handling_fees || 0) - (form.value.deposit_taxable || 0);
+        if (accontoHandlingAmount > 0 && handlingFeesEntryId) {
+            await upsertAccountingTransaction(
+                t => t.transaction_type === 'purchase' && t.installment === 'deposit'
+                    && t.accounting_entry_id === handlingFeesEntryId,
+                {
+                    service_id: serviceId,
+                    transaction_date: pickupDate,
+                    amount: parseFloat(accontoHandlingAmount.toFixed(2)),
+                    transaction_type: 'purchase',
+                    installment: 'deposit',
+                    accounting_entry_id: handlingFeesEntryId,
+                    counterpart_id: clientId,
+                    document_number: null,
+                    document_due_date: null,
+                    payment_date: null,
+                    payment_type: 'carta_di_credito',
+                    payment_reason: settings.value.handling_fees_reason,
+                    iban: null,
+                    status: 'to_pay',
+                    notes: null
+                }
             );
+        } else {
+            await removeAccountingTransaction(
+                t => t.transaction_type === 'purchase' && t.installment === 'deposit'
+                    && t.accounting_entry_id === handlingFeesEntryId
+            );
+        }
 
-            const saldoPayload = {
-                service_id: serviceId,
-                transaction_date: today,
-                amount: form.value.balance_taxable,
-                transaction_type: 'sale',
-                installment: 'balance',
-                accounting_entry_id: settings.value.balance_accounting_entry_id,
-                counterpart_id: clientId,
-                document_number: null,
-                document_due_date: null,
-                payment_date: null,
-                payment_type: 'contanti',
-                payment_reason: settings.value.balance_reason,
-                iban: null,
-                status: 'to_collect',
-                notes: null
-            };
+        // === ACCONTO CARD FEES (deposit - componente Card Fees - acquisto) ===
+        const accontoCardAmount = (form.value.deposit_amount || 0) - (form.value.deposit_handling_fees || 0);
+        if (accontoCardAmount > 0 && cardFeesEntryId) {
+            await upsertAccountingTransaction(
+                t => t.transaction_type === 'purchase' && t.installment === 'deposit'
+                    && t.accounting_entry_id === cardFeesEntryId,
+                {
+                    service_id: serviceId,
+                    transaction_date: pickupDate,
+                    amount: parseFloat(accontoCardAmount.toFixed(2)),
+                    transaction_type: 'purchase',
+                    installment: 'deposit',
+                    accounting_entry_id: cardFeesEntryId,
+                    counterpart_id: clientId,
+                    document_number: null,
+                    document_due_date: null,
+                    payment_date: null,
+                    payment_type: 'carta_di_credito',
+                    payment_reason: settings.value.card_fees_reason,
+                    iban: null,
+                    status: 'to_pay',
+                    notes: null
+                }
+            );
+        } else {
+            await removeAccountingTransaction(
+                t => t.transaction_type === 'purchase' && t.installment === 'deposit'
+                    && t.accounting_entry_id === cardFeesEntryId
+            );
+        }
 
-            if (existingSaldo) {
-                // Update existing saldo
-                await axios.put(`/api/accounting-transactions/${existingSaldo.id}`, saldoPayload);
-            } else {
-                // Create new saldo
-                await axios.post('/api/accounting-transactions', saldoPayload);
-            }
+        // === SALDO VENDITA (balance - importo in base al radio selezionato) ===
+        let balanceAmount;
+        switch (form.value.balance_sale_type) {
+            case 'balance_handling_fees':
+                balanceAmount = form.value.balance_handling_fees;
+                break;
+            case 'balance_card_fees':
+                balanceAmount = form.value.balance_card_fees;
+                break;
+            default:
+                balanceAmount = form.value.balance_taxable;
+        }
+
+        if (balanceAmount && balanceAmount > 0) {
+            await upsertAccountingTransaction(
+                t => t.transaction_type === 'sale' && t.installment === 'balance'
+                    && t.accounting_entry_id === settings.value.balance_accounting_entry_id,
+                {
+                    service_id: serviceId,
+                    transaction_date: pickupDate,
+                    amount: balanceAmount,
+                    transaction_type: 'sale',
+                    installment: 'balance',
+                    accounting_entry_id: settings.value.balance_accounting_entry_id,
+                    counterpart_id: clientId,
+                    document_number: null,
+                    document_due_date: null,
+                    payment_date: null,
+                    payment_type: 'contanti',
+                    payment_reason: settings.value.balance_reason,
+                    iban: null,
+                    status: 'to_collect',
+                    notes: null
+                }
+            );
+        }
+
+        // === SALDO HANDLING FEES (condizionale: solo se radio = handling_fees o card_fees - acquisto) ===
+        const saldoHandlingAmount = (form.value.balance_handling_fees || 0) - (form.value.balance_taxable || 0);
+        if ((form.value.balance_sale_type === 'balance_handling_fees' || form.value.balance_sale_type === 'balance_card_fees')
+            && saldoHandlingAmount > 0 && handlingFeesEntryId) {
+            await upsertAccountingTransaction(
+                t => t.transaction_type === 'purchase' && t.installment === 'balance'
+                    && t.accounting_entry_id === handlingFeesEntryId,
+                {
+                    service_id: serviceId,
+                    transaction_date: pickupDate,
+                    amount: parseFloat(saldoHandlingAmount.toFixed(2)),
+                    transaction_type: 'purchase',
+                    installment: 'balance',
+                    accounting_entry_id: handlingFeesEntryId,
+                    counterpart_id: clientId,
+                    document_number: null,
+                    document_due_date: null,
+                    payment_date: null,
+                    payment_type: 'contanti',
+                    payment_reason: settings.value.handling_fees_reason,
+                    iban: null,
+                    status: 'to_pay',
+                    notes: null
+                }
+            );
+        } else {
+            await removeAccountingTransaction(
+                t => t.transaction_type === 'purchase' && t.installment === 'balance'
+                    && t.accounting_entry_id === handlingFeesEntryId
+            );
+        }
+
+        // === SALDO CARD FEES (condizionale: solo se radio = card_fees - acquisto) ===
+        const saldoCardAmount = (form.value.balance_card_fees || 0) - (form.value.balance_handling_fees || 0);
+        if (form.value.balance_sale_type === 'balance_card_fees'
+            && saldoCardAmount > 0 && cardFeesEntryId) {
+            await upsertAccountingTransaction(
+                t => t.transaction_type === 'purchase' && t.installment === 'balance'
+                    && t.accounting_entry_id === cardFeesEntryId,
+                {
+                    service_id: serviceId,
+                    transaction_date: pickupDate,
+                    amount: parseFloat(saldoCardAmount.toFixed(2)),
+                    transaction_type: 'purchase',
+                    installment: 'balance',
+                    accounting_entry_id: cardFeesEntryId,
+                    counterpart_id: clientId,
+                    document_number: null,
+                    document_due_date: null,
+                    payment_date: null,
+                    payment_type: 'contanti',
+                    payment_reason: settings.value.card_fees_reason,
+                    iban: null,
+                    status: 'to_pay',
+                    notes: null
+                }
+            );
+        } else {
+            await removeAccountingTransaction(
+                t => t.transaction_type === 'purchase' && t.installment === 'balance'
+                    && t.accounting_entry_id === cardFeesEntryId
+            );
         }
 
         // Handle Intermediazione (commission)
@@ -5242,31 +5411,36 @@ const processAccountingTransactions = async () => {
         );
 
         if (form.value.intermediary_commission && form.value.intermediary_commission > 0 && form.value.intermediary_id) {
-            const intermediationPayload = {
-                service_id: serviceId,
-                transaction_date: today,
-                amount: form.value.intermediary_commission,
-                transaction_type: 'intermediation',
-                installment: 'balance',
-                accounting_entry_id: settings.value.commission_accounting_entry_id,
-                counterpart_id: form.value.intermediary_id,
-                document_number: null,
-                document_due_date: null,
-                payment_date: null,
-                payment_type: null,
-                payment_reason: settings.value.commission_reason,
-                iban: null,
-                status: 'to_pay',
-                notes: null
-            };
-
             if (existingIntermediation) {
-                await axios.put(`/api/accounting-transactions/${existingIntermediation.id}`, intermediationPayload);
+                // Update only restricted fields
+                await axios.put(`/api/accounting-transactions/${existingIntermediation.id}`, {
+                    amount: form.value.intermediary_commission,
+                    counterpart_id: form.value.intermediary_id,
+                    transaction_type: 'intermediation',
+                    accounting_entry_id: settings.value.commission_accounting_entry_id,
+                    transaction_date: pickupDate,
+                });
             } else {
-                await axios.post('/api/accounting-transactions', intermediationPayload);
+                await axios.post('/api/accounting-transactions', {
+                    service_id: serviceId,
+                    transaction_date: pickupDate,
+                    amount: form.value.intermediary_commission,
+                    transaction_type: 'intermediation',
+                    installment: 'balance',
+                    accounting_entry_id: settings.value.commission_accounting_entry_id,
+                    counterpart_id: form.value.intermediary_id,
+                    document_number: null,
+                    document_due_date: null,
+                    payment_date: null,
+                    payment_type: null,
+                    payment_reason: settings.value.commission_reason,
+                    iban: null,
+                    status: 'to_pay',
+                    notes: null,
+                    is_automatic: true,
+                });
             }
         } else if (existingIntermediation) {
-            // Commission is 0 or not set - remove existing intermediation transaction
             await axios.delete(`/api/accounting-transactions/${existingIntermediation.id}`);
         }
 
@@ -5277,31 +5451,36 @@ const processAccountingTransactions = async () => {
         );
 
         if (form.value.fuel_cost && form.value.fuel_cost > 0 && form.value.supplier_id) {
-            const fuelPayload = {
-                service_id: serviceId,
-                transaction_date: today,
-                amount: form.value.fuel_cost,
-                transaction_type: 'purchase',
-                installment: 'balance',
-                accounting_entry_id: settings.value.fuel_accounting_entry_id,
-                counterpart_id: form.value.supplier_id,
-                document_number: null,
-                document_due_date: null,
-                payment_date: null,
-                payment_type: null,
-                payment_reason: settings.value.fuel_reason,
-                iban: null,
-                status: 'to_pay',
-                notes: null
-            };
-
             if (existingFuel) {
-                await axios.put(`/api/accounting-transactions/${existingFuel.id}`, fuelPayload);
+                // Update only restricted fields
+                await axios.put(`/api/accounting-transactions/${existingFuel.id}`, {
+                    amount: form.value.fuel_cost,
+                    counterpart_id: form.value.supplier_id,
+                    transaction_type: 'purchase',
+                    accounting_entry_id: settings.value.fuel_accounting_entry_id,
+                    transaction_date: pickupDate,
+                });
             } else {
-                await axios.post('/api/accounting-transactions', fuelPayload);
+                await axios.post('/api/accounting-transactions', {
+                    service_id: serviceId,
+                    transaction_date: pickupDate,
+                    amount: form.value.fuel_cost,
+                    transaction_type: 'purchase',
+                    installment: 'balance',
+                    accounting_entry_id: settings.value.fuel_accounting_entry_id,
+                    counterpart_id: form.value.supplier_id,
+                    document_number: null,
+                    document_due_date: null,
+                    payment_date: null,
+                    payment_type: null,
+                    payment_reason: settings.value.fuel_reason,
+                    iban: null,
+                    status: 'to_pay',
+                    notes: null,
+                    is_automatic: true,
+                });
             }
         } else if (existingFuel) {
-            // Fuel cost is 0 or not set - remove existing fuel transaction
             await axios.delete(`/api/accounting-transactions/${existingFuel.id}`);
         }
 
@@ -5312,23 +5491,18 @@ const processAccountingTransactions = async () => {
     }
 };
 
-// Remove sale, intermediation, and auto-generated purchase accounting transactions
+// Remove only automatic accounting transactions (is_automatic === true)
 const removeAccountingTransactions = async () => {
     try {
-        // Find sale transactions (deposit and balance), intermediation, and fuel purchase transactions
-        const fuelEntryId = settings.value ? settings.value.fuel_accounting_entry_id : null;
         const transactionsToRemove = form.value.accounting_transactions.filter(
-            t => (t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance'))
-                || t.transaction_type === 'intermediation'
-                || (t.transaction_type === 'purchase' && t.accounting_entry_id === fuelEntryId)
+            t => t.is_automatic === true
         );
 
         if (transactionsToRemove.length === 0) {
-            console.warn('No accounting transactions to remove');
+            console.warn('No automatic accounting transactions to remove');
             return false;
         }
 
-        // Delete all matching transactions
         for (const transaction of transactionsToRemove) {
             await axios.delete(`/api/accounting-transactions/${transaction.id}`);
         }
@@ -5555,6 +5729,20 @@ onMounted(async () => {
         }
         if (props.service.drivers) {
             form.value.driver_ids = props.service.drivers.map(d => d.id);
+
+            // Merge soft-deleted drivers into the dropdown list so they still appear as selected
+            props.service.drivers.forEach(d => {
+                if (d.deleted_at && !drivers.value.find(existing => existing.id === d.id)) {
+                    drivers.value.push(d);
+                }
+            });
+        }
+
+        // Merge soft-deleted vehicle into the dropdown list so it still appears as selected
+        if (props.service.vehicle && props.service.vehicle.deleted_at) {
+            if (!vehicles.value.find(v => v.id === props.service.vehicle.id)) {
+                vehicles.value.push(props.service.vehicle);
+            }
         }
         if (props.service.tasks) {
             serviceTasks.value = props.service.tasks;
@@ -5584,6 +5772,9 @@ onMounted(async () => {
         }
         if (!form.value.deposit_percentage) {
             form.value.deposit_percentage = 30;
+        }
+        if (!form.value.balance_sale_type) {
+            form.value.balance_sale_type = 'balance_taxable';
         }
     } else {
         // Set defaults for new service

@@ -27,6 +27,7 @@ class AccountingTransaction extends Model
         'iban',
         'status',
         'notes',
+        'is_automatic',
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class AccountingTransaction extends Model
         'document_due_date' => 'date',
         'payment_date' => 'date',
         'amount' => 'decimal:2',
+        'is_automatic' => 'boolean',
     ];
 
     /**

@@ -363,10 +363,24 @@ export default {
 
         <!-- Impostazioni (solo per admin e super-admin) -->
         <li class="nav-item" v-if="$page.props.auth?.user?.role === 'admin' || $page.props.auth?.user?.role === 'super-admin'">
-          <Link href="/easyncc/settings" class="nav-link menu-link">
+          <a class="nav-link menu-link" href="#sidebarSettings" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarSettings">
             <i class="ri-settings-3-line"></i>
             <span>Impostazioni</span>
-          </Link>
+          </a>
+          <div class="collapse menu-dropdown" id="sidebarSettings">
+            <ul class="nav nav-sm flex-column">
+              <li class="nav-item">
+                <Link href="/easyncc/settings" class="nav-link">
+                  Generali
+                </Link>
+              </li>
+              <li class="nav-item">
+                <Link href="/easyncc/settings/telegram" class="nav-link">
+                  Telegram Bot
+                </Link>
+              </li>
+            </ul>
+          </div>
         </li>
     </ul>
   </template>

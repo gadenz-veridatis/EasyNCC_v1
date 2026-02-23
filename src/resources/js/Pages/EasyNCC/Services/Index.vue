@@ -40,36 +40,18 @@
                                 />
                             </BCol>
                             <BCol md="2">
-                                <label class="form-label">Data Pickup Da</label>
+                                <label class="form-label">Da</label>
                                 <input
-                                    v-model="filters.pickup_date_from"
+                                    v-model="filters.date_from"
                                     type="date"
                                     class="form-control form-control-sm"
                                     @change="loadServicesFromFilter"
                                 />
                             </BCol>
                             <BCol md="2">
-                                <label class="form-label">Data Pickup A</label>
+                                <label class="form-label">A</label>
                                 <input
-                                    v-model="filters.pickup_date_to"
-                                    type="date"
-                                    class="form-control form-control-sm"
-                                    @change="loadServicesFromFilter"
-                                />
-                            </BCol>
-                            <BCol md="2">
-                                <label class="form-label">Data Dropoff Da</label>
-                                <input
-                                    v-model="filters.dropoff_date_from"
-                                    type="date"
-                                    class="form-control form-control-sm"
-                                    @change="loadServicesFromFilter"
-                                />
-                            </BCol>
-                            <BCol md="2">
-                                <label class="form-label">Data Dropoff A</label>
-                                <input
-                                    v-model="filters.dropoff_date_to"
+                                    v-model="filters.date_to"
                                     type="date"
                                     class="form-control form-control-sm"
                                     @change="loadServicesFromFilter"
@@ -162,7 +144,31 @@
                         </div>
 
                         <!-- Preset Filter Buttons -->
-                        <div class="d-flex gap-2 mb-3">
+                        <div class="d-flex gap-2 mb-3 align-items-center">
+                            <button
+                                type="button"
+                                class="btn btn-sm"
+                                :class="activePreset === 'tutti' ? 'btn-primary' : 'btn-soft-primary'"
+                                @click="filterAll"
+                            >
+                                Tutti
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-sm"
+                                :class="activePreset === 'da_oggi' ? 'btn-primary' : 'btn-soft-primary'"
+                                @click="filterFromToday"
+                            >
+                                Da Oggi
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-sm"
+                                :class="activePreset === 'settimana' ? 'btn-primary' : 'btn-soft-primary'"
+                                @click="filterWeek"
+                            >
+                                Settimana
+                            </button>
                             <button
                                 type="button"
                                 class="btn btn-sm"
@@ -179,22 +185,17 @@
                             >
                                 Domani
                             </button>
-                            <button
-                                type="button"
+                            <span class="text-muted mx-1">|</span>
+                            <span class="text-muted fw-medium me-1">Servizi del:</span>
+                            <input
+                                v-model="specificDate"
+                                type="date"
                                 class="btn btn-sm"
-                                :class="activePreset === 'settimana' ? 'btn-primary' : 'btn-soft-primary'"
-                                @click="filterWeek"
-                            >
-                                Settimana
-                            </button>
-                            <button
-                                type="button"
-                                class="btn btn-sm"
-                                :class="activePreset === 'tutti' ? 'btn-primary' : 'btn-soft-primary'"
-                                @click="filterAll"
-                            >
-                                Tutti
-                            </button>
+                                :class="activePreset === 'specific' ? 'btn-primary' : 'btn-soft-primary'"
+                                style="width: auto; cursor: pointer;"
+                                @change="filterSpecificDate"
+                                title="Filtra per giorno specifico"
+                            />
                         </div>
 
                         <!-- Bulk Actions Area (Collapsible) -->
@@ -223,7 +224,7 @@
                             <table class="table table-hover table-bordered align-middle mb-0">
                                 <thead class="table-dark">
                                     <tr>
-                                        <th scope="col" style="width: 50px;">
+                                        <th scope="col" style="min-width: 140px;">
                                             <input type="checkbox" v-model="selectAll" @change="toggleSelectAll" class="form-check-input">
                                         </th>
                                         <th scope="col" @click="sortBy('reference_number')" style="cursor: pointer;">
@@ -251,8 +252,6 @@
                                             Economics
                                             <i v-if="sortField === 'price'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
                                         </th>
-                                        <th scope="col">Notifiche</th>
-                                        <th scope="col">Azioni</th>
                                         <th scope="col" v-if="isSuperAdmin" @click="sortBy('company_id')" style="cursor: pointer;">
                                             Azienda
                                             <i v-if="sortField === 'company_id'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
@@ -261,8 +260,40 @@
                                 </thead>
                                 <tbody>
                                     <tr v-for="service in services" :key="service.id" :class="{ 'table-active': selectedServices.includes(service.id) }">
+                                        <!-- Colonna unificata: Selezione + Azioni + Notifiche -->
                                         <td>
-                                            <input type="checkbox" v-model="selectedServices" :value="service.id" class="form-check-input">
+                                            <!-- Riga 1: Checkbox + Azioni -->
+                                            <div class="d-flex align-items-center gap-1 mb-2">
+                                                <input type="checkbox" v-model="selectedServices" :value="service.id" class="form-check-input me-1">
+                                                <Link :href="route('easyncc.services.show', service.id)" class="btn btn-sm btn-soft-primary" title="Visualizza">
+                                                    <i class="ri-eye-line"></i>
+                                                </Link>
+                                                <Link :href="route('easyncc.services.edit', service.id)" class="btn btn-sm btn-soft-info" title="Modifica">
+                                                    <i class="ri-edit-line"></i>
+                                                </Link>
+                                                <button class="btn btn-sm btn-soft-danger" @click="deleteService(service.id)" title="Elimina">
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </button>
+                                            </div>
+                                            <!-- Riga 2: Stato servizio -->
+                                            <div class="mb-1" v-if="service.status">
+                                                <span class="badge" :class="getStatusBadgeClass(service.status.name)">{{ service.status.name }}</span>
+                                            </div>
+                                            <!-- Riga 3: Indicatori -->
+                                            <div class="d-flex align-items-center gap-2 small">
+                                                <span style="cursor: pointer;" @click="showTransactionsPopup(service)" title="Movimenti contabili">
+                                                    <i class="ri-file-list-line" :class="service.accounting_transactions_count > 0 ? 'text-success' : 'text-muted'"></i>
+                                                    {{ service.accounting_transactions_count || 0 }}
+                                                </span>
+                                                <span style="cursor: pointer;" @click="showTasksPopup(service)" title="Task">
+                                                    <i class="ri-task-line" :class="service.tasks_count > 0 ? getTaskIconClass(service) : 'text-muted'"></i>
+                                                    {{ getCompletedTasksCount(service) }}/{{ service.tasks_count || 0 }}
+                                                </span>
+                                                <span v-if="getTotalOverlapsCount(service) > 0" style="cursor: pointer;" @click="showOverlapsPopup(service)" title="Sovrapposizioni">
+                                                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background-color: #ffc107; color: #000; font-weight: bold; font-size: 0.7rem; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); line-height: 1; padding-top: 4px;">!</span>
+                                                    {{ getTotalOverlapsCount(service) }}
+                                                </span>
+                                            </div>
                                         </td>
                                         <!-- Dati Identificativi -->
                                         <td>
@@ -574,58 +605,6 @@
                                             >
                                                 <span class="badge bg-success fs-6 px-3 py-2">€{{ formatCurrency(service.service_price) }}</span>
                                             </div>
-                                        </td>
-                                        <!-- Notifiche -->
-                                        <td>
-                                            <!-- Status di Conferma -->
-                                            <div class="mb-2" v-if="service.status">
-                                                <span class="badge" :class="getStatusBadgeClass(service.status.name)">{{ service.status.name }}</span>
-                                            </div>
-
-                                            <div class="small">
-                                                <!-- Movimenti Contabili -->
-                                                <div class="mb-1">
-                                                    <i
-                                                        class="ri-file-list-line"
-                                                        :class="service.accounting_transactions_count > 0 ? 'text-success' : 'text-muted'"
-                                                        style="cursor: pointer;"
-                                                        @click="showTransactionsPopup(service)"
-                                                        title="Clicca per vedere i movimenti"
-                                                    ></i> {{ service.accounting_transactions_count || 0 }}
-                                                </div>
-                                                <!-- Task -->
-                                                <div>
-                                                    <i
-                                                        class="ri-task-line"
-                                                        :class="service.tasks_count > 0 ? getTaskIconClass(service) : 'text-muted'"
-                                                        style="cursor: pointer;"
-                                                        @click="showTasksPopup(service)"
-                                                        title="Clicca per vedere i task"
-                                                    ></i>
-                                                    {{ getCompletedTasksCount(service) }}/{{ service.tasks_count || 0 }}
-                                                </div>
-                                                <!-- Sovrapposizioni -->
-                                                <div v-if="getTotalOverlapsCount(service) > 0" class="mb-1">
-                                                    <i
-                                                        class="ri-alert-fill text-warning"
-                                                        style="cursor: pointer;"
-                                                        @click="showOverlapsPopup(service)"
-                                                        title="Clicca per vedere le sovrapposizioni"
-                                                    ></i> {{ getTotalOverlapsCount(service) }}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <!-- Azioni -->
-                                        <td>
-                                            <Link :href="route('easyncc.services.show', service.id)" class="btn btn-sm btn-soft-primary me-1" title="Visualizza">
-                                                <i class="ri-eye-line"></i>
-                                            </Link>
-                                            <Link :href="route('easyncc.services.edit', service.id)" class="btn btn-sm btn-soft-info me-1" title="Modifica">
-                                                <i class="ri-edit-line"></i>
-                                            </Link>
-                                            <button class="btn btn-sm btn-soft-danger" @click="deleteService(service.id)" title="Elimina">
-                                                <i class="ri-delete-bin-line"></i>
-                                            </button>
                                         </td>
                                         <!-- Azienda (solo per super-admin) -->
                                         <td v-if="isSuperAdmin">
@@ -1048,10 +1027,8 @@ const currentUser = ref(null);
 // Filters
 const filters = ref({
     reference_name: '',
-    pickup_date_from: moment().format('YYYY-MM-DD'),
-    pickup_date_to: '',
-    dropoff_date_from: '',
-    dropoff_date_to: '',
+    date_from: moment().format('YYYY-MM-DD'),
+    date_to: '',
     service_type_id: '',
     client_id: '',
     intermediary_id: '',
@@ -1062,7 +1039,8 @@ const filters = ref({
 });
 
 // Active preset filter tracking
-const activePreset = ref('oggi');
+const activePreset = ref('da_oggi');
+const specificDate = ref('');
 
 // Show/Hide filters
 const showFilters = ref(true);
@@ -1148,10 +1126,19 @@ const loadServicesFromFilter = () => {
 };
 
 // Preset filter functions
+const filterFromToday = () => {
+    const today = moment().format('YYYY-MM-DD');
+    filters.value.date_from = today;
+    filters.value.date_to = '';
+    activePreset.value = 'da_oggi';
+    currentPage.value = 1;
+    loadServices();
+};
+
 const filterToday = () => {
     const today = moment().format('YYYY-MM-DD');
-    filters.value.pickup_date_from = today;
-    filters.value.pickup_date_to = today;
+    filters.value.date_from = today;
+    filters.value.date_to = today;
     activePreset.value = 'oggi';
     currentPage.value = 1;
     loadServices();
@@ -1159,8 +1146,8 @@ const filterToday = () => {
 
 const filterTomorrow = () => {
     const tomorrow = moment().add(1, 'days').format('YYYY-MM-DD');
-    filters.value.pickup_date_from = tomorrow;
-    filters.value.pickup_date_to = tomorrow;
+    filters.value.date_from = tomorrow;
+    filters.value.date_to = tomorrow;
     activePreset.value = 'domani';
     currentPage.value = 1;
     loadServices();
@@ -1169,20 +1156,28 @@ const filterTomorrow = () => {
 const filterWeek = () => {
     const startOfWeek = moment().startOf('isoWeek').format('YYYY-MM-DD');
     const endOfWeek = moment().endOf('isoWeek').format('YYYY-MM-DD');
-    filters.value.pickup_date_from = startOfWeek;
-    filters.value.pickup_date_to = endOfWeek;
+    filters.value.date_from = startOfWeek;
+    filters.value.date_to = endOfWeek;
     activePreset.value = 'settimana';
     currentPage.value = 1;
     loadServices();
 };
 
+const filterSpecificDate = () => {
+    if (specificDate.value) {
+        filters.value.date_from = specificDate.value;
+        filters.value.date_to = specificDate.value;
+        activePreset.value = 'specific';
+        currentPage.value = 1;
+        loadServices();
+    }
+};
+
 const filterAll = () => {
     filters.value = {
         reference_name: '',
-        pickup_date_from: '',
-        pickup_date_to: '',
-        dropoff_date_from: '',
-        dropoff_date_to: '',
+        date_from: '',
+        date_to: '',
         service_type_id: '',
         client_id: '',
         intermediary_id: '',
@@ -1191,6 +1186,7 @@ const filterAll = () => {
         status: '',
         company_id: ''
     };
+    specificDate.value = '';
     activePreset.value = 'tutti';
     currentPage.value = 1;
     loadServices();
@@ -1581,10 +1577,8 @@ const paginationPages = computed(() => {
 const resetFilters = () => {
     filters.value = {
         reference_name: '',
-        pickup_date_from: '',
-        pickup_date_to: '',
-        dropoff_date_from: '',
-        dropoff_date_to: '',
+        date_from: '',
+        date_to: '',
         service_type_id: '',
         client_id: '',
         intermediary_id: '',
@@ -1593,6 +1587,7 @@ const resetFilters = () => {
         status: '',
         company_id: ''
     };
+    specificDate.value = '';
     activePreset.value = null;
     currentPage.value = 1;
     loadServices();

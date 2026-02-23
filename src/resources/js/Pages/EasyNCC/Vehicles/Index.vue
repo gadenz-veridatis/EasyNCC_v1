@@ -61,6 +61,23 @@
                                 </BCol>
                             </BRow>
 
+                            <BRow class="mb-3">
+                                <BCol md="3">
+                                    <div class="form-check form-switch mt-2">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            id="showDeletedVehiclesSwitch"
+                                            v-model="showDeleted"
+                                            @change="loadVehicles"
+                                        />
+                                        <label class="form-check-label" for="showDeletedVehiclesSwitch">
+                                            Mostra cancellati
+                                        </label>
+                                    </div>
+                                </BCol>
+                            </BRow>
+
                             <!-- Reset Filters Button -->
                             <BRow v-if="hasActiveFilters">
                                 <BCol cols="12" class="d-flex justify-content-end">
@@ -110,7 +127,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="vehicle in sortedVehicles" :key="vehicle.id">
+                                    <tr v-for="vehicle in sortedVehicles" :key="vehicle.id" :class="{ 'row-deleted': vehicle.deleted_at }">
                                         <td>
                                             <div class="targa-auto mb-1">
                                                 <span class="codice-targa">{{ vehicle.license_plate }}</span>
@@ -212,18 +229,30 @@
                                             <span v-else class="text-muted small">Nessuna inattività</span>
                                         </td>
                                         <td>
-                                            <Link :href="route('easyncc.vehicles.show', vehicle.id)" class="btn btn-sm btn-soft-info me-2">
-                                                <i class="bx bx-show"></i>
-                                            </Link>
-                                            <Link :href="route('easyncc.vehicles.edit', vehicle.id)" class="btn btn-sm btn-soft-primary me-2">
-                                                <i class="bx bx-edit"></i>
-                                            </Link>
-                                            <button
-                                                class="btn btn-sm btn-soft-danger"
-                                                @click="deleteVehicle(vehicle.id)"
-                                            >
-                                                <i class="bx bx-trash"></i>
-                                            </button>
+                                            <template v-if="vehicle.deleted_at">
+                                                <span class="badge bg-danger me-2">Cancellato</span>
+                                                <button
+                                                    class="btn btn-sm btn-soft-success"
+                                                    @click="restoreVehicle(vehicle.id)"
+                                                    title="Ripristina"
+                                                >
+                                                    <i class="bx bx-undo"></i> Ripristina
+                                                </button>
+                                            </template>
+                                            <template v-else>
+                                                <Link :href="route('easyncc.vehicles.show', vehicle.id)" class="btn btn-sm btn-soft-info me-2">
+                                                    <i class="bx bx-show"></i>
+                                                </Link>
+                                                <Link :href="route('easyncc.vehicles.edit', vehicle.id)" class="btn btn-sm btn-soft-primary me-2">
+                                                    <i class="bx bx-edit"></i>
+                                                </Link>
+                                                <button
+                                                    class="btn btn-sm btn-soft-danger"
+                                                    @click="deleteVehicle(vehicle.id)"
+                                                >
+                                                    <i class="bx bx-trash"></i>
+                                                </button>
+                                            </template>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -478,6 +507,7 @@ const error = ref('');
 const companies = ref([]);
 const currentUser = ref(null);
 const showFilters = ref(true);
+const showDeleted = ref(false);
 const sortBy = ref('license_plate');
 const sortOrder = ref('asc');
 const currentPage = ref(1);
@@ -587,7 +617,8 @@ const loadVehicles = async () => {
         const params = {
             ...filters.value,
             page: currentPage.value,
-            per_page: perPage.value
+            per_page: perPage.value,
+            with_trashed: showDeleted.value ? 1 : 0
         };
 
         const response = await axios.get('/api/vehicles', { params });
@@ -639,6 +670,30 @@ const deleteVehicle = async (id) => {
     } catch (err) {
         Swal.fire('Errore!', 'Si è verificato un errore durante l\'eliminazione.', 'error');
         console.error('Error deleting vehicle:', err);
+    }
+};
+
+const restoreVehicle = async (id) => {
+    const result = await Swal.fire({
+        title: 'Ripristina veicolo?',
+        text: 'Vuoi ripristinare questo veicolo?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sì, ripristina!',
+        cancelButtonText: 'Annulla'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        await axios.post(`/api/vehicles/${id}/restore`);
+        Swal.fire('Ripristinato!', 'Il veicolo è stato ripristinato.', 'success');
+        await loadVehicles();
+    } catch (err) {
+        Swal.fire('Errore!', 'Si è verificato un errore durante il ripristino.', 'error');
+        console.error('Error restoring vehicle:', err);
     }
 };
 
@@ -873,5 +928,19 @@ onMounted(async () => {
 
 .cursor-pointer:hover {
     opacity: 0.8;
+}
+
+.row-deleted {
+    opacity: 0.5;
+    background-color: #f8d7da !important;
+}
+
+.row-deleted td {
+    text-decoration: line-through;
+    color: #6c757d;
+}
+
+.row-deleted td:last-child {
+    text-decoration: none;
 }
 </style>

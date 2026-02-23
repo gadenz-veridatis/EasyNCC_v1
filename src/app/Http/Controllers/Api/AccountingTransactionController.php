@@ -186,6 +186,7 @@ class AccountingTransactionController extends Controller
             'iban' => 'nullable|string|max:255',
             'status' => 'required|in:to_pay,paid,suspended,cancelled,to_collect,collected',
             'notes' => 'nullable|string',
+            'is_automatic' => 'sometimes|boolean',
         ]);
 
         // Set company_id based on user role
@@ -236,6 +237,7 @@ class AccountingTransactionController extends Controller
             'iban' => 'nullable|string|max:255',
             'status' => 'sometimes|required|in:to_pay,paid,suspended,cancelled,to_collect,collected',
             'notes' => 'nullable|string',
+            'is_automatic' => 'sometimes|boolean',
         ]);
 
         $accountingTransaction->update($validated);

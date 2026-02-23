@@ -60,21 +60,21 @@ class ServiceController extends Controller
     {
         // For list view, load essential relationships for display
         // Overlap details, transactions, tasks loaded on-demand via show()
-        $relationships = [
+        $query = Service::with([
             'vehicle:id,license_plate,brand,model',
             'client:id,name,surname,email,phone',
             'intermediary:id,name,surname,email,phone',
             'supplier:id,name,surname',
             'status:id,name',
             'company:id,name',
-            'drivers.driverProfile:user_id,color',
+            'drivers' => function ($q) {
+                $q->withTrashed()->with('driverProfile:user_id,color');
+            },
             'dressCode:id,name',
             'passengers:id,service_id,name,surname,phone,nationality',
             'activities.activityType:id,name',
             'activities.supplier:id,name,surname',
-        ];
-
-        $query = Service::with($relationships);
+        ]);
 
         // Add counts for notifications (lightweight counts only)
         if ($request->filled('with_counts') && $request->with_counts) {
@@ -142,28 +142,18 @@ class ServiceController extends Controller
             $query->where('contact_name', 'ilike', '%' . $request->reference_name . '%');
         }
 
-        // Filter by pickup date range
-        if ($request->filled('pickup_date_from') && $request->filled('pickup_date_to')) {
-            $query->whereBetween('pickup_datetime', [
-                $request->pickup_date_from . ' 00:00:00',
-                $request->pickup_date_to . ' 23:59:59'
-            ]);
-        } elseif ($request->filled('pickup_date_from')) {
-            $query->where('pickup_datetime', '>=', $request->pickup_date_from . ' 00:00:00');
-        } elseif ($request->filled('pickup_date_to')) {
-            $query->where('pickup_datetime', '<=', $request->pickup_date_to . ' 23:59:59');
-        }
-
-        // Filter by dropoff date range
-        if ($request->filled('dropoff_date_from') && $request->filled('dropoff_date_to')) {
-            $query->whereBetween('dropoff_datetime', [
-                $request->dropoff_date_from . ' 00:00:00',
-                $request->dropoff_date_to . ' 23:59:59'
-            ]);
-        } elseif ($request->filled('dropoff_date_from')) {
-            $query->where('dropoff_datetime', '>=', $request->dropoff_date_from . ' 00:00:00');
-        } elseif ($request->filled('dropoff_date_to')) {
-            $query->where('dropoff_datetime', '<=', $request->dropoff_date_to . ' 23:59:59');
+        // Filter by date range overlap: services whose duration [pickup, dropoff]
+        // overlaps even partially with the filter interval [date_from, date_to]
+        // Two intervals [A,B] and [C,D] overlap when A <= D AND B >= C
+        if ($request->filled('date_from') && $request->filled('date_to')) {
+            $query->where('pickup_datetime', '<=', $request->date_to . ' 23:59:59')
+                  ->where('dropoff_datetime', '>=', $request->date_from . ' 00:00:00');
+        } elseif ($request->filled('date_from')) {
+            // Services not ended before this date
+            $query->where('dropoff_datetime', '>=', $request->date_from . ' 00:00:00');
+        } elseif ($request->filled('date_to')) {
+            // Services that started by this date
+            $query->where('pickup_datetime', '<=', $request->date_to . ' 23:59:59');
         }
 
         // Filter by passenger name
@@ -292,10 +282,13 @@ class ServiceController extends Controller
             'vat_rate' => 'nullable|numeric|min:0|max:100',
             'card_fees_percentage' => 'nullable|numeric|min:0|max:100',
             'deposit_percentage' => 'nullable|numeric|min:0|max:100',
+            'deposit_taxable' => 'nullable|numeric|min:0',
+            'deposit_handling_fees' => 'nullable|numeric|min:0',
             'deposit_amount' => 'nullable|numeric|min:0',
             'balance_taxable' => 'nullable|numeric|min:0',
             'balance_handling_fees' => 'nullable|numeric|min:0',
             'balance_card_fees' => 'nullable|numeric|min:0',
+            'balance_sale_type' => 'nullable|string|in:balance_taxable,balance_handling_fees,balance_card_fees',
             'driver_compensation' => 'nullable|numeric|min:0',
             'intermediary_commission' => 'nullable|numeric|min:0',
             'expenses' => 'nullable|numeric|min:0',
@@ -339,7 +332,9 @@ class ServiceController extends Controller
             'supplier',
             'dressCode',
             'status',
-            'drivers.driverProfile',
+            'drivers' => function ($query) {
+                $query->withTrashed()->with('driverProfile');
+            },
             'passengers',
             'stops',
             'payments',
@@ -365,7 +360,9 @@ class ServiceController extends Controller
             'supplier',
             'dressCode',
             'status',
-            'drivers.driverProfile',
+            'drivers' => function ($query) {
+                $query->withTrashed()->with('driverProfile');
+            },
             'passengers',
             'stops',
             'payments',
@@ -487,10 +484,13 @@ class ServiceController extends Controller
             'vat_rate' => 'nullable|numeric|min:0|max:100',
             'card_fees_percentage' => 'nullable|numeric|min:0|max:100',
             'deposit_percentage' => 'nullable|numeric|min:0|max:100',
+            'deposit_taxable' => 'nullable|numeric|min:0',
+            'deposit_handling_fees' => 'nullable|numeric|min:0',
             'deposit_amount' => 'nullable|numeric|min:0',
             'balance_taxable' => 'nullable|numeric|min:0',
             'balance_handling_fees' => 'nullable|numeric|min:0',
             'balance_card_fees' => 'nullable|numeric|min:0',
+            'balance_sale_type' => 'nullable|string|in:balance_taxable,balance_handling_fees,balance_card_fees',
             'driver_compensation' => 'nullable|numeric|min:0',
             'intermediary_commission' => 'nullable|numeric|min:0',
             'expenses' => 'nullable|numeric|min:0',
@@ -546,7 +546,9 @@ class ServiceController extends Controller
             'supplier',
             'dressCode',
             'status',
-            'drivers.driverProfile',
+            'drivers' => function ($query) {
+                $query->withTrashed()->with('driverProfile');
+            },
             'passengers',
             'stops',
             'payments',

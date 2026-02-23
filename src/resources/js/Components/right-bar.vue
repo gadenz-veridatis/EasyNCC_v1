@@ -526,11 +526,7 @@ export default {
       <i class="ri-arrow-up-line"></i>
     </BButton>
 
-    <div class="customizer-setting d-none d-md-block" @click="click">
-      <div class="btn-info rounded-pill shadow-lg btn btn-icon btn-lg p-2" data-bs-toggle="offcanvas" data-bs-target="#theme-settings-offcanvas" aria-controls="theme-settings-offcanvas" id="mdi-cog">
-        <i class="mdi mdi-spin mdi-cog-outline fs-22"></i>
-      </div>
-    </div>
+    <!-- Theme customizer button removed -->
     <BOffcanvas class="border-0" id="theme-settings-offcanvas" header-class="d-flex align-items-center bg-primary bg-gradient p-3" body-class="p-0" z-index="1005" footer-class="offcanvas-footer border-top p-3 text-center" placement="end" v-model="show">
       <template #header>
         <div class="me-2">

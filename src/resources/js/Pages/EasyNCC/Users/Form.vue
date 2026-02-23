@@ -460,7 +460,7 @@
                             <!-- Info for driver attachments in create mode -->
                             <div v-if="!isEdit && form.role === 'driver'" class="mt-4 pt-4 border-top">
                                 <h6 class="text-muted mb-3">
-                                    <i class="ri-attachment-2 me-2"></i>Allegati Conducente
+                                    <i class="ri-attachment-2 me-2"></i>Allegati e Scadenze Conducente
                                 </h6>
                                 <div class="alert alert-info mb-0">
                                     <i class="ri-information-line me-2"></i>

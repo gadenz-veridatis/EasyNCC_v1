@@ -54,10 +54,13 @@ class Service extends Model
         'vat_rate',
         'card_fees_percentage',
         'deposit_percentage',
+        'deposit_taxable',
+        'deposit_handling_fees',
         'deposit_amount',
         'balance_taxable',
         'balance_handling_fees',
         'balance_card_fees',
+        'balance_sale_type',
         'driver_compensation',
         'intermediary_commission',
         'expenses',
@@ -93,6 +96,8 @@ class Service extends Model
         'vat_rate' => 'decimal:2',
         'card_fees_percentage' => 'decimal:2',
         'deposit_percentage' => 'decimal:2',
+        'deposit_taxable' => 'decimal:2',
+        'deposit_handling_fees' => 'decimal:2',
         'deposit_amount' => 'decimal:2',
         'balance_taxable' => 'decimal:2',
         'balance_handling_fees' => 'decimal:2',
@@ -110,7 +115,7 @@ class Service extends Model
     // Relationships
     public function vehicle(): BelongsTo
     {
-        return $this->belongsTo(Vehicle::class);
+        return $this->belongsTo(Vehicle::class)->withTrashed();
     }
 
     public function client(): BelongsTo

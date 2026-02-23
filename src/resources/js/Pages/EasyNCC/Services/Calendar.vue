@@ -515,8 +515,8 @@ const initializeCalendar = async () => {
                         const titleEl = info.el.querySelector('.fc-event-title') || info.el.querySelector('.fc-event-title-container');
                         if (titleEl) {
                             const warningIcon = document.createElement('span');
-                            warningIcon.innerHTML = '\u26A0';
-                            warningIcon.style.cssText = 'color: #ffc107; font-size: 0.85rem; margin-right: 3px; text-shadow: 0 0 2px rgba(0,0,0,0.5);';
+                            warningIcon.innerHTML = '!';
+                            warningIcon.style.cssText = 'display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; background-color: #ffc107; color: #000; font-weight: bold; font-size: 0.65rem; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); margin-right: 3px; padding-top: 4px; vertical-align: middle;';
                             titleEl.prepend(warningIcon);
                         }
                     }

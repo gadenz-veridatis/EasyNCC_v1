@@ -172,6 +172,10 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
             return inertia('EasyNCC/Settings/Index');
         })->name('settings')->middleware('role:super-admin,admin');
 
+        Route::get('/settings/telegram', function () {
+            return inertia('EasyNCC/Settings/Telegram');
+        })->name('settings.telegram')->middleware('role:super-admin,admin');
+
         // Companies
         Route::prefix('companies')->name('companies.')->middleware('role:super-admin')->group(function () {
             Route::get('/', function () {

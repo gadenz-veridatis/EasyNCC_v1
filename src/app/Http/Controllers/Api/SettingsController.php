@@ -37,6 +37,8 @@ class SettingsController extends Controller
             'driverCostAccountingEntry',
             'colleagueCostAccountingEntry',
             'experienceAccountingEntry',
+            'handlingFeesAccountingEntry',
+            'cardFeesAccountingEntry',
         ])
         ->where('company_id', $companyId)
         ->first();
@@ -71,6 +73,10 @@ class SettingsController extends Controller
                     'colleague_cost_reason' => null,
                     'experience_accounting_entry_id' => null,
                     'experience_reason' => null,
+                    'handling_fees_accounting_entry_id' => null,
+                    'handling_fees_reason' => null,
+                    'card_fees_accounting_entry_id' => null,
+                    'card_fees_reason' => null,
                 ]
             ]);
         }
@@ -112,6 +118,10 @@ class SettingsController extends Controller
             'colleague_cost_reason' => 'nullable|string|max:255',
             'experience_accounting_entry_id' => 'nullable|exists:accounting_entries,id',
             'experience_reason' => 'nullable|string|max:255',
+            'handling_fees_accounting_entry_id' => 'nullable|exists:accounting_entries,id',
+            'handling_fees_reason' => 'nullable|string|max:255',
+            'card_fees_accounting_entry_id' => 'nullable|exists:accounting_entries,id',
+            'card_fees_reason' => 'nullable|string|max:255',
         ]);
 
         $user = Auth::user();
@@ -152,6 +162,10 @@ class SettingsController extends Controller
                 'colleague_cost_reason' => $validated['colleague_cost_reason'] ?? null,
                 'experience_accounting_entry_id' => $validated['experience_accounting_entry_id'] ?? null,
                 'experience_reason' => $validated['experience_reason'] ?? null,
+                'handling_fees_accounting_entry_id' => $validated['handling_fees_accounting_entry_id'] ?? null,
+                'handling_fees_reason' => $validated['handling_fees_reason'] ?? null,
+                'card_fees_accounting_entry_id' => $validated['card_fees_accounting_entry_id'] ?? null,
+                'card_fees_reason' => $validated['card_fees_reason'] ?? null,
             ]
         );
 
@@ -168,6 +182,8 @@ class SettingsController extends Controller
             'driverCostAccountingEntry',
             'colleagueCostAccountingEntry',
             'experienceAccountingEntry',
+            'handlingFeesAccountingEntry',
+            'cardFeesAccountingEntry',
         ]);
 
         return response()->json([

@@ -27,7 +27,12 @@ class UserController extends Controller
             $relationships[] = 'driverAttachments';
         }
 
-        $query = User::with($relationships);
+        // Include soft-deleted users if requested (for admin views)
+        if ($request->boolean('with_trashed')) {
+            $query = User::withTrashed()->with($relationships);
+        } else {
+            $query = User::with($relationships);
+        }
 
         // Multi-tenancy: Filter by company
         // Super-admin can see all companies or filter by company_id
@@ -321,6 +326,17 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'User deleted successfully'], 200);
+    }
+
+    /**
+     * Restore a soft-deleted user.
+     */
+    public function restore(int $id): JsonResponse
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+
+        return response()->json(['message' => 'User restored successfully', 'data' => $user]);
     }
 
     /**

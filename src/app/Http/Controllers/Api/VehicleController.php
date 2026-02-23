@@ -15,7 +15,12 @@ class VehicleController extends Controller
     public function index(Request $request): JsonResponse
     {
         // For list view, load essential relationships including attachments and unavailabilities
-        $query = Vehicle::with(['company:id,name', 'vehicleAttachments', 'unavailabilities']);
+        // Include soft-deleted vehicles if requested (for admin views)
+        if ($request->boolean('with_trashed')) {
+            $query = Vehicle::withTrashed()->with(['company:id,name', 'vehicleAttachments', 'unavailabilities']);
+        } else {
+            $query = Vehicle::with(['company:id,name', 'vehicleAttachments', 'unavailabilities']);
+        }
 
         // Multi-tenancy: Filter by company
         // Super-admin can see all companies or filter by company_id
@@ -164,5 +169,16 @@ class VehicleController extends Controller
         $vehicle->delete();
 
         return response()->json(['message' => 'Vehicle deleted successfully'], 200);
+    }
+
+    /**
+     * Restore a soft-deleted vehicle.
+     */
+    public function restore(int $id): JsonResponse
+    {
+        $vehicle = Vehicle::withTrashed()->findOrFail($id);
+        $vehicle->restore();
+
+        return response()->json(['message' => 'Vehicle restored successfully', 'data' => $vehicle]);
     }
 }

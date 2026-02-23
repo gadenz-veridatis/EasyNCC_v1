@@ -38,6 +38,10 @@ class Settings extends Model
         'colleague_cost_reason',
         'experience_accounting_entry_id',
         'experience_reason',
+        'handling_fees_accounting_entry_id',
+        'handling_fees_reason',
+        'card_fees_accounting_entry_id',
+        'card_fees_reason',
     ];
 
     protected $casts = [
@@ -104,5 +108,15 @@ class Settings extends Model
     public function experienceAccountingEntry(): BelongsTo
     {
         return $this->belongsTo(AccountingEntry::class, 'experience_accounting_entry_id');
+    }
+
+    public function handlingFeesAccountingEntry(): BelongsTo
+    {
+        return $this->belongsTo(AccountingEntry::class, 'handling_fees_accounting_entry_id');
+    }
+
+    public function cardFeesAccountingEntry(): BelongsTo
+    {
+        return $this->belongsTo(AccountingEntry::class, 'card_fees_accounting_entry_id');
     }
 }

@@ -462,6 +462,78 @@
                                             </small>
                                         </BCol>
                                     </BRow>
+
+                                    <!-- I: Handling Fees -->
+                                    <BRow>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Contabile per Handling Fees</label>
+                                            <select
+                                                v-model="form.handling_fees_accounting_entry_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">Seleziona causale contabile</option>
+                                                <option
+                                                    v-for="entry in accountingEntries"
+                                                    :key="entry.id"
+                                                    :value="entry.id"
+                                                >
+                                                    {{ entry.abbreviation }} - {{ entry.name }}
+                                                </option>
+                                            </select>
+                                            <small class="text-muted">
+                                                Causale contabile da utilizzare per i movimenti di handling fees
+                                            </small>
+                                        </BCol>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Movimento Handling Fees</label>
+                                            <input
+                                                v-model="form.handling_fees_reason"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Es. Handling fees"
+                                                maxlength="255"
+                                            />
+                                            <small class="text-muted">
+                                                Testo da usare come causale del movimento di handling fees
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+
+                                    <!-- J: Card Fees -->
+                                    <BRow>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Contabile per Card Fees</label>
+                                            <select
+                                                v-model="form.card_fees_accounting_entry_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">Seleziona causale contabile</option>
+                                                <option
+                                                    v-for="entry in accountingEntries"
+                                                    :key="entry.id"
+                                                    :value="entry.id"
+                                                >
+                                                    {{ entry.abbreviation }} - {{ entry.name }}
+                                                </option>
+                                            </select>
+                                            <small class="text-muted">
+                                                Causale contabile da utilizzare per i movimenti di card fees
+                                            </small>
+                                        </BCol>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Movimento Card Fees</label>
+                                            <input
+                                                v-model="form.card_fees_reason"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Es. Card fees"
+                                                maxlength="255"
+                                            />
+                                            <small class="text-muted">
+                                                Testo da usare come causale del movimento di card fees
+                                            </small>
+                                        </BCol>
+                                    </BRow>
                                 </fieldset>
 
                                 <!-- Sezione Esperienze -->
@@ -617,6 +689,10 @@ export default {
                 colleague_cost_reason: null,
                 experience_accounting_entry_id: null,
                 experience_reason: null,
+                handling_fees_accounting_entry_id: null,
+                handling_fees_reason: null,
+                card_fees_accounting_entry_id: null,
+                card_fees_reason: null,
                 activity_confirmation_text: null,
                 activity_confirmation_role: null,
                 default_supplier_id: null,
@@ -691,6 +767,10 @@ export default {
                     colleague_cost_reason: data.colleague_cost_reason || null,
                     experience_accounting_entry_id: data.experience_accounting_entry_id || null,
                     experience_reason: data.experience_reason || null,
+                    handling_fees_accounting_entry_id: data.handling_fees_accounting_entry_id || null,
+                    handling_fees_reason: data.handling_fees_reason || null,
+                    card_fees_accounting_entry_id: data.card_fees_accounting_entry_id || null,
+                    card_fees_reason: data.card_fees_reason || null,
                     activity_confirmation_text: data.activity_confirmation_text || null,
                     activity_confirmation_role: data.activity_confirmation_role || null,
                     default_supplier_id: data.default_supplier_id || null,

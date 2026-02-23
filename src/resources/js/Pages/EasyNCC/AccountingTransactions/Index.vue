@@ -355,6 +355,7 @@
                                     <tr v-for="transaction in transactions" :key="transaction.id">
                                         <td>
                                             <input
+                                                v-if="!transaction.is_automatic"
                                                 type="checkbox"
                                                 class="form-check-input"
                                                 :value="transaction.id"
@@ -369,6 +370,8 @@
                                             >
                                                 {{ getTransactionTypeAbbr(transaction.transaction_type) }}
                                             </span>
+                                            <span v-if="transaction.is_automatic" class="badge bg-info-subtle text-info ms-1" title="Automatico">A</span>
+                                            <span v-else class="badge bg-warning-subtle text-warning ms-1" title="Manuale">M</span>
                                         </td>
                                         <td class="fw-medium">€ {{ parseFloat(transaction.amount).toFixed(2) }}</td>
                                         <td>
@@ -411,11 +414,53 @@
                                         </td>
                                         <td>
                                             <span
+                                                v-if="editingStatus !== transaction.id"
+                                                @click="startEditStatus(transaction)"
                                                 :class="getStatusBadgeClass(transaction.status)"
-                                                :title="getStatusLabel(transaction.status, transaction.transaction_type)"
+                                                class="cursor-pointer"
+                                                :title="getStatusLabel(transaction.status, transaction.transaction_type) + ' - Clicca per modificare'"
                                             >
                                                 {{ getStatusAbbr(transaction.status, transaction.transaction_type) }}
                                             </span>
+                                            <div v-else>
+                                                <select
+                                                    v-model="editingStatusValue"
+                                                    class="form-select form-select-sm mb-1"
+                                                    @keyup.esc="cancelEditStatus"
+                                                    style="max-width: 130px;"
+                                                >
+                                                    <template v-if="transaction.transaction_type === 'purchase' || transaction.transaction_type === 'intermediation'">
+                                                        <option value="to_pay">Da Pagare</option>
+                                                        <option value="paid">Pagato</option>
+                                                        <option value="suspended">Sospeso</option>
+                                                        <option value="cancelled">Annullato</option>
+                                                    </template>
+                                                    <template v-else-if="transaction.transaction_type === 'sale'">
+                                                        <option value="to_collect">Da Incassare</option>
+                                                        <option value="collected">Incassato</option>
+                                                        <option value="suspended">Sospeso</option>
+                                                        <option value="cancelled">Annullato</option>
+                                                    </template>
+                                                </select>
+                                                <div class="d-flex gap-1">
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-success btn-sm"
+                                                        @click="saveStatus(transaction)"
+                                                        title="Salva"
+                                                    >
+                                                        <i class="ri-check-line"></i>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-secondary btn-sm"
+                                                        @click="cancelEditStatus"
+                                                        title="Annulla"
+                                                    >
+                                                        <i class="ri-close-line"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td>
                                             <Link v-if="transaction.service"
@@ -443,7 +488,7 @@
                                                     @click="deleteTransaction(transaction.id)"
                                                     class="btn btn-soft-danger btn-sm"
                                                     title="Elimina"
-                                                    v-if="canDelete"
+                                                    v-if="canDelete && !transaction.is_automatic"
                                                 >
                                                     <i class="ri-delete-bin-line"></i>
                                                 </button>
@@ -558,6 +603,8 @@ export default {
         const sortField = ref('transaction_date');
         const sortDirection = ref('desc');
         const selectedTransactions = ref([]);
+        const editingStatus = ref(null);
+        const editingStatusValue = ref('');
 
         const filters = ref({
             company_id: '',
@@ -822,6 +869,34 @@ export default {
             }
         };
 
+        // Inline status editing functions
+        const startEditStatus = (transaction) => {
+            editingStatus.value = transaction.id;
+            editingStatusValue.value = transaction.status;
+        };
+
+        const saveStatus = async (transaction) => {
+            try {
+                await axios.put(`/api/accounting-transactions/${transaction.id}`, {
+                    status: editingStatusValue.value,
+                });
+                // Update local data
+                transaction.status = editingStatusValue.value;
+                editingStatus.value = null;
+                editingStatusValue.value = '';
+                // Reload summary
+                loadSummary();
+            } catch (error) {
+                console.error('Error updating status:', error);
+                alert('Errore durante l\'aggiornamento dello stato');
+            }
+        };
+
+        const cancelEditStatus = () => {
+            editingStatus.value = null;
+            editingStatusValue.value = '';
+        };
+
         const formatDate = (date) => {
             return date ? moment(date).format('DD/MM/YYYY') : '-';
         };
@@ -1002,6 +1077,11 @@ export default {
             getStatusAbbr,
             getStatusBadgeClass,
             getDueDateClass,
+            editingStatus,
+            editingStatusValue,
+            startEditStatus,
+            saveStatus,
+            cancelEditStatus,
             route: window.route,
         };
     },

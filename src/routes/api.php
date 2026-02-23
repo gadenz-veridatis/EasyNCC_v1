@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\AccountingTransactionController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\SettingsController;
+use App\Http\Controllers\Api\TelegramConfigController;
 
 /*
 |--------------------------------------------------------------------------
@@ -61,6 +62,7 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
 
     Route::middleware(['role:super-admin,admin'])->group(function () {
         Route::delete('users/{user}', [UserController::class, 'destroy']);
+        Route::post('users/{user}/restore', [UserController::class, 'restore']);
     });
 
     // Driver Attachments - admin and operator can manage
@@ -84,6 +86,7 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
 
     Route::middleware(['role:super-admin,admin'])->group(function () {
         Route::delete('vehicles/{vehicle}', [VehicleController::class, 'destroy']);
+        Route::post('vehicles/{vehicle}/restore', [VehicleController::class, 'restore']);
     });
 
     // Vehicle Attachments - admin and operator can manage
@@ -178,5 +181,14 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::get('settings', [SettingsController::class, 'index']);
         Route::put('settings', [SettingsController::class, 'update']);
         Route::get('settings/accounting-entries', [SettingsController::class, 'getAccountingEntries']);
+    });
+
+    // Telegram Config - only admin and super-admin can access
+    Route::middleware(['role:super-admin,admin'])->group(function () {
+        Route::get('telegram/config', [TelegramConfigController::class, 'index']);
+        Route::put('telegram/config', [TelegramConfigController::class, 'update']);
+        Route::post('telegram/webhook/activate', [TelegramConfigController::class, 'activateWebhook']);
+        Route::post('telegram/webhook/deactivate', [TelegramConfigController::class, 'deactivateWebhook']);
+        Route::get('telegram/webhook/info', [TelegramConfigController::class, 'webhookInfo']);
     });
 });

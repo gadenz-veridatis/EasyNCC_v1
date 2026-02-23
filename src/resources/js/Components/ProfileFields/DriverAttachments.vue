@@ -1,7 +1,7 @@
 <template>
     <div class="mt-4 pt-3 border-top">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="card-subtitle mb-0 text-muted">Allegati Conducente</h6>
+            <h6 class="card-subtitle mb-0 text-muted">Allegati e Scadenze Conducente</h6>
             <button type="button" class="btn btn-sm btn-soft-primary" @click="showAddModal = true">
                 <i class="ri-add-line me-1"></i> Aggiungi Allegato
             </button>
@@ -29,18 +29,26 @@
                     <tr v-for="attachment in attachments" :key="attachment.id">
                         <td>{{ attachment.attachment_type }}</td>
                         <td>
-                            <i class="ri-file-line me-1"></i>
-                            <a
-                                href="javascript:void(0)"
-                                class="link-primary"
-                                @click="showAttachmentPreview(attachment)"
-                                title="Visualizza anteprima"
-                            >
-                                {{ attachment.file_name }}
-                            </a>
-                            <small class="text-muted d-block">
-                                {{ formatFileSize(attachment.file_size) }}
-                            </small>
+                            <template v-if="attachment.file_name">
+                                <i class="ri-file-line me-1"></i>
+                                <a
+                                    href="javascript:void(0)"
+                                    class="link-primary"
+                                    @click="showAttachmentPreview(attachment)"
+                                    title="Visualizza anteprima"
+                                >
+                                    {{ attachment.file_name }}
+                                </a>
+                                <small class="text-muted d-block">
+                                    {{ formatFileSize(attachment.file_size) }}
+                                </small>
+                            </template>
+                            <template v-else>
+                                <span class="text-warning">
+                                    <i class="ri-error-warning-line me-1"></i>
+                                    Nessun file allegato
+                                </span>
+                            </template>
                         </td>
                         <td>
                             <span v-if="attachment.expiration_date" :class="getExpirationClass(attachment.expiration_date)">
@@ -53,6 +61,7 @@
                         </td>
                         <td class="text-end">
                             <button
+                                v-if="attachment.file_name"
                                 type="button"
                                 class="btn btn-sm btn-soft-info me-1"
                                 @click="downloadAttachment(attachment)"
@@ -111,7 +120,7 @@
                     </BCol>
 
                     <BCol cols="12" class="mb-3">
-                        <label for="file" class="form-label">File *</label>
+                        <label for="file" class="form-label">File</label>
                         <input
                             id="file"
                             ref="fileInput"
@@ -119,9 +128,8 @@
                             class="form-control"
                             :class="{ 'is-invalid': formErrors.file }"
                             @change="handleFileChange"
-                            required
                         />
-                        <small class="text-muted">Dimensione massima: 10MB</small>
+                        <small class="text-muted">Opzionale. Dimensione massima: 10MB</small>
                         <small v-if="formErrors.file" class="text-danger d-block">
                             {{ formErrors.file[0] }}
                         </small>
@@ -365,6 +373,7 @@ const uploading = ref(false);
 const loadingPreview = ref(false);
 const formErrors = ref({});
 const selectedFile = ref(null);
+const fileInput = ref(null);
 const editingAttachment = ref(null);
 const previewAttachment = ref(null);
 const previewUrl = ref('');
@@ -418,16 +427,13 @@ const handleFileChange = (event) => {
 };
 
 const submitAttachment = async () => {
-    if (!selectedFile.value) {
-        formErrors.value.file = ['Seleziona un file da caricare'];
-        return;
-    }
-
     uploading.value = true;
     formErrors.value = {};
 
     const formDataToSend = new FormData();
-    formDataToSend.append('file', selectedFile.value);
+    if (selectedFile.value) {
+        formDataToSend.append('file', selectedFile.value);
+    }
     formDataToSend.append('attachment_type', formData.value.attachment_type);
     if (formData.value.expiration_date) {
         formDataToSend.append('expiration_date', formData.value.expiration_date);
@@ -514,7 +520,7 @@ const downloadAttachment = async (attachment) => {
 };
 
 const deleteAttachment = async (attachment) => {
-    if (!confirm(`Sei sicuro di voler eliminare l'allegato "${attachment.file_name}"?`)) {
+    if (!confirm(`Sei sicuro di voler eliminare l'allegato "${attachment.file_name || attachment.attachment_type}"?`)) {
         return;
     }
 
@@ -563,13 +569,13 @@ const closePreviewModal = () => {
 
 const isPDF = (attachment) => {
     return attachment.file_mime_type === 'application/pdf' ||
-           attachment.file_name.toLowerCase().endsWith('.pdf');
+           attachment.file_name?.toLowerCase().endsWith('.pdf');
 };
 
 const isImage = (attachment) => {
     const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
     return imageTypes.includes(attachment.file_mime_type) ||
-           /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(attachment.file_name);
+           /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(attachment.file_name || '');
 };
 
 const closeModal = () => {
@@ -581,8 +587,8 @@ const closeModal = () => {
     };
     selectedFile.value = null;
     formErrors.value = {};
-    if (props.$refs && props.$refs.fileInput) {
-        props.$refs.fileInput.value = '';
+    if (fileInput.value) {
+        fileInput.value.value = '';
     }
 };
 

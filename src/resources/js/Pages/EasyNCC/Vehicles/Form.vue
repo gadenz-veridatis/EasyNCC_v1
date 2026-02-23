@@ -239,7 +239,7 @@
                         </div>
                         <div v-else class="mt-4 pt-4 border-top">
                             <h6 class="text-muted mb-3">
-                                <i class="ri-attachment-2 me-2"></i>Allegati Veicolo
+                                <i class="ri-attachment-2 me-2"></i>Allegati e Scadenze Veicolo
                             </h6>
                             <div class="alert alert-info mb-0">
                                 <i class="ri-information-line me-2"></i>
