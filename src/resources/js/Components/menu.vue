@@ -357,6 +357,11 @@ export default {
                   Causali Contabili
                 </Link>
               </li>
+              <li class="nav-item">
+                <Link href="/easyncc/dictionaries/transaction-statuses" class="nav-link">
+                  Stato Movimenti
+                </Link>
+              </li>
             </ul>
           </div>
         </li>

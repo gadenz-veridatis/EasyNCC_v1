@@ -248,9 +248,12 @@
                                             <i v-if="sortField === 'vehicle_id'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
                                         </th>
                                         <th scope="col">Esperienze</th>
-                                        <th scope="col" @click="sortBy('price')" style="cursor: pointer;">
-                                            Economics
-                                            <i v-if="sortField === 'price'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
+                                        <th scope="col" @click="sortBy('service_price')" style="cursor: pointer;">
+                                            Ricavi
+                                            <i v-if="sortField === 'service_price'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
+                                        </th>
+                                        <th scope="col">
+                                            Costi
                                         </th>
                                         <th scope="col" v-if="isSuperAdmin" @click="sortBy('company_id')" style="cursor: pointer;">
                                             Azienda
@@ -335,15 +338,50 @@
                                         </td>
                                         <!-- Data -->
                                         <td>
-                                            <div class="mb-2">
-                                                <div class="fw-bold text-success" style="font-size: 0.75rem;">Partenza:</div>
-                                                <div class="fw-bold">{{ formatDate(service.pickup_datetime) }}</div>
-                                                <div class="small text-primary">{{ service.pickup_address }}</div>
+                                            <!-- Display mode -->
+                                            <div v-if="editingDatetimes !== service.id">
+                                                <div class="mb-2 inline-editable" @click="startEditDatetimes(service)" title="Clicca per modificare orari">
+                                                    <div class="fw-bold text-success" style="font-size: 0.75rem;">Partenza:</div>
+                                                    <div class="fw-bold">{{ formatDate(service.pickup_datetime) }}</div>
+                                                    <div class="small text-primary">{{ service.pickup_address }}</div>
+                                                </div>
+                                                <div class="inline-editable" @click="startEditDatetimes(service)" title="Clicca per modificare orari">
+                                                    <div class="fw-bold text-danger" style="font-size: 0.75rem;">Arrivo:</div>
+                                                    <div class="small text-muted">{{ formatDate(service.dropoff_datetime) }}</div>
+                                                    <div class="small text-muted">{{ service.dropoff_address }}</div>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <div class="fw-bold text-danger" style="font-size: 0.75rem;">Arrivo:</div>
-                                                <div class="small text-muted">{{ formatDate(service.dropoff_datetime) }}</div>
-                                                <div class="small text-muted">{{ service.dropoff_address }}</div>
+                                            <!-- Edit mode -->
+                                            <div v-else>
+                                                <div class="mb-1">
+                                                    <label class="text-success fw-bold" style="font-size: 0.65rem;">Pickup</label>
+                                                    <input type="datetime-local" v-model="editingDatetimeValues.pickup_datetime"
+                                                           class="form-control form-control-sm" style="font-size: 0.75rem;" />
+                                                </div>
+                                                <div class="mb-1">
+                                                    <label class="text-muted" style="font-size: 0.65rem;">Uscita mezzo</label>
+                                                    <input type="datetime-local" v-model="editingDatetimeValues.vehicle_departure_datetime"
+                                                           class="form-control form-control-sm" style="font-size: 0.75rem;" />
+                                                </div>
+                                                <div class="mb-1">
+                                                    <label class="text-danger fw-bold" style="font-size: 0.65rem;">Dropoff</label>
+                                                    <input type="datetime-local" v-model="editingDatetimeValues.dropoff_datetime"
+                                                           class="form-control form-control-sm" style="font-size: 0.75rem;" />
+                                                </div>
+                                                <div class="mb-1">
+                                                    <label class="text-muted" style="font-size: 0.65rem;">Rientro mezzo</label>
+                                                    <input type="datetime-local" v-model="editingDatetimeValues.vehicle_return_datetime"
+                                                           class="form-control form-control-sm" style="font-size: 0.75rem;" />
+                                                </div>
+                                                <div class="d-flex gap-2 mt-1">
+                                                    <button type="button" @click="saveDatetimes(service)" class="btn btn-sm btn-success" :disabled="savingField" title="Salva">
+                                                        <span v-if="savingField" class="spinner-border spinner-border-sm" role="status"></span>
+                                                        <i v-else class="ri-check-line"></i>
+                                                    </button>
+                                                    <button type="button" @click="cancelEditDatetimes" class="btn btn-sm btn-secondary" title="Annulla">
+                                                        <i class="ri-close-line"></i>
+                                                    </button>
+                                                </div>
                                             </div>
                                         </td>
                                         <!-- Passeggeri -->
@@ -595,16 +633,63 @@
                                             </div>
                                             <div v-else class="text-muted">-</div>
                                         </td>
-                                        <!-- Economics -->
+                                        <!-- Ricavi -->
                                         <td>
                                             <div
-                                                class="cursor-pointer"
                                                 style="cursor: pointer;"
                                                 @click="showEconomicsModal(service)"
                                                 title="Clicca per vedere i dettagli economici"
                                             >
-                                                <span class="badge bg-success fs-6 px-3 py-2">€{{ formatCurrency(service.service_price) }}</span>
+                                                <div v-if="service.service_price > 0" class="d-flex flex-wrap gap-1">
+                                                    <div class="text-center">
+                                                        <div class="text-muted" style="font-size: 0.65rem;">Imponibile</div>
+                                                        <span class="badge bg-success px-2 py-1" style="font-size: 0.85rem;">&euro;{{ formatCurrency(service.service_price) }}</span>
+                                                    </div>
+                                                    <div v-if="service.deposit_amount > 0" class="text-center">
+                                                        <div class="text-muted" style="font-size: 0.65rem;">Acconto</div>
+                                                        <span class="badge bg-success bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.deposit_amount) }}</span>
+                                                    </div>
+                                                    <div v-if="getBalanceValue(service) > 0" class="text-center">
+                                                        <div class="text-muted" style="font-size: 0.65rem;">{{ getBalanceLabel(service) }}</div>
+                                                        <span class="badge bg-success bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(getBalanceValue(service)) }}</span>
+                                                    </div>
+                                                </div>
+                                                <span v-else class="text-muted small">--</span>
                                             </div>
+                                        </td>
+                                        <!-- Costi -->
+                                        <td>
+                                            <div v-if="hasAnyCost(service)" class="d-flex flex-wrap gap-1">
+                                                <div v-if="service.driver_compensation > 0" class="text-center">
+                                                    <div class="text-muted" style="font-size: 0.65rem;">Autista</div>
+                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.driver_compensation) }}</span>
+                                                </div>
+                                                <div v-if="service.colleague_cost > 0" class="text-center">
+                                                    <div class="text-muted" style="font-size: 0.65rem;">Collega</div>
+                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.colleague_cost) }}</span>
+                                                </div>
+                                                <div v-if="service.intermediary_commission > 0" class="text-center">
+                                                    <div class="text-muted" style="font-size: 0.65rem;">Intermediazione</div>
+                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.intermediary_commission) }}</span>
+                                                </div>
+                                                <div v-if="service.fuel_cost > 0" class="text-center">
+                                                    <div class="text-muted" style="font-size: 0.65rem;">Carburante</div>
+                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.fuel_cost) }}</span>
+                                                </div>
+                                                <div v-if="service.toll_cost > 0" class="text-center">
+                                                    <div class="text-muted" style="font-size: 0.65rem;">Pedaggi</div>
+                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.toll_cost) }}</span>
+                                                </div>
+                                                <div v-if="service.parking_cost > 0" class="text-center">
+                                                    <div class="text-muted" style="font-size: 0.65rem;">Parcheggi</div>
+                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.parking_cost) }}</span>
+                                                </div>
+                                                <div v-if="service.other_vehicle_costs > 0" class="text-center">
+                                                    <div class="text-muted" style="font-size: 0.65rem;">Altri costi</div>
+                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.other_vehicle_costs) }}</span>
+                                                </div>
+                                            </div>
+                                            <span v-else class="text-muted small">--</span>
                                         </td>
                                         <!-- Azienda (solo per super-admin) -->
                                         <td v-if="isSuperAdmin">
@@ -914,6 +999,64 @@
             </div>
         </BModal>
 
+        <!-- Overlap Confirmation Modal -->
+        <BModal
+            v-model="showOverlapConfirmationModal"
+            title="Sovrapposizioni Rilevate"
+            size="lg"
+            centered
+            @hide="cancelOverlapConfirmation"
+        >
+            <div class="alert alert-warning mb-3">
+                <i class="ri-error-warning-line me-2"></i>
+                Sono state rilevate sovrapposizioni. Confermare per procedere con il salvataggio.
+            </div>
+            <div v-if="pendingOverlaps.length > 0" class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Servizio</th>
+                            <th>Tipo</th>
+                            <th>Risorsa</th>
+                            <th>Periodo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(overlap, index) in pendingOverlaps" :key="index">
+                            <td class="fw-bold">
+                                {{ overlap.overlapping_service_reference || ('#' + overlap.overlapping_service_id) }}
+                            </td>
+                            <td>
+                                <span class="badge" :class="getOverlapTypeBadgeClass(overlap.overlap_type)">
+                                    {{ getOverlapTypeLabel(overlap.overlap_type) }}
+                                </span>
+                            </td>
+                            <td>
+                                <div v-if="overlap.vehicle_plate" class="small">
+                                    <i class="ri-car-line me-1"></i>{{ overlap.vehicle_plate }}
+                                    <span class="text-muted">{{ overlap.vehicle_brand }} {{ overlap.vehicle_model }}</span>
+                                </div>
+                                <div v-if="overlap.driver_name" class="small">
+                                    <i class="ri-user-line me-1"></i>{{ overlap.driver_name }}
+                                </div>
+                            </td>
+                            <td class="small">
+                                {{ formatDate(overlap.service_departure) }} -<br>
+                                {{ formatDate(overlap.service_return) }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <template #footer>
+                <button class="btn btn-secondary" @click="cancelOverlapConfirmation">Annulla</button>
+                <button class="btn btn-warning" @click="confirmOverlapAndSave" :disabled="savingField">
+                    <span v-if="savingField" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    <i v-else class="ri-check-line me-1"></i>Conferma e Salva
+                </button>
+            </template>
+        </BModal>
+
         <!-- Economics Modal -->
         <BModal
             v-model="showEconomicsModalFlag"
@@ -1013,6 +1156,22 @@ const vehicleInputRefs = ref({});
 const editingDrivers = ref(null);
 const editingDriversValue = ref([]);
 const driversInputRefs = ref({});
+
+// Datetime inline editing
+const editingDatetimes = ref(null);
+const editingDatetimeValues = ref({
+    pickup_datetime: '',
+    dropoff_datetime: '',
+    vehicle_departure_datetime: '',
+    vehicle_return_datetime: '',
+});
+
+// Overlap confirmation state
+const showOverlapConfirmationModal = ref(false);
+const pendingOverlaps = ref([]);
+const pendingSavePayload = ref(null);
+const pendingSaveServiceId = ref(null);
+const savingField = ref(false);
 
 // Dictionaries
 const serviceTypes = ref([]);
@@ -1339,39 +1498,16 @@ const startEditVehicle = (service) => {
 };
 
 const saveVehicle = async (service) => {
-    // Prevent duplicate saves
     if (!editingVehicle.value || editingVehicle.value !== service.id) {
         return;
     }
 
-    try {
-        const payload = {
-            vehicle_id: editingVehicleValue.value
-        };
+    const payload = {
+        vehicle_id: editingVehicleValue.value || null
+    };
 
-        await axios.put(`/api/services/${service.id}`, payload);
-
-        // Update local service data
-        const serviceIndex = services.value.findIndex(s => s.id === service.id);
-        if (serviceIndex !== -1) {
-            services.value[serviceIndex].vehicle_id = editingVehicleValue.value;
-            if (editingVehicleValue.value) {
-                const vehicle = vehicles.value.find(v => v.id === editingVehicleValue.value);
-                services.value[serviceIndex].vehicle = vehicle;
-            } else {
-                services.value[serviceIndex].vehicle = null;
-            }
-        }
-
-        // Clear editing state
-        editingVehicle.value = null;
-        editingVehicleValue.value = null;
-    } catch (err) {
-        error.value = 'Errore nell\'aggiornamento del veicolo';
-        console.error('Error updating vehicle:', err);
-        // Reload services to revert changes in case of error
-        await loadServices();
-        // Clear editing state even on error
+    const success = await saveServiceField(service.id, payload);
+    if (success) {
         editingVehicle.value = null;
         editingVehicleValue.value = null;
     }
@@ -1399,21 +1535,13 @@ const saveDrivers = async (service) => {
         return;
     }
 
-    try {
-        const payload = {
-            driver_ids: editingDriversValue.value
-        };
+    const payload = {
+        driver_ids: editingDriversValue.value
+    };
 
-        await axios.put(`/api/services/${service.id}`, payload);
-
-        // Reload services to get updated driver data with colors
-        await loadServices();
-
-        editingDrivers.value = null;
-        editingDriversValue.value = [];
-    } catch (err) {
-        error.value = 'Errore nell\'aggiornamento degli autisti';
-        console.error('Error updating drivers:', err);
+    const success = await saveServiceField(service.id, payload);
+    if (success) {
+        // Reload to get driver colors/profiles
         await loadServices();
         editingDrivers.value = null;
         editingDriversValue.value = [];
@@ -1594,15 +1722,41 @@ const resetFilters = () => {
 };
 
 const formatDate = (datetime) => {
-    return moment(datetime).format('DD/MM/YYYY HH:mm');
+    return moment.utc(datetime).format('DD/MM/YYYY HH:mm');
 };
 
 const formatTime = (datetime) => {
-    return datetime ? moment(datetime).format('HH:mm') : '-';
+    return datetime ? moment.utc(datetime).format('HH:mm') : '-';
 };
 
 const formatCurrency = (value) => {
     return value ? parseFloat(value).toFixed(2) : '0.00';
+};
+
+const getBalanceLabel = (service) => {
+    switch (service.balance_sale_type) {
+        case 'balance_handling_fees': return 'Saldo Handling';
+        case 'balance_card_fees': return 'Saldo Card';
+        default: return 'Saldo Imponibile';
+    }
+};
+
+const getBalanceValue = (service) => {
+    switch (service.balance_sale_type) {
+        case 'balance_handling_fees': return parseFloat(service.balance_handling_fees) || 0;
+        case 'balance_card_fees': return parseFloat(service.balance_card_fees) || 0;
+        default: return parseFloat(service.balance_taxable) || 0;
+    }
+};
+
+const hasAnyCost = (service) => {
+    return (parseFloat(service.driver_compensation) || 0) > 0
+        || (parseFloat(service.colleague_cost) || 0) > 0
+        || (parseFloat(service.intermediary_commission) || 0) > 0
+        || (parseFloat(service.fuel_cost) || 0) > 0
+        || (parseFloat(service.toll_cost) || 0) > 0
+        || (parseFloat(service.parking_cost) || 0) > 0
+        || (parseFloat(service.other_vehicle_costs) || 0) > 0;
 };
 
 // Get nationality flag emoji
@@ -1851,6 +2005,114 @@ const getOverlapTypeLabel = (type) => {
         'both': 'Veicolo + Driver'
     };
     return typeMap[type] || type;
+};
+
+// Centralized save with overlap handling
+const saveServiceField = async (serviceId, payload, confirmOverlaps = false) => {
+    savingField.value = true;
+    try {
+        if (confirmOverlaps) {
+            payload.confirm_overlaps = true;
+        }
+        const response = await axios.put(`/api/services/${serviceId}`, payload);
+        const updatedService = response.data.data;
+
+        // Update local service data with returned data
+        const idx = services.value.findIndex(s => s.id === serviceId);
+        if (idx !== -1) {
+            services.value[idx] = {
+                ...services.value[idx],
+                ...updatedService,
+                overlaps_count: (updatedService.overlaps || []).length,
+                overlapped_by_count: (updatedService.overlapped_by || []).length,
+            };
+        }
+
+        // Clear overlap state
+        pendingOverlaps.value = [];
+        showOverlapConfirmationModal.value = false;
+        pendingSavePayload.value = null;
+        pendingSaveServiceId.value = null;
+
+        return true;
+    } catch (err) {
+        if (err.response && err.response.status === 422 && err.response.data.requires_confirmation && err.response.data.overlaps) {
+            // Show overlap confirmation modal
+            pendingOverlaps.value = err.response.data.overlaps;
+            pendingSavePayload.value = { ...payload };
+            pendingSaveServiceId.value = serviceId;
+            showOverlapConfirmationModal.value = true;
+            return false;
+        }
+        console.error('Error saving service:', err);
+        error.value = 'Errore nel salvataggio';
+        return false;
+    } finally {
+        savingField.value = false;
+    }
+};
+
+// Overlap confirmation actions
+const confirmOverlapAndSave = async () => {
+    if (!pendingSavePayload.value || !pendingSaveServiceId.value) return;
+    const success = await saveServiceField(pendingSaveServiceId.value, pendingSavePayload.value, true);
+    if (success) {
+        // Close all editing states
+        editingDatetimes.value = null;
+        editingDrivers.value = null;
+        editingDriversValue.value = [];
+        editingVehicle.value = null;
+        editingVehicleValue.value = null;
+    }
+};
+
+const cancelOverlapConfirmation = () => {
+    pendingOverlaps.value = [];
+    showOverlapConfirmationModal.value = false;
+    pendingSavePayload.value = null;
+    pendingSaveServiceId.value = null;
+};
+
+// Datetime inline editing functions
+const formatDateTimeForInput = (datetime) => {
+    if (!datetime) return '';
+    return moment.utc(datetime).format('YYYY-MM-DDTHH:mm');
+};
+
+const startEditDatetimes = (service) => {
+    editingDatetimes.value = service.id;
+    editingDatetimeValues.value = {
+        pickup_datetime: formatDateTimeForInput(service.pickup_datetime),
+        dropoff_datetime: formatDateTimeForInput(service.dropoff_datetime),
+        vehicle_departure_datetime: formatDateTimeForInput(service.vehicle_departure_datetime),
+        vehicle_return_datetime: formatDateTimeForInput(service.vehicle_return_datetime),
+    };
+};
+
+const saveDatetimes = async (service) => {
+    if (!editingDatetimes.value || editingDatetimes.value !== service.id) return;
+
+    const payload = {
+        pickup_datetime: editingDatetimeValues.value.pickup_datetime,
+        dropoff_datetime: editingDatetimeValues.value.dropoff_datetime,
+        vehicle_departure_datetime: editingDatetimeValues.value.vehicle_departure_datetime,
+        vehicle_return_datetime: editingDatetimeValues.value.vehicle_return_datetime,
+    };
+
+    const success = await saveServiceField(service.id, payload);
+    if (success) {
+        editingDatetimes.value = null;
+    }
+};
+
+const cancelEditDatetimes = () => {
+    editingDatetimes.value = null;
+    editingDatetimeValues.value = {
+        pickup_datetime: '',
+        dropoff_datetime: '',
+        vehicle_departure_datetime: '',
+        vehicle_return_datetime: '',
+    };
 };
 
 onMounted(async () => {

@@ -550,7 +550,7 @@ const sortedAttachments = computed(() => {
         if (!b.expiration_date) return -1;
 
         // Ordina per data di scadenza (più vicina prima)
-        return moment(a.expiration_date).diff(moment(b.expiration_date));
+        return moment.utc(a.expiration_date).diff(moment.utc(b.expiration_date));
     });
 });
 
@@ -559,7 +559,7 @@ const sortedUnavailabilities = computed(() => {
 
     return [...selectedVehicle.value.unavailabilities].sort((a, b) => {
         // Ordina per data di inizio (più recente prima)
-        return moment(a.start_date).diff(moment(b.start_date));
+        return moment.utc(a.start_date).diff(moment.utc(b.start_date));
     });
 });
 
@@ -730,7 +730,7 @@ const getAttachmentByType = (vehicle, typeName) => {
 
     const attachments = vehicle.vehicle_attachments
         .filter(att => att.attachment_type === typeName && att.expiration_date)
-        .sort((a, b) => moment(a.expiration_date).diff(moment(b.expiration_date)));
+        .sort((a, b) => moment.utc(a.expiration_date).diff(moment.utc(b.expiration_date)));
 
     // Return the one with the closest expiration date
     return attachments.length > 0 ? attachments[0] : null;
@@ -743,14 +743,14 @@ const getNextExpiringAttachment = (vehicle) => {
 
     const today = moment();
     const futureAttachments = vehicle.vehicle_attachments
-        .filter(att => att.expiration_date && moment(att.expiration_date).isAfter(today))
-        .sort((a, b) => moment(a.expiration_date).diff(moment(b.expiration_date)));
+        .filter(att => att.expiration_date && moment.utc(att.expiration_date).isAfter(today))
+        .sort((a, b) => moment.utc(a.expiration_date).diff(moment.utc(b.expiration_date)));
 
     return futureAttachments.length > 0 ? futureAttachments[0] :
            vehicle.vehicle_attachments.sort((a, b) => {
                if (!a.expiration_date) return 1;
                if (!b.expiration_date) return -1;
-               return moment(a.expiration_date).diff(moment(b.expiration_date));
+               return moment.utc(a.expiration_date).diff(moment.utc(b.expiration_date));
            })[0];
 };
 
@@ -766,13 +766,13 @@ const getNextExpiringAttachmentOther = (vehicle) => {
     if (otherAttachments.length === 0) return null;
 
     const futureAttachments = otherAttachments
-        .filter(att => att.expiration_date && moment(att.expiration_date).isAfter(today))
-        .sort((a, b) => moment(a.expiration_date).diff(moment(b.expiration_date)));
+        .filter(att => att.expiration_date && moment.utc(att.expiration_date).isAfter(today))
+        .sort((a, b) => moment.utc(a.expiration_date).diff(moment.utc(b.expiration_date)));
 
     return futureAttachments.length > 0 ? futureAttachments[0] :
            otherAttachments
                .filter(att => att.expiration_date)
-               .sort((a, b) => moment(a.expiration_date).diff(moment(b.expiration_date)))[0] || null;
+               .sort((a, b) => moment.utc(a.expiration_date).diff(moment.utc(b.expiration_date)))[0] || null;
 };
 
 const getNextUnavailability = (vehicle) => {
@@ -782,22 +782,22 @@ const getNextUnavailability = (vehicle) => {
 
     const today = moment();
     const futureUnavailabilities = vehicle.unavailabilities
-        .filter(unav => moment(unav.start_date).isAfter(today) || moment(unav.end_date).isAfter(today))
-        .sort((a, b) => moment(a.start_date).diff(moment(b.start_date)));
+        .filter(unav => moment.utc(unav.start_date).isAfter(today) || moment.utc(unav.end_date).isAfter(today))
+        .sort((a, b) => moment.utc(a.start_date).diff(moment.utc(b.start_date)));
 
     return futureUnavailabilities.length > 0 ? futureUnavailabilities[0] : null;
 };
 
 const formatDate = (date) => {
     if (!date) return '-';
-    return moment(date).format('DD/MM/YYYY');
+    return moment.utc(date).format('DD/MM/YYYY');
 };
 
 const getDaysUntilExpiry = (expiryDate) => {
     if (!expiryDate) return '';
 
     const now = moment();
-    const expiry = moment(expiryDate);
+    const expiry = moment.utc(expiryDate);
     const days = expiry.diff(now, 'days');
 
     if (days < 0) {
@@ -821,7 +821,7 @@ const getExpiryColorClass = (expiryDate) => {
     if (!expiryDate) return '';
 
     const now = moment();
-    const expiry = moment(expiryDate);
+    const expiry = moment.utc(expiryDate);
     const days = expiry.diff(now, 'days');
 
     if (days < 0) {
@@ -837,14 +837,14 @@ const getExpiryColorClass = (expiryDate) => {
 
 const isUnavailabilityActive = (unavailability) => {
     const now = moment();
-    const start = moment(unavailability.start_date);
-    const end = moment(unavailability.end_date);
+    const start = moment.utc(unavailability.start_date);
+    const end = moment.utc(unavailability.end_date);
     return now.isBetween(start, end, 'day', '[]');
 };
 
 const isUnavailabilityFuture = (unavailability) => {
     const now = moment();
-    const start = moment(unavailability.start_date);
+    const start = moment.utc(unavailability.start_date);
     return start.isAfter(now);
 };
 

@@ -379,11 +379,11 @@ const getRoleBadgeClass = (role) => {
 
 const formatDate = (date) => {
     if (!date) return '-';
-    return moment(date).format('DD/MM/YYYY');
+    return moment.utc(date).format('DD/MM/YYYY');
 };
 
 const formatDateTime = (date) => {
     if (!date) return '-';
-    return moment(date).format('DD/MM/YYYY HH:mm');
+    return moment.utc(date).format('DD/MM/YYYY HH:mm');
 };
 </script>

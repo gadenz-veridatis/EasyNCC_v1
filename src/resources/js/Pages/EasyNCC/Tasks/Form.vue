@@ -318,7 +318,7 @@ onMounted(async () => {
             company_id: props.task.company_id,
             service_id: props.task.service_id || '',
             name: props.task.name,
-            due_date: props.task.due_date ? moment(props.task.due_date).format('YYYY-MM-DD') : '',
+            due_date: props.task.due_date ? moment.utc(props.task.due_date).format('YYYY-MM-DD') : '',
             assigned_users: props.task.assigned_users ? props.task.assigned_users.map(u => u.id) : [],
             status: props.task.status || 'to_complete',
             notes: props.task.notes || ''

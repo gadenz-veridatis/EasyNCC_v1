@@ -404,12 +404,12 @@ const loadService = async () => {
 
 const formatDateTime = (datetime) => {
     if (!datetime) return '-';
-    return moment(datetime).format('DD/MM/YYYY HH:mm');
+    return moment.utc(datetime).format('DD/MM/YYYY HH:mm');
 };
 
 const formatDate = (date) => {
     if (!date) return '-';
-    return moment(date).format('DD/MM/YYYY');
+    return moment.utc(date).format('DD/MM/YYYY');
 };
 
 const formatCurrency = (amount) => {

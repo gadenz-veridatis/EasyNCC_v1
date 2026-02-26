@@ -500,7 +500,7 @@ const deleteTask = async (id) => {
 
 const formatDate = (date) => {
     if (!date) return '-';
-    return moment(date).format('DD/MM/YYYY');
+    return moment.utc(date).format('DD/MM/YYYY');
 };
 
 const getDueDateClass = (task) => {

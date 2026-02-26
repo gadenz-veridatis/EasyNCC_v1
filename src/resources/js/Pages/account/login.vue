@@ -107,7 +107,7 @@ export default {
           }
         } else if (process.env.VUE_APP_DEFAULT_AUTH === "authapi") {
           axios
-            .post("http://127.0.0.1:8000/api/login", {
+            .post("/api/login", {
               email: this.email,
               password: this.password,
             })

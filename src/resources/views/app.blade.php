@@ -9,8 +9,8 @@
     <meta name="author" content="EasyNCC">
 
     <!-- App favicon -->
-    <link rel="shortcut icon" href="{{ URL::asset('easy_small_green.png') }}">
-    <link rel="icon" type="image/png" href="{{ URL::asset('easy_small_green.png') }}">
+    <link rel="shortcut icon" href="/easy_small_green.png">
+    <link rel="icon" type="image/png" href="/easy_small_green.png">
 
     <!-- Scripts -->
     @routes

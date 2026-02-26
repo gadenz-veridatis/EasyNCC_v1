@@ -345,18 +345,23 @@
                                         </BCol>
                                         <BCol md="8" class="mb-3">
                                             <label for="vehicle_id" class="form-label">Veicolo *</label>
-                                            <select
+                                            <Multiselect
                                                 id="vehicle_id"
                                                 v-model="form.vehicle_id"
-                                                class="form-select"
-                                                required
+                                                :options="searchVehicles"
+                                                :searchable="true"
+                                                :loading="vehiclesLoading"
+                                                :filter-results="false"
+                                                :min-chars="0"
+                                                :delay="300"
+                                                :resolve-on-load="true"
+                                                placeholder="Cerca veicolo..."
+                                                no-options-text="Nessun veicolo trovato"
+                                                no-results-text="Nessun risultato"
+                                                class="flex-grow-1"
+                                                :required="true"
                                                 :disabled="form.vehicle_not_replaceable"
-                                            >
-                                                <option value="">Seleziona veicolo</option>
-                                                <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
-                                                    {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
-                                                </option>
-                                            </select>
+                                            />
                                         </BCol>
                                         <BCol md="4" class="mb-3">
                                             <label class="form-label d-block">&nbsp;</label>
@@ -398,23 +403,24 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Select dropdown for adding drivers -->
-                                            <select
+                                            <!-- Searchable dropdown for adding drivers -->
+                                            <Multiselect
                                                 id="driver_select"
-                                                class="form-select mb-3"
-                                                @change="addDriver"
+                                                :model-value="null"
+                                                :options="searchDrivers"
+                                                :searchable="true"
+                                                :loading="driversLoading"
+                                                :filter-results="false"
+                                                :min-chars="0"
+                                                :delay="300"
+                                                :resolve-on-load="true"
+                                                placeholder="Cerca un driver da aggiungere..."
+                                                no-options-text="Nessun driver trovato"
+                                                no-results-text="Nessun risultato"
+                                                class="mb-3"
                                                 :disabled="form.driver_not_replaceable"
-                                            >
-                                                <option value="">Seleziona un driver da aggiungere...</option>
-                                                <option
-                                                    v-for="driver in availableDrivers"
-                                                    :key="driver.id"
-                                                    :value="driver.id"
-                                                >
-                                                    {{ driver.name }} {{ driver.surname }}
-                                                    {{ driver.driver_profile?.overlappable ? '(Sovrapponibile)' : '' }}
-                                                </option>
-                                            </select>
+                                                @change="addDriverFromMultiselect"
+                                            />
 
                                             <!-- Selected drivers as badges -->
                                             <div v-if="selectedDrivers.length > 0" class="border rounded p-3 bg-light">
@@ -1494,18 +1500,11 @@
                                                                     :ref="el => { if (el) statusInputRefs[transaction.id] = el }"
                                                                     style="max-width: 130px;"
                                                                 >
-                                                                    <template v-if="transaction.transaction_type === 'purchase' || transaction.transaction_type === 'intermediation'">
-                                                                        <option value="to_pay">Da Pagare</option>
-                                                                        <option value="paid">Pagato</option>
-                                                                        <option value="suspended">Sospeso</option>
-                                                                        <option value="cancelled">Annullato</option>
-                                                                    </template>
-                                                                    <template v-else-if="transaction.transaction_type === 'sale'">
-                                                                        <option value="to_collect">Da Incassare</option>
-                                                                        <option value="collected">Incassato</option>
-                                                                        <option value="suspended">Sospeso</option>
-                                                                        <option value="cancelled">Annullato</option>
-                                                                    </template>
+                                                                    <option
+                                                                        v-for="ts in filteredTransactionStatuses(transaction.transaction_type)"
+                                                                        :key="ts.code"
+                                                                        :value="ts.code"
+                                                                    >{{ ts.name }}</option>
                                                                 </select>
                                                                 <div class="d-flex gap-1">
                                                                     <button
@@ -1962,28 +1961,11 @@
                             <select v-model="transactionForm.status" class="form-select" required>
                                 <option value="">Seleziona stato</option>
                                 <!-- Purchase and Intermediation are DARE (costs/expenses) - use to_pay/paid -->
-                                <template v-if="transactionForm.transaction_type === 'purchase' || transactionForm.transaction_type === 'intermediation'">
-                                    <option value="to_pay">Da Pagare</option>
-                                    <option value="paid">Pagato</option>
-                                    <option value="suspended">Sospeso</option>
-                                    <option value="cancelled">Annullato</option>
-                                </template>
-                                <!-- Sale is AVERE (revenue/income) - use to_collect/collected -->
-                                <template v-else-if="transactionForm.transaction_type === 'sale'">
-                                    <option value="to_collect">Da Incassare</option>
-                                    <option value="collected">Incassato</option>
-                                    <option value="suspended">Sospeso</option>
-                                    <option value="cancelled">Annullato</option>
-                                </template>
-                                <!-- No transaction type selected yet - show all -->
-                                <template v-else>
-                                    <option value="to_pay">Da Pagare</option>
-                                    <option value="paid">Pagato</option>
-                                    <option value="to_collect">Da Incassare</option>
-                                    <option value="collected">Incassato</option>
-                                    <option value="suspended">Sospeso</option>
-                                    <option value="cancelled">Annullato</option>
-                                </template>
+                                <option
+                                    v-for="ts in filteredTransactionStatuses(transactionForm.transaction_type)"
+                                    :key="ts.code"
+                                    :value="ts.code"
+                                >{{ ts.name }}</option>
                             </select>
                         </div>
                     </BCol>
@@ -3102,6 +3084,12 @@ const addDriver = (event) => {
     event.target.value = '';
 };
 
+const addDriverFromMultiselect = (driverId) => {
+    if (driverId && !form.value.driver_ids.includes(driverId)) {
+        form.value.driver_ids.push(driverId);
+    }
+};
+
 const removeDriver = (driverId) => {
     const index = form.value.driver_ids.indexOf(driverId);
     if (index > -1) {
@@ -3220,6 +3208,7 @@ const statusInputRefs = ref({});
 // Additional lists for transaction modal
 const accountingEntries = ref([]);
 const paymentTypes = ref([]);
+const transactionStatuses = ref([]);
 const settings = ref(null);
 
 // Task Form
@@ -3627,36 +3616,75 @@ const fornitoriOptions = computed(() => {
     return fornitori.value;
 });
 
-const loadVehicles = async () => {
-    if (!form.value.company_id) return;
+const vehiclesLoading = ref(false);
 
+const searchVehicles = async (query) => {
+    if (!form.value.company_id) return [];
+
+    vehiclesLoading.value = true;
     try {
-        const response = await axios.get('/api/vehicles', {
-            params: {
-                per_page: 1000,
-                company_id: isSuperAdmin.value ? form.value.company_id : undefined
-            }
-        });
-        vehicles.value = response.data.data || [];
+        const params = {
+            per_page: 30,
+            company_id: isSuperAdmin.value ? form.value.company_id : undefined
+        };
+        if (query && query.length >= 2) {
+            params.search = query;
+        }
+
+        const response = await axios.get('/api/vehicles', { params });
+        const vehicleList = response.data.data || [];
+        // Update vehicles ref for computed properties (currentServiceVehicle, etc.)
+        vehicles.value = vehicleList;
+        return vehicleList.map(v => ({
+            value: v.id,
+            label: `${v.license_plate} - ${v.brand} ${v.model}`,
+            vehicle: v
+        }));
     } catch (error) {
         console.error('Error loading vehicles:', error);
+        return [];
+    } finally {
+        vehiclesLoading.value = false;
     }
 };
 
-const loadDrivers = async () => {
-    if (!form.value.company_id) return;
+const driversLoading = ref(false);
 
+const searchDrivers = async (query) => {
+    if (!form.value.company_id) return [];
+
+    driversLoading.value = true;
     try {
-        const response = await axios.get('/api/users', {
-            params: {
-                role: 'driver',
-                per_page: 1000,
-                company_id: isSuperAdmin.value ? form.value.company_id : undefined
+        const params = {
+            role: 'driver',
+            per_page: 30,
+            company_id: isSuperAdmin.value ? form.value.company_id : undefined
+        };
+        if (query && query.length >= 2) {
+            params.search = query;
+        }
+
+        const response = await axios.get('/api/users', { params });
+        const driverList = response.data.data || [];
+        // Merge into drivers ref (avoid duplicates)
+        driverList.forEach(d => {
+            if (!drivers.value.find(existing => existing.id === d.id)) {
+                drivers.value.push(d);
             }
         });
-        drivers.value = response.data.data || [];
+        // Filter out already selected drivers
+        return driverList
+            .filter(d => !form.value.driver_ids.includes(d.id))
+            .map(d => ({
+                value: d.id,
+                label: `${d.name} ${d.surname}${d.driver_profile?.overlappable ? ' (Sovrapponibile)' : ''}`,
+                driver: d
+            }));
     } catch (error) {
         console.error('Error loading drivers:', error);
+        return [];
+    } finally {
+        driversLoading.value = false;
     }
 };
 
@@ -3720,31 +3748,87 @@ const loadAccountingEntries = async () => {
     }
 };
 
+const SETTINGS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 const loadSettings = async () => {
     if (!form.value.company_id) return;
 
     try {
+        // Check sessionStorage cache first
+        const cacheKey = `easyncc_settings_${form.value.company_id}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Date.now() - parsed._cachedAt < SETTINGS_CACHE_TTL) {
+                settings.value = parsed.data;
+                applySettingsDefaults();
+                return;
+            }
+        }
+
         const params = isSuperAdmin.value ? { company_id: form.value.company_id } : {};
         const response = await axios.get('/api/settings', { params });
         settings.value = response.data.data;
 
-        // Imposta i valori di default solo se stiamo creando un nuovo servizio (non in edit mode)
-        if (!isEdit.value) {
-            if (settings.value.deposit_percentage !== null && settings.value.deposit_percentage !== undefined) {
-                form.value.deposit_percentage = settings.value.deposit_percentage;
-            }
-            if (settings.value.card_fees_percentage !== null && settings.value.card_fees_percentage !== undefined) {
-                form.value.card_fees_percentage = settings.value.card_fees_percentage;
-            }
-            // Imposta il fornitore di default
-            if (settings.value.default_supplier_id !== null && settings.value.default_supplier_id !== undefined) {
-                form.value.supplier_id = settings.value.default_supplier_id;
-                // Aggiorna il referente fornitore dopo aver impostato il fornitore
-                onSupplierChange();
-            }
-        }
+        // Cache in sessionStorage
+        sessionStorage.setItem(cacheKey, JSON.stringify({
+            data: response.data.data,
+            _cachedAt: Date.now()
+        }));
+
+        applySettingsDefaults();
     } catch (error) {
         console.error('Error loading settings:', error);
+    }
+};
+
+const applySettingsDefaults = () => {
+    // Imposta i valori di default solo se stiamo creando un nuovo servizio (non in edit mode)
+    if (!isEdit.value && settings.value) {
+        if (settings.value.deposit_percentage !== null && settings.value.deposit_percentage !== undefined) {
+            form.value.deposit_percentage = settings.value.deposit_percentage;
+        }
+        if (settings.value.card_fees_percentage !== null && settings.value.card_fees_percentage !== undefined) {
+            form.value.card_fees_percentage = settings.value.card_fees_percentage;
+        }
+        // Imposta il fornitore di default
+        if (settings.value.default_supplier_id !== null && settings.value.default_supplier_id !== undefined) {
+            form.value.supplier_id = settings.value.default_supplier_id;
+            // Aggiorna il referente fornitore dopo aver impostato il fornitore
+            onSupplierChange();
+        }
+    }
+};
+
+const loadFormData = async () => {
+    if (!form.value.company_id) return;
+
+    try {
+        const params = isSuperAdmin.value ? { company_id: form.value.company_id } : {};
+        const response = await axios.get('/api/services/form-data', { params });
+        const data = response.data.data;
+
+        dressCodes.value = data.dress_codes || [];
+        serviceStatuses.value = data.service_statuses || [];
+        serviceTypes.value = data.service_types || [];
+        activityTypes.value = data.activity_types || [];
+        accountingEntries.value = data.accounting_entries || [];
+        paymentTypes.value = data.payment_types || [];
+        transactionStatuses.value = data.transaction_statuses || [];
+        settings.value = data.settings || null;
+
+        // Cache settings in sessionStorage
+        if (settings.value) {
+            const cacheKey = `easyncc_settings_${form.value.company_id}`;
+            sessionStorage.setItem(cacheKey, JSON.stringify({
+                data: settings.value,
+                _cachedAt: Date.now()
+            }));
+        }
+
+        applySettingsDefaults();
+    } catch (error) {
+        console.error('Error loading form data:', error);
     }
 };
 
@@ -3762,18 +3846,14 @@ const onCompanyChange = async () => {
     // Reset task assignable users
     taskAssignableUsers.value = [];
 
+    // Reset lazy-loaded data (vehicles/drivers will reload via Multiselect search)
+    vehicles.value = [];
+    drivers.value = [];
+
     // Ricarica tutti i dati dipendenti dall'azienda
     await Promise.all([
         loadCounterparts(),
-        loadVehicles(),
-        loadDrivers(),
-        loadDressCodes(),
-        loadServiceStatuses(),
-        loadServiceTypes(),
-        loadActivityTypes(),
-        loadAccountingEntries(),
-        loadPaymentTypes(),
-        loadSettings(),
+        loadFormData(),
         loadTaskAssignableUsers()
     ]);
 };
@@ -3999,8 +4079,8 @@ const openActivityModal = (activity = null) => {
             name: activity.name,
             activity_type_id: activity.activity_type_id || '',
             supplier_id: activity.supplier_id || '',
-            start_time: activity.start_time ? moment(activity.start_time).format('YYYY-MM-DDTHH:mm') : '',
-            end_time: activity.end_time ? moment(activity.end_time).format('YYYY-MM-DDTHH:mm') : '',
+            start_time: activity.start_time ? moment.utc(activity.start_time).format('YYYY-MM-DDTHH:mm') : '',
+            end_time: activity.end_time ? moment.utc(activity.end_time).format('YYYY-MM-DDTHH:mm') : '',
             cost: activity.cost || 0,
             cost_per_person: activity.cost_per_person || 0,
             payment_type: activity.payment_type || '',
@@ -4111,15 +4191,15 @@ const openTransactionModal = (transaction = null) => {
         // Edit mode
         transactionForm.value = {
             id: transaction.id,
-            transaction_date: transaction.transaction_date ? moment(transaction.transaction_date).format('YYYY-MM-DD') : '',
+            transaction_date: transaction.transaction_date ? moment.utc(transaction.transaction_date).format('YYYY-MM-DD') : '',
             amount: transaction.amount || 0,
             transaction_type: transaction.transaction_type || '',
             installment: transaction.installment || '',
             accounting_entry_id: transaction.accounting_entry_id || '',
             counterpart_id: transaction.counterpart_id || '',
             document_number: transaction.document_number || '',
-            document_due_date: transaction.document_due_date ? moment(transaction.document_due_date).format('YYYY-MM-DD') : '',
-            payment_date: transaction.payment_date ? moment(transaction.payment_date).format('YYYY-MM-DD') : '',
+            document_due_date: transaction.document_due_date ? moment.utc(transaction.document_due_date).format('YYYY-MM-DD') : '',
+            payment_date: transaction.payment_date ? moment.utc(transaction.payment_date).format('YYYY-MM-DD') : '',
             payment_type: transaction.payment_type || '',
             payment_reason: transaction.payment_reason || '',
             iban: transaction.iban || '',
@@ -4360,7 +4440,7 @@ const getInstallmentLabel = (installment) => {
 };
 
 const formatDateTime = (datetime) => {
-    return datetime ? moment(datetime).format('DD/MM/YYYY HH:mm') : '-';
+    return datetime ? moment.utc(datetime).format('DD/MM/YYYY HH:mm') : '-';
 };
 
 const getPaymentTypeBadge = (type) => {
@@ -4386,7 +4466,7 @@ const onSupplierChange = () => {
 };
 
 const formatDate = (date) => {
-    return date ? moment(date).format('DD/MM/YYYY') : '-';
+    return date ? moment.utc(date).format('DD/MM/YYYY') : '-';
 };
 
 const formatAmount = (amount) => {
@@ -4417,27 +4497,16 @@ const getTransactionTypeBadge = (type) => {
 };
 
 const getStatusLabel = (status) => {
-    const labels = {
-        to_pay: 'Da Pagare',
-        paid: 'Pagato',
-        to_collect: 'Da Incassare',
-        collected: 'Incassato',
-        suspended: 'Sospeso',
-        cancelled: 'Annullato'
-    };
-    return labels[status] || status;
+    const found = transactionStatuses.value.find(s => s.code === status);
+    return found ? found.name : status;
 };
 
 const getStatusBadge = (status) => {
-    const classes = {
-        to_pay: 'badge bg-warning-subtle text-warning',
-        paid: 'badge bg-success-subtle text-success',
-        to_collect: 'badge bg-info-subtle text-info',
-        collected: 'badge bg-success-subtle text-success',
-        suspended: 'badge bg-secondary-subtle text-secondary',
-        cancelled: 'badge bg-danger-subtle text-danger'
-    };
-    return classes[status] || 'badge bg-secondary-subtle text-secondary';
+    const found = transactionStatuses.value.find(s => s.code === status);
+    if (found && found.color) {
+        return `badge bg-${found.color}-subtle text-${found.color}`;
+    }
+    return 'badge bg-secondary-subtle text-secondary';
 };
 
 const getTransactionTypeAbbr = (type) => {
@@ -4460,15 +4529,21 @@ const getInstallmentAbbr = (installment) => {
 };
 
 const getStatusAbbr = (status) => {
-    const abbrs = {
-        to_pay: 'DP',
-        paid: 'PAG',
-        to_collect: 'DI',
-        collected: 'INC',
-        suspended: 'SOS',
-        cancelled: 'ANN'
-    };
-    return abbrs[status] || status;
+    const found = transactionStatuses.value.find(s => s.code === status);
+    return found ? (found.abbreviation || found.name) : status;
+};
+
+const isStatusFinal = (statusCode) => {
+    const found = transactionStatuses.value.find(s => s.code === statusCode);
+    return found ? found.is_final : false;
+};
+
+const filteredTransactionStatuses = (transactionType) => {
+    if (!transactionType) return transactionStatuses.value;
+    const typeGroup = transactionType === 'sale' ? 'sale' : 'purchase';
+    return transactionStatuses.value.filter(s =>
+        s.transaction_type_group === typeGroup || s.transaction_type_group === 'both'
+    );
 };
 
 const getDueDateClass = (transaction) => {
@@ -4479,8 +4554,8 @@ const getDueDateClass = (transaction) => {
     const dueDate = new Date(transaction.document_due_date);
     dueDate.setHours(0, 0, 0, 0);
 
-    // Check if paid or collected
-    if (transaction.status === 'paid' || transaction.status === 'collected') {
+    // Check if status is final (e.g. paid, collected)
+    if (isStatusFinal(transaction.status)) {
         return 'text-success';
     }
 
@@ -4592,7 +4667,7 @@ const openTaskModal = async (task = null) => {
             id: task.id,
             name: task.name,
             service_id: task.service_id || '',
-            due_date: task.due_date ? moment(task.due_date).format('YYYY-MM-DD') : '',
+            due_date: task.due_date ? moment.utc(task.due_date).format('YYYY-MM-DD') : '',
             assigned_users: task.assigned_users ? task.assigned_users.map(u => u.id) : [],
             status: task.status || 'to_complete',
             notes: task.notes || ''
@@ -5155,10 +5230,8 @@ const removeActivityConfirmationTasks = async () => {
             return false;
         }
 
-        // Delete all confirmation tasks
-        for (const task of confirmationTasks) {
-            await axios.delete(`/api/tasks/${task.id}`);
-        }
+        // Delete all confirmation tasks in parallel
+        await Promise.all(confirmationTasks.map(task => axios.delete(`/api/tasks/${task.id}`)));
 
         return true;
     } catch (error) {
@@ -5167,36 +5240,7 @@ const removeActivityConfirmationTasks = async () => {
     }
 };
 
-// Helper to create or update an accounting transaction
-// For existing movements: only update restricted fields (amount, counterpart, type, entry, date)
-// For new movements: create with all fields + is_automatic: true
-const upsertAccountingTransaction = async (findFn, payload) => {
-    const existing = form.value.accounting_transactions.find(findFn);
-    if (existing) {
-        await axios.put(`/api/accounting-transactions/${existing.id}`, {
-            amount: payload.amount,
-            counterpart_id: payload.counterpart_id,
-            transaction_type: payload.transaction_type,
-            accounting_entry_id: payload.accounting_entry_id,
-            transaction_date: payload.transaction_date,
-        });
-    } else {
-        await axios.post('/api/accounting-transactions', {
-            ...payload,
-            is_automatic: true,
-        });
-    }
-};
-
-// Helper to remove an accounting transaction if it exists
-const removeAccountingTransaction = async (findFn) => {
-    const existing = form.value.accounting_transactions.find(findFn);
-    if (existing) {
-        await axios.delete(`/api/accounting-transactions/${existing.id}`);
-    }
-};
-
-// Process accounting transactions (create or update)
+// Process accounting transactions via single batch API call
 const processAccountingTransactions = async () => {
     if (!form.value.client_id) {
         console.warn('No client selected for accounting');
@@ -5217,271 +5261,296 @@ const processAccountingTransactions = async () => {
         const handlingFeesEntryId = settings.value.handling_fees_accounting_entry_id;
         const cardFeesEntryId = settings.value.card_fees_accounting_entry_id;
 
+        const operations = [];
+
         // === ACCONTO VENDITA (deposit - componente imponibile) ===
         if (form.value.deposit_taxable && form.value.deposit_taxable > 0) {
-            await upsertAccountingTransaction(
-                t => t.transaction_type === 'sale' && t.installment === 'deposit'
-                    && t.accounting_entry_id === settings.value.deposit_accounting_entry_id,
-                {
-                    service_id: serviceId,
-                    transaction_date: pickupDate,
-                    amount: form.value.deposit_taxable,
-                    transaction_type: 'sale',
-                    installment: 'deposit',
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'sale', installment: 'deposit', accounting_entry_id: settings.value.deposit_accounting_entry_id },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.deposit_taxable,
+                    transaction_type: 'sale', installment: 'deposit',
                     accounting_entry_id: settings.value.deposit_accounting_entry_id,
-                    counterpart_id: clientId,
-                    document_number: null,
-                    document_due_date: null,
-                    payment_date: null,
-                    payment_type: 'carta_di_credito',
-                    payment_reason: settings.value.deposit_reason,
-                    iban: null,
-                    status: 'to_collect',
-                    notes: null
+                    counterpart_id: clientId, payment_type: 'carta_di_credito',
+                    payment_reason: settings.value.deposit_reason, status: 'to_collect',
                 }
-            );
+            });
         }
 
-        // === ACCONTO HANDLING FEES (deposit - componente IVA - acquisto) ===
+        // === ACCONTO HANDLING FEES ===
         const accontoHandlingAmount = (form.value.deposit_handling_fees || 0) - (form.value.deposit_taxable || 0);
         if (accontoHandlingAmount > 0 && handlingFeesEntryId) {
-            await upsertAccountingTransaction(
-                t => t.transaction_type === 'purchase' && t.installment === 'deposit'
-                    && t.accounting_entry_id === handlingFeesEntryId,
-                {
-                    service_id: serviceId,
-                    transaction_date: pickupDate,
-                    amount: parseFloat(accontoHandlingAmount.toFixed(2)),
-                    transaction_type: 'purchase',
-                    installment: 'deposit',
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'deposit', accounting_entry_id: handlingFeesEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: parseFloat(accontoHandlingAmount.toFixed(2)),
+                    transaction_type: 'purchase', installment: 'deposit',
                     accounting_entry_id: handlingFeesEntryId,
-                    counterpart_id: clientId,
-                    document_number: null,
-                    document_due_date: null,
-                    payment_date: null,
-                    payment_type: 'carta_di_credito',
-                    payment_reason: settings.value.handling_fees_reason,
-                    iban: null,
-                    status: 'to_pay',
-                    notes: null
+                    counterpart_id: clientId, payment_type: 'carta_di_credito',
+                    payment_reason: settings.value.handling_fees_reason, status: 'to_pay',
                 }
-            );
-        } else {
-            await removeAccountingTransaction(
-                t => t.transaction_type === 'purchase' && t.installment === 'deposit'
-                    && t.accounting_entry_id === handlingFeesEntryId
-            );
+            });
+        } else if (handlingFeesEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'deposit', accounting_entry_id: handlingFeesEntryId },
+                data: {}
+            });
         }
 
-        // === ACCONTO CARD FEES (deposit - componente Card Fees - acquisto) ===
+        // === ACCONTO CARD FEES ===
         const accontoCardAmount = (form.value.deposit_amount || 0) - (form.value.deposit_handling_fees || 0);
         if (accontoCardAmount > 0 && cardFeesEntryId) {
-            await upsertAccountingTransaction(
-                t => t.transaction_type === 'purchase' && t.installment === 'deposit'
-                    && t.accounting_entry_id === cardFeesEntryId,
-                {
-                    service_id: serviceId,
-                    transaction_date: pickupDate,
-                    amount: parseFloat(accontoCardAmount.toFixed(2)),
-                    transaction_type: 'purchase',
-                    installment: 'deposit',
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'deposit', accounting_entry_id: cardFeesEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: parseFloat(accontoCardAmount.toFixed(2)),
+                    transaction_type: 'purchase', installment: 'deposit',
                     accounting_entry_id: cardFeesEntryId,
-                    counterpart_id: clientId,
-                    document_number: null,
-                    document_due_date: null,
-                    payment_date: null,
-                    payment_type: 'carta_di_credito',
-                    payment_reason: settings.value.card_fees_reason,
-                    iban: null,
-                    status: 'to_pay',
-                    notes: null
+                    counterpart_id: clientId, payment_type: 'carta_di_credito',
+                    payment_reason: settings.value.card_fees_reason, status: 'to_pay',
                 }
-            );
-        } else {
-            await removeAccountingTransaction(
-                t => t.transaction_type === 'purchase' && t.installment === 'deposit'
-                    && t.accounting_entry_id === cardFeesEntryId
-            );
+            });
+        } else if (cardFeesEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'deposit', accounting_entry_id: cardFeesEntryId },
+                data: {}
+            });
         }
 
-        // === SALDO VENDITA (balance - importo in base al radio selezionato) ===
+        // === SALDO VENDITA ===
         let balanceAmount;
         switch (form.value.balance_sale_type) {
-            case 'balance_handling_fees':
-                balanceAmount = form.value.balance_handling_fees;
-                break;
-            case 'balance_card_fees':
-                balanceAmount = form.value.balance_card_fees;
-                break;
-            default:
-                balanceAmount = form.value.balance_taxable;
+            case 'balance_handling_fees': balanceAmount = form.value.balance_handling_fees; break;
+            case 'balance_card_fees': balanceAmount = form.value.balance_card_fees; break;
+            default: balanceAmount = form.value.balance_taxable;
         }
-
         if (balanceAmount && balanceAmount > 0) {
-            await upsertAccountingTransaction(
-                t => t.transaction_type === 'sale' && t.installment === 'balance'
-                    && t.accounting_entry_id === settings.value.balance_accounting_entry_id,
-                {
-                    service_id: serviceId,
-                    transaction_date: pickupDate,
-                    amount: balanceAmount,
-                    transaction_type: 'sale',
-                    installment: 'balance',
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'sale', installment: 'balance', accounting_entry_id: settings.value.balance_accounting_entry_id },
+                data: {
+                    transaction_date: pickupDate, amount: balanceAmount,
+                    transaction_type: 'sale', installment: 'balance',
                     accounting_entry_id: settings.value.balance_accounting_entry_id,
-                    counterpart_id: clientId,
-                    document_number: null,
-                    document_due_date: null,
-                    payment_date: null,
-                    payment_type: 'contanti',
-                    payment_reason: settings.value.balance_reason,
-                    iban: null,
-                    status: 'to_collect',
-                    notes: null
+                    counterpart_id: clientId, payment_type: 'contanti',
+                    payment_reason: settings.value.balance_reason, status: 'to_collect',
                 }
-            );
+            });
         }
 
-        // === SALDO HANDLING FEES (condizionale: solo se radio = handling_fees o card_fees - acquisto) ===
+        // === SALDO HANDLING FEES ===
         const saldoHandlingAmount = (form.value.balance_handling_fees || 0) - (form.value.balance_taxable || 0);
         if ((form.value.balance_sale_type === 'balance_handling_fees' || form.value.balance_sale_type === 'balance_card_fees')
             && saldoHandlingAmount > 0 && handlingFeesEntryId) {
-            await upsertAccountingTransaction(
-                t => t.transaction_type === 'purchase' && t.installment === 'balance'
-                    && t.accounting_entry_id === handlingFeesEntryId,
-                {
-                    service_id: serviceId,
-                    transaction_date: pickupDate,
-                    amount: parseFloat(saldoHandlingAmount.toFixed(2)),
-                    transaction_type: 'purchase',
-                    installment: 'balance',
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: handlingFeesEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: parseFloat(saldoHandlingAmount.toFixed(2)),
+                    transaction_type: 'purchase', installment: 'balance',
                     accounting_entry_id: handlingFeesEntryId,
-                    counterpart_id: clientId,
-                    document_number: null,
-                    document_due_date: null,
-                    payment_date: null,
-                    payment_type: 'contanti',
-                    payment_reason: settings.value.handling_fees_reason,
-                    iban: null,
-                    status: 'to_pay',
-                    notes: null
+                    counterpart_id: clientId, payment_type: 'contanti',
+                    payment_reason: settings.value.handling_fees_reason, status: 'to_pay',
                 }
-            );
-        } else {
-            await removeAccountingTransaction(
-                t => t.transaction_type === 'purchase' && t.installment === 'balance'
-                    && t.accounting_entry_id === handlingFeesEntryId
-            );
+            });
+        } else if (handlingFeesEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: handlingFeesEntryId },
+                data: {}
+            });
         }
 
-        // === SALDO CARD FEES (condizionale: solo se radio = card_fees - acquisto) ===
+        // === SALDO CARD FEES ===
         const saldoCardAmount = (form.value.balance_card_fees || 0) - (form.value.balance_handling_fees || 0);
         if (form.value.balance_sale_type === 'balance_card_fees'
             && saldoCardAmount > 0 && cardFeesEntryId) {
-            await upsertAccountingTransaction(
-                t => t.transaction_type === 'purchase' && t.installment === 'balance'
-                    && t.accounting_entry_id === cardFeesEntryId,
-                {
-                    service_id: serviceId,
-                    transaction_date: pickupDate,
-                    amount: parseFloat(saldoCardAmount.toFixed(2)),
-                    transaction_type: 'purchase',
-                    installment: 'balance',
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: cardFeesEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: parseFloat(saldoCardAmount.toFixed(2)),
+                    transaction_type: 'purchase', installment: 'balance',
                     accounting_entry_id: cardFeesEntryId,
-                    counterpart_id: clientId,
-                    document_number: null,
-                    document_due_date: null,
-                    payment_date: null,
-                    payment_type: 'contanti',
-                    payment_reason: settings.value.card_fees_reason,
-                    iban: null,
-                    status: 'to_pay',
-                    notes: null
+                    counterpart_id: clientId, payment_type: 'contanti',
+                    payment_reason: settings.value.card_fees_reason, status: 'to_pay',
                 }
-            );
-        } else {
-            await removeAccountingTransaction(
-                t => t.transaction_type === 'purchase' && t.installment === 'balance'
-                    && t.accounting_entry_id === cardFeesEntryId
-            );
+            });
+        } else if (cardFeesEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: cardFeesEntryId },
+                data: {}
+            });
         }
 
-        // Handle Intermediazione (commission)
-        const existingIntermediation = form.value.accounting_transactions.find(
-            t => t.transaction_type === 'intermediation' && t.installment === 'balance'
-        );
-
+        // === INTERMEDIAZIONE ===
         if (form.value.intermediary_commission && form.value.intermediary_commission > 0 && form.value.intermediary_id) {
-            if (existingIntermediation) {
-                // Update only restricted fields
-                await axios.put(`/api/accounting-transactions/${existingIntermediation.id}`, {
-                    amount: form.value.intermediary_commission,
-                    counterpart_id: form.value.intermediary_id,
-                    transaction_type: 'intermediation',
-                    accounting_entry_id: settings.value.commission_accounting_entry_id,
-                    transaction_date: pickupDate,
-                });
-            } else {
-                await axios.post('/api/accounting-transactions', {
-                    service_id: serviceId,
-                    transaction_date: pickupDate,
-                    amount: form.value.intermediary_commission,
-                    transaction_type: 'intermediation',
-                    installment: 'balance',
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'intermediation', installment: 'balance', accounting_entry_id: settings.value.commission_accounting_entry_id },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.intermediary_commission,
+                    transaction_type: 'intermediation', installment: 'balance',
                     accounting_entry_id: settings.value.commission_accounting_entry_id,
                     counterpart_id: form.value.intermediary_id,
-                    document_number: null,
-                    document_due_date: null,
-                    payment_date: null,
-                    payment_type: null,
-                    payment_reason: settings.value.commission_reason,
-                    iban: null,
-                    status: 'to_pay',
-                    notes: null,
-                    is_automatic: true,
-                });
-            }
-        } else if (existingIntermediation) {
-            await axios.delete(`/api/accounting-transactions/${existingIntermediation.id}`);
+                    payment_reason: settings.value.commission_reason, status: 'to_pay',
+                }
+            });
+        } else {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'intermediation', installment: 'balance', accounting_entry_id: settings.value.commission_accounting_entry_id },
+                data: {}
+            });
         }
 
-        // Handle Carburante (fuel cost)
-        const existingFuel = form.value.accounting_transactions.find(
-            t => t.transaction_type === 'purchase' && t.installment === 'balance'
-                && t.accounting_entry_id === settings.value.fuel_accounting_entry_id
-        );
-
+        // === CARBURANTE ===
         if (form.value.fuel_cost && form.value.fuel_cost > 0 && form.value.supplier_id) {
-            if (existingFuel) {
-                // Update only restricted fields
-                await axios.put(`/api/accounting-transactions/${existingFuel.id}`, {
-                    amount: form.value.fuel_cost,
-                    counterpart_id: form.value.supplier_id,
-                    transaction_type: 'purchase',
-                    accounting_entry_id: settings.value.fuel_accounting_entry_id,
-                    transaction_date: pickupDate,
-                });
-            } else {
-                await axios.post('/api/accounting-transactions', {
-                    service_id: serviceId,
-                    transaction_date: pickupDate,
-                    amount: form.value.fuel_cost,
-                    transaction_type: 'purchase',
-                    installment: 'balance',
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: settings.value.fuel_accounting_entry_id },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.fuel_cost,
+                    transaction_type: 'purchase', installment: 'balance',
                     accounting_entry_id: settings.value.fuel_accounting_entry_id,
                     counterpart_id: form.value.supplier_id,
-                    document_number: null,
-                    document_due_date: null,
-                    payment_date: null,
-                    payment_type: null,
-                    payment_reason: settings.value.fuel_reason,
-                    iban: null,
-                    status: 'to_pay',
-                    notes: null,
-                    is_automatic: true,
-                });
-            }
-        } else if (existingFuel) {
-            await axios.delete(`/api/accounting-transactions/${existingFuel.id}`);
+                    payment_reason: settings.value.fuel_reason, status: 'to_pay',
+                }
+            });
+        } else {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: settings.value.fuel_accounting_entry_id },
+                data: {}
+            });
+        }
+
+        // === COSTO DRIVER ===
+        const driverCostEntryId = settings.value.driver_cost_accounting_entry_id;
+        const firstDriverId = form.value.driver_ids && form.value.driver_ids.length > 0 ? form.value.driver_ids[0] : null;
+        if (form.value.driver_compensation && form.value.driver_compensation > 0 && firstDriverId && driverCostEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: driverCostEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.driver_compensation,
+                    transaction_type: 'purchase', installment: 'balance',
+                    accounting_entry_id: driverCostEntryId,
+                    counterpart_id: firstDriverId,
+                    payment_reason: settings.value.driver_cost_reason, status: 'to_pay',
+                }
+            });
+        } else if (driverCostEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: driverCostEntryId },
+                data: {}
+            });
+        }
+
+        // === COSTO COLLEGA ===
+        const colleagueCostEntryId = settings.value.colleague_cost_accounting_entry_id;
+        if (form.value.colleague_cost && form.value.colleague_cost > 0 && form.value.supplier_id && colleagueCostEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: colleagueCostEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.colleague_cost,
+                    transaction_type: 'purchase', installment: 'balance',
+                    accounting_entry_id: colleagueCostEntryId,
+                    counterpart_id: form.value.supplier_id,
+                    payment_reason: settings.value.colleague_cost_reason, status: 'to_pay',
+                }
+            });
+        } else if (colleagueCostEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: colleagueCostEntryId },
+                data: {}
+            });
+        }
+
+        // === PEDAGGI ===
+        const tollEntryId = settings.value.toll_accounting_entry_id;
+        if (form.value.toll_cost && form.value.toll_cost > 0 && form.value.supplier_id && tollEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: tollEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.toll_cost,
+                    transaction_type: 'purchase', installment: 'balance',
+                    accounting_entry_id: tollEntryId,
+                    counterpart_id: form.value.supplier_id,
+                    payment_reason: settings.value.toll_reason, status: 'to_pay',
+                }
+            });
+        } else if (tollEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: tollEntryId },
+                data: {}
+            });
+        }
+
+        // === PARCHEGGI ===
+        const parkingEntryId = settings.value.parking_accounting_entry_id;
+        if (form.value.parking_cost && form.value.parking_cost > 0 && form.value.supplier_id && parkingEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: parkingEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.parking_cost,
+                    transaction_type: 'purchase', installment: 'balance',
+                    accounting_entry_id: parkingEntryId,
+                    counterpart_id: form.value.supplier_id,
+                    payment_reason: settings.value.parking_reason, status: 'to_pay',
+                }
+            });
+        } else if (parkingEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: parkingEntryId },
+                data: {}
+            });
+        }
+
+        // === ALTRI COSTI VEICOLO ===
+        const otherVehicleEntryId = settings.value.other_vehicle_accounting_entry_id;
+        if (form.value.other_vehicle_costs && form.value.other_vehicle_costs > 0 && form.value.supplier_id && otherVehicleEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: otherVehicleEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.other_vehicle_costs,
+                    transaction_type: 'purchase', installment: 'balance',
+                    accounting_entry_id: otherVehicleEntryId,
+                    counterpart_id: form.value.supplier_id,
+                    payment_reason: settings.value.other_vehicle_reason, status: 'to_pay',
+                }
+            });
+        } else if (otherVehicleEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: otherVehicleEntryId },
+                data: {}
+            });
+        }
+
+        // Single batch API call
+        const response = await axios.post('/api/accounting-transactions/batch', {
+            service_id: serviceId,
+            operations: operations
+        });
+
+        // Update local transactions with server response
+        if (response.data && response.data.data) {
+            form.value.accounting_transactions = response.data.data;
         }
 
         return true;
@@ -5547,22 +5616,22 @@ const submitForm = async (confirmOverlaps = false) => {
         const response = await axios[method](url, payload);
         const savedServiceId = response.data.data?.id || props.service?.id;
 
-        // Handle activity confirmation tasks after successful save (only for edit mode)
+        // Handle post-save operations in parallel (only for edit mode)
         if (isEdit.value && props.service) {
-            // Check if confirmation tasks already exist
+            const postSavePromises = [];
+
+            // Activity confirmation tasks
             const hasConfirmationTasks = serviceTasks.value.some(task =>
                 task.notes && task.notes.includes('Task di conferma automatico per l\'esperienza:')
             );
 
             if (activityConfirmationEnabled.value && !hasConfirmationTasks) {
-                // Toggle is ON and no tasks exist - create them
-                await createActivityConfirmationTasks();
+                postSavePromises.push(createActivityConfirmationTasks());
             } else if (!activityConfirmationEnabled.value && hasConfirmationTasks) {
-                // Toggle is OFF and tasks exist - delete them
-                await removeActivityConfirmationTasks();
+                postSavePromises.push(removeActivityConfirmationTasks());
             }
 
-            // Handle accounting transactions after successful save
+            // Accounting transactions
             const hasAccountingTransactions = form.value.accounting_transactions.some(
                 t => (t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance'))
                     || t.transaction_type === 'intermediation'
@@ -5570,11 +5639,14 @@ const submitForm = async (confirmOverlaps = false) => {
             );
 
             if (accountingEnabled.value) {
-                // Toggle is ON - create or update all accounting transactions
-                await processAccountingTransactions();
+                postSavePromises.push(processAccountingTransactions());
             } else if (!accountingEnabled.value && hasAccountingTransactions) {
-                // Toggle is OFF and transactions exist - delete them
-                await removeAccountingTransactions();
+                postSavePromises.push(removeAccountingTransactions());
+            }
+
+            // Execute all post-save operations in parallel
+            if (postSavePromises.length > 0) {
+                await Promise.all(postSavePromises);
             }
         }
 
@@ -5662,32 +5734,28 @@ onMounted(async () => {
         form.value.company_id = currentUser.value.company_id;
     }
 
-    // Load all data (now company_id is set)
-    // Note: loadCounterparts is not called here for lazy loading optimization
-    // Committenti will be loaded when the user opens the select dropdown
-    await Promise.all([
-        loadVehicles(),
-        loadDrivers(),
-        loadDressCodes(),
-        loadServiceStatuses(),
-        loadServiceTypes(),
-        loadActivityTypes(),
-        loadAccountingEntries(),
-        loadPaymentTypes(),
-        loadSettings()
-    ]);
+    // Load all dictionary data + settings in a single API call
+    // Vehicles and drivers are lazy-loaded via Multiselect async search
+    // Committenti/intermediari/fornitori are lazy-loaded when dropdown opens
+    await loadFormData();
 
-    // Pre-populate client in committenti if editing and client exists
+    // Pre-populate counterparts if editing
     if (isEdit.value && props.service?.client) {
         committenti.value = [props.service.client];
     }
-    // Pre-populate intermediary if editing and intermediary exists
     if (isEdit.value && props.service?.intermediary) {
         intermediari.value = [props.service.intermediary];
     }
-    // Pre-populate supplier if editing and supplier exists
     if (isEdit.value && props.service?.supplier) {
         fornitori.value = [props.service.supplier];
+    }
+    // Pre-populate vehicle in vehicles array for computed properties
+    if (isEdit.value && props.service?.vehicle) {
+        vehicles.value = [props.service.vehicle];
+    }
+    // Pre-populate drivers in drivers array for computed properties
+    if (isEdit.value && props.service?.drivers) {
+        drivers.value = [...props.service.drivers];
     }
 
     if (isEdit.value && props.service) {
@@ -5696,7 +5764,7 @@ onMounted(async () => {
             if (props.service[key] !== undefined) {
                 // Format datetime fields for datetime-local input
                 if (key.includes('datetime') && props.service[key]) {
-                    form.value[key] = moment(props.service[key]).format('YYYY-MM-DDTHH:mm');
+                    form.value[key] = moment.utc(props.service[key]).format('YYYY-MM-DDTHH:mm');
                 } else if (key === 'vat_rate' || key === 'card_fees_percentage' || key === 'deposit_percentage') {
                     // Convert decimal values to numbers for proper select binding
                     form.value[key] = parseFloat(props.service[key]) || 0;

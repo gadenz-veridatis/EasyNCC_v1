@@ -60,12 +60,9 @@
                                     <label class="form-label">Stato</label>
                                     <select v-model="filters.status" class="form-select form-select-sm" @change="loadTransactions">
                                         <option value="">Tutti</option>
-                                        <option value="to_pay">Da Pagare</option>
-                                        <option value="paid">Pagato</option>
-                                        <option value="to_collect">Da Incassare</option>
-                                        <option value="collected">Incassato</option>
-                                        <option value="suspended">Sospeso</option>
-                                        <option value="cancelled">Annullato</option>
+                                        <option v-for="ts in transactionStatuses" :key="ts.code" :value="ts.code">
+                                            {{ ts.name }}
+                                        </option>
                                     </select>
                                 </BCol>
                                 <BCol md="3">
@@ -418,9 +415,9 @@
                                                 @click="startEditStatus(transaction)"
                                                 :class="getStatusBadgeClass(transaction.status)"
                                                 class="cursor-pointer"
-                                                :title="getStatusLabel(transaction.status, transaction.transaction_type) + ' - Clicca per modificare'"
+                                                :title="getStatusLabel(transaction.status) + ' - Clicca per modificare'"
                                             >
-                                                {{ getStatusAbbr(transaction.status, transaction.transaction_type) }}
+                                                {{ getStatusAbbr(transaction.status) }}
                                             </span>
                                             <div v-else>
                                                 <select
@@ -429,18 +426,11 @@
                                                     @keyup.esc="cancelEditStatus"
                                                     style="max-width: 130px;"
                                                 >
-                                                    <template v-if="transaction.transaction_type === 'purchase' || transaction.transaction_type === 'intermediation'">
-                                                        <option value="to_pay">Da Pagare</option>
-                                                        <option value="paid">Pagato</option>
-                                                        <option value="suspended">Sospeso</option>
-                                                        <option value="cancelled">Annullato</option>
-                                                    </template>
-                                                    <template v-else-if="transaction.transaction_type === 'sale'">
-                                                        <option value="to_collect">Da Incassare</option>
-                                                        <option value="collected">Incassato</option>
-                                                        <option value="suspended">Sospeso</option>
-                                                        <option value="cancelled">Annullato</option>
-                                                    </template>
+                                                    <option
+                                                        v-for="ts in filteredTransactionStatuses(transaction.transaction_type)"
+                                                        :key="ts.code"
+                                                        :value="ts.code"
+                                                    >{{ ts.name }}</option>
                                                 </select>
                                                 <div class="d-flex gap-1">
                                                     <button
@@ -596,6 +586,7 @@ export default {
         const services = ref([]);
         const counterparts = ref([]);
         const accountingEntries = ref([]);
+        const transactionStatuses = ref([]);
         const loading = ref(false);
         const showFilters = ref(false);
         const showSummary = ref(true);
@@ -745,6 +736,19 @@ export default {
                 accountingEntries.value = response.data.data || [];
             } catch (error) {
                 console.error('Error loading accounting entries:', error);
+            }
+        };
+
+        const loadTransactionStatuses = async () => {
+            try {
+                const params = {};
+                if (filters.value.company_id) {
+                    params.company_id = filters.value.company_id;
+                }
+                const response = await axios.get('/api/dictionaries/transaction-statuses', { params });
+                transactionStatuses.value = response.data.data || [];
+            } catch (error) {
+                console.error('Error loading transaction statuses:', error);
             }
         };
 
@@ -898,7 +902,7 @@ export default {
         };
 
         const formatDate = (date) => {
-            return date ? moment(date).format('DD/MM/YYYY') : '-';
+            return date ? moment.utc(date).format('DD/MM/YYYY') : '-';
         };
 
         const getTransactionTypeLabel = (type) => {
@@ -948,54 +952,45 @@ export default {
             return abbrs[installment] || installment;
         };
 
-        const getStatusLabel = (status, transactionType) => {
-            // For purchase and intermediation (dare/costi), show only to_pay/paid states
-            // For sale (avere/ricavi), show only to_collect/collected states
-            const labels = {
-                to_pay: 'Da Pagare',
-                paid: 'Pagato',
-                to_collect: 'Da Incassare',
-                collected: 'Incassato',
-                suspended: 'Sospeso',
-                cancelled: 'Annullato',
-            };
-            return labels[status] || status;
+        const getStatusLabel = (status) => {
+            const found = transactionStatuses.value.find(s => s.code === status);
+            return found ? found.name : status;
         };
 
-        const getStatusAbbr = (status, transactionType) => {
-            // For purchase and intermediation (dare/costi), show only to_pay/paid states
-            // For sale (avere/ricavi), show only to_collect/collected states
-            const abbrs = {
-                to_pay: 'DP',
-                paid: 'PAG',
-                to_collect: 'DI',
-                collected: 'INC',
-                suspended: 'SOS',
-                cancelled: 'ANN',
-            };
-            return abbrs[status] || status;
+        const getStatusAbbr = (status) => {
+            const found = transactionStatuses.value.find(s => s.code === status);
+            return found ? (found.abbreviation || found.name) : status;
         };
 
         const getStatusBadgeClass = (status) => {
-            const classes = {
-                to_pay: 'badge bg-warning-subtle text-warning',
-                paid: 'badge bg-success-subtle text-success',
-                to_collect: 'badge bg-info-subtle text-info',
-                collected: 'badge bg-success-subtle text-success',
-                suspended: 'badge bg-secondary-subtle text-secondary',
-                cancelled: 'badge bg-danger-subtle text-danger',
-            };
-            return classes[status] || 'badge bg-secondary-subtle text-secondary';
+            const found = transactionStatuses.value.find(s => s.code === status);
+            if (found && found.color) {
+                return `badge bg-${found.color}-subtle text-${found.color}`;
+            }
+            return 'badge bg-secondary-subtle text-secondary';
+        };
+
+        const isStatusFinal = (statusCode) => {
+            const found = transactionStatuses.value.find(s => s.code === statusCode);
+            return found ? found.is_final : false;
+        };
+
+        const filteredTransactionStatuses = (transactionType) => {
+            if (!transactionType) return transactionStatuses.value;
+            const typeGroup = transactionType === 'sale' ? 'sale' : 'purchase';
+            return transactionStatuses.value.filter(s =>
+                s.transaction_type_group === typeGroup || s.transaction_type_group === 'both'
+            );
         };
 
         const getDueDateClass = (transaction) => {
             if (!transaction.document_due_date) return '';
 
-            const dueDate = moment(transaction.document_due_date);
+            const dueDate = moment.utc(transaction.document_due_date);
             const today = moment();
 
-            // Se già pagato/incassato, non evidenziare
-            if (['paid', 'collected', 'cancelled'].includes(transaction.status)) {
+            // Se stato finale, non evidenziare
+            if (isStatusFinal(transaction.status)) {
                 return '';
             }
 
@@ -1027,6 +1022,7 @@ export default {
                 loadServices(),
                 loadAccountingEntries(),
                 loadCounterparts(),
+                loadTransactionStatuses(),
                 loadTransactions(),
             ];
             if (isSuperAdmin.value) {
@@ -1041,6 +1037,7 @@ export default {
             services,
             counterparts,
             accountingEntries,
+            transactionStatuses,
             loading,
             showFilters,
             showSummary,
@@ -1077,6 +1074,7 @@ export default {
             getStatusAbbr,
             getStatusBadgeClass,
             getDueDateClass,
+            filteredTransactionStatuses,
             editingStatus,
             editingStatusValue,
             startEditStatus,

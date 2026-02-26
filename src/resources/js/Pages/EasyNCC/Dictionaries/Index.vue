@@ -43,9 +43,14 @@
               <table class="table table-borderless align-middle mb-0">
                 <thead class="table-light">
                   <tr>
+                    <th scope="col" v-if="hasSortOrder" style="white-space: nowrap;">#</th>
                     <th scope="col" style="white-space: nowrap;">Nome</th>
+                    <th scope="col" v-if="hasCode" style="white-space: nowrap;">Codice</th>
                     <th scope="col" v-if="hasDescription">Descrizione</th>
                     <th scope="col" v-if="hasAbbreviation" style="white-space: nowrap;">Sigla</th>
+                    <th scope="col" v-if="hasColor" style="white-space: nowrap;">Colore</th>
+                    <th scope="col" v-if="hasTransactionTypeGroup" style="white-space: nowrap;">Gruppo</th>
+                    <th scope="col" v-if="hasIsFinal" style="white-space: nowrap;">Finale</th>
                     <th scope="col" v-if="hasIsDefault" style="white-space: nowrap;">Default</th>
                     <th scope="col" v-if="hasIsActive" style="white-space: nowrap;">Stato</th>
                     <th scope="col" v-if="hasType" style="white-space: nowrap;">Tipo</th>
@@ -67,9 +72,26 @@
                     </td>
                   </tr>
                   <tr v-for="item in filteredItems" :key="item.id" v-else>
+                    <td v-if="hasSortOrder" style="white-space: nowrap;">{{ item.sort_order }}</td>
                     <td style="white-space: nowrap;">{{ item.name }}</td>
+                    <td v-if="hasCode" style="white-space: nowrap;">
+                      <code>{{ item.code }}</code>
+                    </td>
                     <td v-if="hasDescription" style="max-width: 400px; word-wrap: break-word; white-space: normal;">{{ item.description }}</td>
                     <td v-if="hasAbbreviation" style="white-space: nowrap;">{{ item.abbreviation }}</td>
+                    <td v-if="hasColor" style="white-space: nowrap;">
+                      <span :class="'badge bg-' + (item.color || 'secondary') + '-subtle text-' + (item.color || 'secondary')">
+                        {{ item.abbreviation || item.name }}
+                      </span>
+                    </td>
+                    <td v-if="hasTransactionTypeGroup" style="white-space: nowrap;">
+                      {{ transactionTypeGroupLabel(item.transaction_type_group) }}
+                    </td>
+                    <td v-if="hasIsFinal" style="white-space: nowrap;">
+                      <BBadge :variant="item.is_final ? 'warning' : 'secondary'">
+                        {{ item.is_final ? 'Sì' : 'No' }}
+                      </BBadge>
+                    </td>
                     <td v-if="hasIsDefault" style="white-space: nowrap;">
                       <BBadge :variant="item.is_default ? 'success' : 'secondary'">
                         {{ item.is_default ? 'Sì' : 'No' }}
@@ -140,6 +162,17 @@
           />
         </div>
 
+        <div class="mb-3" v-if="hasCode">
+          <label class="form-label">Codice <span class="text-danger">*</span></label>
+          <input
+            type="text"
+            class="form-control"
+            v-model="form.code"
+            required
+            placeholder="es. to_pay"
+          />
+        </div>
+
         <div class="mb-3" v-if="hasDescription">
           <label class="form-label">Descrizione</label>
           <textarea
@@ -156,6 +189,45 @@
             class="form-control"
             v-model="form.abbreviation"
           />
+        </div>
+
+        <div class="mb-3" v-if="hasColor">
+          <label class="form-label">Colore Badge</label>
+          <select class="form-select" v-model="form.color">
+            <option value="">Nessuno</option>
+            <option value="primary">Blu (primary)</option>
+            <option value="secondary">Grigio (secondary)</option>
+            <option value="success">Verde (success)</option>
+            <option value="danger">Rosso (danger)</option>
+            <option value="warning">Giallo (warning)</option>
+            <option value="info">Azzurro (info)</option>
+          </select>
+          <div v-if="form.color" class="mt-2">
+            <span :class="'badge bg-' + form.color + '-subtle text-' + form.color">
+              Anteprima
+            </span>
+          </div>
+        </div>
+
+        <div class="mb-3" v-if="hasTransactionTypeGroup">
+          <label class="form-label">Gruppo Tipo Movimento <span class="text-danger">*</span></label>
+          <select class="form-select" v-model="form.transaction_type_group" required>
+            <option value="">Seleziona gruppo</option>
+            <option value="purchase">Acquisto (dare)</option>
+            <option value="sale">Vendita (avere)</option>
+            <option value="both">Entrambi</option>
+          </select>
+        </div>
+
+        <div class="mb-3" v-if="hasIsFinal">
+          <div class="form-check form-switch">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              v-model="form.is_final"
+            />
+            <label class="form-check-label">Stato finale (blocca aggiornamenti automatici)</label>
+          </div>
         </div>
 
         <div class="mb-3" v-if="hasIsDefault">
@@ -178,6 +250,16 @@
             />
             <label class="form-check-label">Attivo</label>
           </div>
+        </div>
+
+        <div class="mb-3" v-if="hasSortOrder">
+          <label class="form-label">Ordine</label>
+          <input
+            type="number"
+            class="form-control"
+            v-model.number="form.sort_order"
+            min="0"
+          />
         </div>
 
         <div class="mb-3" v-if="hasType">
@@ -245,6 +327,26 @@ export default {
       type: Boolean,
       default: false,
     },
+    hasCode: {
+      type: Boolean,
+      default: false,
+    },
+    hasColor: {
+      type: Boolean,
+      default: false,
+    },
+    hasTransactionTypeGroup: {
+      type: Boolean,
+      default: false,
+    },
+    hasIsFinal: {
+      type: Boolean,
+      default: false,
+    },
+    hasSortOrder: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
@@ -279,13 +381,19 @@ export default {
         (item) =>
           item.name?.toLowerCase().includes(query) ||
           item.description?.toLowerCase().includes(query) ||
-          item.abbreviation?.toLowerCase().includes(query)
+          item.abbreviation?.toLowerCase().includes(query) ||
+          item.code?.toLowerCase().includes(query)
       );
     },
     columnCount() {
       let count = 2; // name + actions
+      if (this.hasSortOrder) count++;
+      if (this.hasCode) count++;
       if (this.hasDescription) count++;
       if (this.hasAbbreviation) count++;
+      if (this.hasColor) count++;
+      if (this.hasTransactionTypeGroup) count++;
+      if (this.hasIsFinal) count++;
       if (this.hasIsDefault) count++;
       if (this.hasIsActive) count++;
       if (this.hasType) count++;
@@ -302,6 +410,14 @@ export default {
     await this.loadItems();
   },
   methods: {
+    transactionTypeGroupLabel(group) {
+      const labels = {
+        purchase: 'Acquisto',
+        sale: 'Vendita',
+        both: 'Entrambi',
+      };
+      return labels[group] || group;
+    },
     async loadCurrentUser() {
       try {
         const response = await axios.get('/api/user');
@@ -331,6 +447,11 @@ export default {
       if (this.hasIsDefault) form.is_default = false;
       if (this.hasIsActive) form.is_active = true;
       if (this.hasType) form.type = "";
+      if (this.hasCode) form.code = "";
+      if (this.hasColor) form.color = "";
+      if (this.hasTransactionTypeGroup) form.transaction_type_group = "";
+      if (this.hasIsFinal) form.is_final = false;
+      if (this.hasSortOrder) form.sort_order = 0;
 
       return form;
     },

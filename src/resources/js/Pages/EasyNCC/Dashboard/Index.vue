@@ -196,7 +196,7 @@ const loadDashboardData = async () => {
 };
 
 const formatDateTime = (datetime) => {
-    return moment(datetime).format('DD/MM/YYYY HH:mm');
+    return moment.utc(datetime).format('DD/MM/YYYY HH:mm');
 };
 
 const getStatusColor = (status) => {

@@ -165,6 +165,10 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
             Route::get('/accounting-entries', function () {
                 return inertia('EasyNCC/Dictionaries/AccountingEntries');
             })->name('accounting-entries');
+
+            Route::get('/transaction-statuses', function () {
+                return inertia('EasyNCC/Dictionaries/TransactionStatuses');
+            })->name('transaction-statuses');
         });
 
         // Settings

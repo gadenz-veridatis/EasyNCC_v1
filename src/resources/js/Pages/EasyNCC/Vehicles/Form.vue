@@ -607,7 +607,7 @@ const saveZtl = async () => {
 
 const formatDate = (dateStr) => {
     if (!dateStr) return '-';
-    return moment(dateStr).format('DD/MM/YYYY');
+    return moment.utc(dateStr).format('DD/MM/YYYY');
 };
 
 onMounted(() => {
@@ -622,7 +622,7 @@ onMounted(() => {
 // Utility function for formatting datetime
 const formatDateTime = (date) => {
     if (!date) return '-';
-    return moment(date).format('DD/MM/YYYY HH:mm');
+    return moment.utc(date).format('DD/MM/YYYY HH:mm');
 };
 </script>
 

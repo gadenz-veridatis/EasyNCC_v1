@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Settings;
 use App\Models\AccountingEntry;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -24,24 +25,7 @@ class SettingsController extends Controller
             $companyId = $user->company_id;
         }
 
-        $settings = Settings::with([
-            'company',
-            'depositAccountingEntry',
-            'balanceAccountingEntry',
-            'defaultSupplier',
-            'commissionAccountingEntry',
-            'fuelAccountingEntry',
-            'tollAccountingEntry',
-            'parkingAccountingEntry',
-            'otherVehicleAccountingEntry',
-            'driverCostAccountingEntry',
-            'colleagueCostAccountingEntry',
-            'experienceAccountingEntry',
-            'handlingFeesAccountingEntry',
-            'cardFeesAccountingEntry',
-        ])
-        ->where('company_id', $companyId)
-        ->first();
+        $settings = Settings::where('company_id', $companyId)->first();
 
         // Se non esistono settings, restituisci valori di default
         if (!$settings) {
@@ -169,26 +153,9 @@ class SettingsController extends Controller
             ]
         );
 
-        $settings->load([
-            'company',
-            'depositAccountingEntry',
-            'balanceAccountingEntry',
-            'defaultSupplier',
-            'commissionAccountingEntry',
-            'fuelAccountingEntry',
-            'tollAccountingEntry',
-            'parkingAccountingEntry',
-            'otherVehicleAccountingEntry',
-            'driverCostAccountingEntry',
-            'colleagueCostAccountingEntry',
-            'experienceAccountingEntry',
-            'handlingFeesAccountingEntry',
-            'cardFeesAccountingEntry',
-        ]);
-
         return response()->json([
+            'success' => true,
             'message' => 'Impostazioni salvate con successo',
-            'data' => $settings
         ]);
     }
 
@@ -211,6 +178,34 @@ class SettingsController extends Controller
 
         return response()->json([
             'data' => $entries
+        ]);
+    }
+
+    /**
+     * Get suppliers for dropdown (lightweight: only id, name, surname)
+     */
+    public function getSuppliers(Request $request)
+    {
+        $user = Auth::user();
+
+        if ($user->role === 'super-admin' && $request->has('company_id')) {
+            $companyId = $request->company_id;
+        } else {
+            $companyId = $user->company_id;
+        }
+
+        $suppliers = User::select('id', 'name', 'surname')
+            ->where('company_id', $companyId)
+            ->where('role', 'collaboratore')
+            ->whereHas('clientProfile', function ($q) {
+                $q->where('is_fornitore', true);
+            })
+            ->orderBy('surname')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'data' => $suppliers
         ]);
     }
 }

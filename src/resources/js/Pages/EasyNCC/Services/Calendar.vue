@@ -132,18 +132,47 @@
                 <button type="button" class="btn-close btn-close-white ms-2" @click="closePopover"></button>
             </div>
             <div class="popover-body">
-                <!-- Pickup -->
+                <!-- Pickup - inline editable -->
                 <div class="mb-2">
                     <div class="fw-bold text-success" style="font-size: 0.75rem;">Partenza:</div>
-                    <div class="fw-bold small">{{ formatDateTime(selectedService.pickup_datetime) }}</div>
-                    <div class="small text-truncate">{{ selectedService.pickup_address }}</div>
+                    <div v-if="!popoverEditingDatetimes" class="popover-inline-editable" @click.stop="startPopoverEditDatetimes" title="Clicca per modificare orari">
+                        <div class="fw-bold small">{{ formatDateTime(selectedService.pickup_datetime) }}</div>
+                        <div class="small text-truncate">{{ selectedService.pickup_address }}</div>
+                    </div>
+                    <div v-else @click.stop>
+                        <label class="text-muted" style="font-size: 0.65rem;">Pickup</label>
+                        <input type="datetime-local" v-model="popoverEditingDatetimeValues.pickup_datetime"
+                               class="form-control form-control-sm mb-1" style="font-size: 0.75rem;" />
+                        <label class="text-muted" style="font-size: 0.65rem;">Uscita mezzo</label>
+                        <input type="datetime-local" v-model="popoverEditingDatetimeValues.vehicle_departure_datetime"
+                               class="form-control form-control-sm" style="font-size: 0.75rem;" />
+                    </div>
                 </div>
 
-                <!-- Dropoff -->
+                <!-- Dropoff - inline editable -->
                 <div class="mb-2">
                     <div class="fw-bold text-danger" style="font-size: 0.75rem;">Arrivo:</div>
-                    <div class="fw-bold small">{{ formatDateTime(selectedService.dropoff_datetime) }}</div>
-                    <div class="small text-truncate">{{ selectedService.dropoff_address }}</div>
+                    <div v-if="!popoverEditingDatetimes" class="popover-inline-editable" @click.stop="startPopoverEditDatetimes" title="Clicca per modificare orari">
+                        <div class="fw-bold small">{{ formatDateTime(selectedService.dropoff_datetime) }}</div>
+                        <div class="small text-truncate">{{ selectedService.dropoff_address }}</div>
+                    </div>
+                    <div v-else @click.stop>
+                        <label class="text-muted" style="font-size: 0.65rem;">Dropoff</label>
+                        <input type="datetime-local" v-model="popoverEditingDatetimeValues.dropoff_datetime"
+                               class="form-control form-control-sm mb-1" style="font-size: 0.75rem;" />
+                        <label class="text-muted" style="font-size: 0.65rem;">Rientro mezzo</label>
+                        <input type="datetime-local" v-model="popoverEditingDatetimeValues.vehicle_return_datetime"
+                               class="form-control form-control-sm" style="font-size: 0.75rem;" />
+                        <div class="d-flex gap-1 mt-1">
+                            <button class="btn btn-sm btn-success py-0 px-1" @click.stop="savePopoverDatetimes" :disabled="popoverSaving" style="font-size: 0.7rem;">
+                                <span v-if="popoverSaving" class="spinner-border spinner-border-sm" role="status"></span>
+                                <i v-else class="ri-check-line"></i>
+                            </button>
+                            <button class="btn btn-sm btn-secondary py-0 px-1" @click.stop="cancelPopoverEditDatetimes" style="font-size: 0.7rem;">
+                                <i class="ri-close-line"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Driver - inline editable -->
@@ -175,8 +204,9 @@
                             </option>
                         </select>
                         <div class="d-flex gap-1 mt-1">
-                            <button class="btn btn-sm btn-success py-0 px-1" @click.stop="savePopoverDrivers" style="font-size: 0.7rem;">
-                                <i class="ri-check-line"></i>
+                            <button class="btn btn-sm btn-success py-0 px-1" @click.stop="savePopoverDrivers" :disabled="popoverSaving" style="font-size: 0.7rem;">
+                                <span v-if="popoverSaving" class="spinner-border spinner-border-sm" role="status"></span>
+                                <i v-else class="ri-check-line"></i>
                             </button>
                             <button class="btn btn-sm btn-secondary py-0 px-1" @click.stop="cancelPopoverEditDrivers" style="font-size: 0.7rem;">
                                 <i class="ri-close-line"></i>
@@ -234,12 +264,18 @@
                 <div class="mb-2">
                     <div class="text-muted small">Prezzo Totale</div>
                     <div class="fw-bold">
-                        <span class="badge bg-success fs-6 px-2 py-1">€{{ formatCurrency(selectedService.service_price || selectedService.price) }}</span>
+                        <span class="badge bg-success fs-6 px-2 py-1">&euro;{{ formatCurrency(selectedService.service_price || selectedService.price) }}</span>
                     </div>
                 </div>
 
-                <!-- Sovrapposizioni -->
-                <div v-if="hasSelectedServiceOverlaps" class="mb-2">
+                <!-- Sovrapposizioni esistenti -->
+                <div v-if="loadingDetail && hasSelectedServiceOverlapCounts" class="mb-2">
+                    <div class="text-warning small fw-bold">
+                        <i class="ri-alert-fill me-1"></i>Sovrapposizioni
+                        <span class="spinner-border spinner-border-sm ms-1" role="status"></span>
+                    </div>
+                </div>
+                <div v-else-if="hasSelectedServiceOverlaps" class="mb-2">
                     <div class="text-warning small fw-bold">
                         <i class="ri-alert-fill me-1"></i>Sovrapposizioni
                     </div>
@@ -258,6 +294,40 @@
                         <div v-if="overlap.driver" class="text-warning">
                             <i class="ri-user-line me-1"></i>{{ overlap.driver.surname }} {{ overlap.driver.name }}
                         </div>
+                    </div>
+                </div>
+
+                <!-- Conferma sovrapposizioni rilevate dopo salvataggio -->
+                <div v-if="showOverlapConfirmation && pendingOverlaps.length > 0" class="mb-2 border border-warning rounded p-2 bg-warning bg-opacity-10">
+                    <div class="text-warning small fw-bold mb-1">
+                        <i class="ri-alert-fill me-1"></i>Sovrapposizioni Rilevate
+                    </div>
+                    <div class="small mb-2">Confermare per salvare con sovrapposizioni:</div>
+                    <div v-for="(overlap, index) in pendingOverlaps" :key="index" class="small border-start border-warning ps-2 mt-1">
+                        <div class="fw-bold">
+                            {{ overlap.overlapping_service_reference || ('#' + overlap.overlapping_service_id) }}
+                        </div>
+                        <div>
+                            <span v-if="overlap.overlap_type === 'vehicle'" class="badge bg-info me-1">Veicolo</span>
+                            <span v-else-if="overlap.overlap_type === 'driver'" class="badge bg-warning text-dark me-1">Autista</span>
+                            <span v-else-if="overlap.overlap_type === 'both'" class="badge bg-danger me-1">Entrambi</span>
+                        </div>
+                        <div v-if="overlap.vehicle_plate" class="text-info">
+                            <i class="ri-car-line me-1"></i>{{ overlap.vehicle_plate }}
+                            <small class="text-muted">{{ overlap.vehicle_brand }} {{ overlap.vehicle_model }}</small>
+                        </div>
+                        <div v-if="overlap.driver_name" class="text-warning">
+                            <i class="ri-user-line me-1"></i>{{ overlap.driver_name }}
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1 mt-2">
+                        <button class="btn btn-sm btn-warning py-0 px-2" @click.stop="confirmOverlapsAndSavePopover" :disabled="popoverSaving" style="font-size: 0.7rem;">
+                            <span v-if="popoverSaving" class="spinner-border spinner-border-sm" role="status"></span>
+                            <i v-else class="ri-check-line me-1"></i>Conferma
+                        </button>
+                        <button class="btn btn-sm btn-secondary py-0 px-2" @click.stop="cancelOverlapConfirmationPopover" style="font-size: 0.7rem;">
+                            <i class="ri-close-line me-1"></i>Annulla
+                        </button>
                     </div>
                 </div>
 
@@ -359,6 +429,22 @@ const popoverEditingVehicleValue = ref('');
 const popoverEditingDressCode = ref(false);
 const popoverEditingDressCodeValue = ref(null);
 
+// Datetime inline editing
+const popoverEditingDatetimes = ref(false);
+const popoverEditingDatetimeValues = ref({
+    pickup_datetime: '',
+    dropoff_datetime: '',
+    vehicle_departure_datetime: '',
+    vehicle_return_datetime: '',
+});
+
+// Detail loading and overlap confirmation
+const loadingDetail = ref(false);
+const popoverSaving = ref(false);
+const pendingOverlaps = ref([]);
+const showOverlapConfirmation = ref(false);
+const pendingSavePayload = ref(null);
+
 // Dictionaries for inline editing
 const allDrivers = ref([]);
 const allVehicles = ref([]);
@@ -370,7 +456,7 @@ let isLoadingServices = false;
 const mapServicesToEvents = (servicesList) => {
     return servicesList.map(service => {
         const drivers = service.drivers || [];
-        const pickupTime = moment(service.pickup_datetime).format('HH:mm');
+        const pickupTime = moment.utc(service.pickup_datetime).format('HH:mm');
         const contactName = service.contact_name || '';
         const passengerCount = service.passenger_count || 0;
         const clientName = service.client ? `${service.client.name || ''} ${service.client.surname || ''}`.trim() : '';
@@ -492,6 +578,7 @@ const initializeCalendar = async () => {
                     right: 'dayGridMonth,timeGridWeek,timeGridDay'
                 },
                 initialView: 'dayGridMonth',
+                timeZone: 'UTC',
                 locale: 'it',
                 events: [],
                 eventClick: handleEventClick,
@@ -571,6 +658,12 @@ const handleEventClick = (info) => {
     selectedService.value = info.event.extendedProps.service;
     selectedEvent.value = info.el;
     showDetailPopover.value = true;
+
+    // Reset editing and overlap state
+    resetPopoverEditing();
+
+    // Fetch full details (overlaps) in background
+    fetchServiceDetail(info.event.extendedProps.service.id);
 
     // Posiziona il popover vicino all'elemento cliccato
     setTimeout(() => {
@@ -667,6 +760,17 @@ const resetPopoverEditing = () => {
     popoverEditingVehicleValue.value = '';
     popoverEditingDressCode.value = false;
     popoverEditingDressCodeValue.value = null;
+    popoverEditingDatetimes.value = false;
+    popoverEditingDatetimeValues.value = {
+        pickup_datetime: '',
+        dropoff_datetime: '',
+        vehicle_departure_datetime: '',
+        vehicle_return_datetime: '',
+    };
+    popoverSaving.value = false;
+    pendingOverlaps.value = [];
+    showOverlapConfirmation.value = false;
+    pendingSavePayload.value = null;
 };
 
 const loadDictionaries = async () => {
@@ -684,6 +788,114 @@ const loadDictionaries = async () => {
     }
 };
 
+// Fetch full service detail (for overlap relationships)
+const fetchServiceDetail = async (serviceId) => {
+    loadingDetail.value = true;
+    try {
+        const response = await axios.get(`/api/services/${serviceId}`);
+        const detail = response.data;
+        // Merge overlap relationships and vehicle datetimes into selectedService
+        selectedService.value = {
+            ...selectedService.value,
+            overlaps: detail.overlaps || [],
+            overlapped_by: detail.overlapped_by || [],
+            vehicle_departure_datetime: detail.vehicle_departure_datetime,
+            vehicle_return_datetime: detail.vehicle_return_datetime,
+        };
+    } catch (err) {
+        console.error('Error fetching service detail:', err);
+    } finally {
+        loadingDetail.value = false;
+    }
+};
+
+// Update a single FullCalendar event in-place (no full reload)
+const updateCalendarEvent = (updatedService) => {
+    if (!calendarInstance) return;
+    const event = calendarInstance.getEventById(updatedService.id);
+    if (!event) return;
+
+    const drivers = updatedService.drivers || [];
+    const pickupTime = moment.utc(updatedService.pickup_datetime).format('HH:mm');
+    const contactName = updatedService.contact_name || '';
+    const passengerCount = updatedService.passenger_count || 0;
+    const clientName = updatedService.client ? `${updatedService.client.name || ''} ${updatedService.client.surname || ''}`.trim() : '';
+    const serviceType = updatedService.service_type || '';
+    const capitalizedContactName = contactName ?
+        contactName.split(' ').map((word, index) => index === 0 ? word.toUpperCase() : word).join(' ') : '';
+    const titleParts = [pickupTime, serviceType, `${passengerCount} pax`, capitalizedContactName, clientName].filter(part => part && part.trim());
+    const title = titleParts.join(' | ');
+    const colors = drivers.length > 0 ? drivers.map(d => d.driver_profile?.color || '#6c757d') : ['#6c757d'];
+    const hasOverlaps = (updatedService.overlaps || []).length + (updatedService.overlapped_by || []).length > 0;
+
+    event.setProp('title', title);
+    event.setProp('backgroundColor', colors[0]);
+    event.setProp('borderColor', colors[0]);
+    event.setProp('classNames', hasOverlaps ? ['fc-event-overlap'] : []);
+    event.setDates(updatedService.pickup_datetime, updatedService.dropoff_datetime);
+    event.setExtendedProp('service', updatedService);
+    event.setExtendedProp('driverColors', colors);
+    event.setExtendedProp('hasOverlaps', hasOverlaps);
+};
+
+// Centralized save with overlap handling for all popover inline edits
+const savePopoverField = async (payload, confirmOverlaps = false) => {
+    popoverSaving.value = true;
+    try {
+        if (confirmOverlaps) {
+            payload.confirm_overlaps = true;
+        }
+        const response = await axios.put(`/api/services/${selectedService.value.id}`, payload);
+        const updatedService = response.data.data;
+
+        // Update selectedService with returned data (no extra GET needed)
+        selectedService.value = {
+            ...selectedService.value,
+            ...updatedService,
+            overlaps_count: (updatedService.overlaps || []).length,
+            overlapped_by_count: (updatedService.overlapped_by || []).length,
+        };
+
+        // Update the single FullCalendar event
+        updateCalendarEvent(selectedService.value);
+
+        // Update the service in the local services array
+        const idx = services.value.findIndex(s => s.id === updatedService.id);
+        if (idx !== -1) {
+            services.value[idx] = {
+                ...services.value[idx],
+                ...updatedService,
+                overlaps_count: (updatedService.overlaps || []).length,
+                overlapped_by_count: (updatedService.overlapped_by || []).length,
+            };
+        }
+
+        // Clear overlap confirmation state
+        pendingOverlaps.value = [];
+        showOverlapConfirmation.value = false;
+        pendingSavePayload.value = null;
+
+        return true;
+    } catch (err) {
+        if (err.response && err.response.status === 422 && err.response.data.requires_confirmation && err.response.data.overlaps) {
+            pendingOverlaps.value = err.response.data.overlaps;
+            showOverlapConfirmation.value = true;
+            pendingSavePayload.value = { ...payload };
+            return false;
+        }
+        console.error('Error saving service:', err);
+        return false;
+    } finally {
+        popoverSaving.value = false;
+    }
+};
+
+// Helper: format datetime for datetime-local input
+const formatDateTimeForInput = (datetime) => {
+    if (!datetime) return '';
+    return moment.utc(datetime).format('YYYY-MM-DDTHH:mm');
+};
+
 // Inline editing: Drivers
 const startPopoverEditDrivers = () => {
     popoverEditingDrivers.value = true;
@@ -693,22 +905,8 @@ const startPopoverEditDrivers = () => {
 };
 
 const savePopoverDrivers = async () => {
-    try {
-        await axios.put(`/api/services/${selectedService.value.id}`, {
-            driver_ids: popoverEditingDriversValue.value
-        });
-        // Reload services to update calendar
-        if (calendarInstance) {
-            const view = calendarInstance.view;
-            await loadServices(view.activeStart, view.activeEnd);
-        }
-        // Update selected service data
-        const updated = services.value.find(s => s.id === selectedService.value.id);
-        if (updated) selectedService.value = updated;
-        popoverEditingDrivers.value = false;
-    } catch (err) {
-        console.error('Error updating drivers:', err);
-    }
+    const success = await savePopoverField({ driver_ids: popoverEditingDriversValue.value });
+    if (success) popoverEditingDrivers.value = false;
 };
 
 const cancelPopoverEditDrivers = () => {
@@ -723,28 +921,8 @@ const startPopoverEditVehicle = () => {
 };
 
 const savePopoverVehicle = async () => {
-    try {
-        await axios.put(`/api/services/${selectedService.value.id}`, {
-            vehicle_id: popoverEditingVehicleValue.value || null
-        });
-        // Update local data
-        if (popoverEditingVehicleValue.value) {
-            const vehicle = allVehicles.value.find(v => v.id === popoverEditingVehicleValue.value);
-            selectedService.value.vehicle = vehicle;
-            selectedService.value.vehicle_id = popoverEditingVehicleValue.value;
-        } else {
-            selectedService.value.vehicle = null;
-            selectedService.value.vehicle_id = null;
-        }
-        popoverEditingVehicle.value = false;
-        // Reload calendar events
-        if (calendarInstance) {
-            const view = calendarInstance.view;
-            await loadServices(view.activeStart, view.activeEnd);
-        }
-    } catch (err) {
-        console.error('Error updating vehicle:', err);
-    }
+    const success = await savePopoverField({ vehicle_id: popoverEditingVehicleValue.value || null });
+    if (success) popoverEditingVehicle.value = false;
 };
 
 // Inline editing: Dress Code
@@ -754,26 +932,57 @@ const startPopoverEditDressCode = () => {
 };
 
 const savePopoverDressCode = async () => {
-    try {
-        await axios.put(`/api/services/${selectedService.value.id}`, {
-            dress_code_id: popoverEditingDressCodeValue.value
-        });
-        // Update local data
-        if (popoverEditingDressCodeValue.value) {
-            const dc = allDressCodes.value.find(d => d.id === popoverEditingDressCodeValue.value);
-            selectedService.value.dress_code = dc;
-            selectedService.value.dress_code_id = popoverEditingDressCodeValue.value;
-        } else {
-            selectedService.value.dress_code = null;
-            selectedService.value.dress_code_id = null;
-        }
-        popoverEditingDressCode.value = false;
-    } catch (err) {
-        console.error('Error updating dress code:', err);
+    const success = await savePopoverField({ dress_code_id: popoverEditingDressCodeValue.value });
+    if (success) popoverEditingDressCode.value = false;
+};
+
+// Inline editing: Datetimes
+const startPopoverEditDatetimes = () => {
+    popoverEditingDatetimes.value = true;
+    popoverEditingDatetimeValues.value = {
+        pickup_datetime: formatDateTimeForInput(selectedService.value.pickup_datetime),
+        dropoff_datetime: formatDateTimeForInput(selectedService.value.dropoff_datetime),
+        vehicle_departure_datetime: formatDateTimeForInput(selectedService.value.vehicle_departure_datetime),
+        vehicle_return_datetime: formatDateTimeForInput(selectedService.value.vehicle_return_datetime),
+    };
+};
+
+const cancelPopoverEditDatetimes = () => {
+    popoverEditingDatetimes.value = false;
+};
+
+const savePopoverDatetimes = async () => {
+    const success = await savePopoverField({
+        pickup_datetime: popoverEditingDatetimeValues.value.pickup_datetime,
+        dropoff_datetime: popoverEditingDatetimeValues.value.dropoff_datetime,
+        vehicle_departure_datetime: popoverEditingDatetimeValues.value.vehicle_departure_datetime,
+        vehicle_return_datetime: popoverEditingDatetimeValues.value.vehicle_return_datetime,
+    });
+    if (success) popoverEditingDatetimes.value = false;
+};
+
+// Overlap confirmation from popover
+const confirmOverlapsAndSavePopover = async () => {
+    if (!pendingSavePayload.value) return;
+    const success = await savePopoverField(pendingSavePayload.value, true);
+    if (success) {
+        popoverEditingDatetimes.value = false;
+        popoverEditingDrivers.value = false;
+        popoverEditingVehicle.value = false;
     }
 };
 
+const cancelOverlapConfirmationPopover = () => {
+    pendingOverlaps.value = [];
+    showOverlapConfirmation.value = false;
+    pendingSavePayload.value = null;
+};
+
 // Computed properties for overlaps
+const hasSelectedServiceOverlapCounts = computed(() => {
+    if (!selectedService.value) return false;
+    return (selectedService.value.overlaps_count || 0) + (selectedService.value.overlapped_by_count || 0) > 0;
+});
 const hasSelectedServiceOverlaps = computed(() => {
     if (!selectedService.value) return false;
     const overlapsCount = (selectedService.value.overlaps_count || 0) + (selectedService.value.overlapped_by_count || 0);
@@ -819,11 +1028,11 @@ const selectedServiceOverlaps = computed(() => {
 });
 
 const formatDateTime = (datetime) => {
-    return moment(datetime).format('DD/MM/YYYY HH:mm');
+    return moment.utc(datetime).format('DD/MM/YYYY HH:mm');
 };
 
 const formatTime = (datetime) => {
-    return moment(datetime).format('HH:mm');
+    return moment.utc(datetime).format('HH:mm');
 };
 
 const formatCurrency = (value) => {
@@ -831,7 +1040,7 @@ const formatCurrency = (value) => {
 };
 
 const getHoverEventTitle = (service) => {
-    const pickupTime = moment(service.pickup_datetime).format('HH:mm');
+    const pickupTime = moment.utc(service.pickup_datetime).format('HH:mm');
     const contactName = service.contact_name || '';
     const passengerCount = service.passenger_count || 0;
     const clientName = service.client ? `${service.client.name || ''} ${service.client.surname || ''}`.trim() : '';
@@ -948,7 +1157,7 @@ onUnmounted(() => {
 
 .service-detail-popover .popover-body {
     padding: 1rem;
-    max-height: 500px;
+    max-height: 600px;
     overflow-y: auto;
 }
 

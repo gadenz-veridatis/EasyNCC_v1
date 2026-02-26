@@ -175,6 +175,6 @@ const items = [
 ];
 
 const formatDate = (date) => {
-    return date ? moment(date).format('DD/MM/YYYY HH:mm') : '-';
+    return date ? moment.utc(date).format('DD/MM/YYYY HH:mm') : '-';
 };
 </script>

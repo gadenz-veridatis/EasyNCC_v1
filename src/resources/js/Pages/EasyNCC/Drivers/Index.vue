@@ -362,7 +362,7 @@ const sortedDocuments = computed(() => {
         if (!b.expiration_date) return -1;
 
         // Ordina per data di scadenza (più vicina prima)
-        return moment(a.expiration_date).diff(moment(b.expiration_date));
+        return moment.utc(a.expiration_date).diff(moment.utc(b.expiration_date));
     });
 });
 
@@ -496,13 +496,13 @@ const showDocumentsModal = async (driver) => {
 
 const formatDate = (date) => {
     if (!date) return '-';
-    return moment(date).format('DD/MM/YYYY');
+    return moment.utc(date).format('DD/MM/YYYY');
 };
 
 const getDaysUntilExpiry = (expiryDate) => {
     if (!expiryDate) return '';
 
-    const days = moment(expiryDate).diff(moment(), 'days');
+    const days = moment.utc(expiryDate).diff(moment(), 'days');
 
     if (days < 0) {
         return `scaduto da ${Math.abs(days)} giorni`;
@@ -518,7 +518,7 @@ const getDaysUntilExpiry = (expiryDate) => {
 const getExpiryColorClass = (expiryDate) => {
     if (!expiryDate) return '';
 
-    const days = moment(expiryDate).diff(moment(), 'days');
+    const days = moment.utc(expiryDate).diff(moment(), 'days');
 
     if (days < 0) {
         return 'text-danger';

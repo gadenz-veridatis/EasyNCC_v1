@@ -30,7 +30,7 @@
                                         <select
                                             v-model="selectedCompanyId"
                                             class="form-select"
-                                            @change="loadSettings"
+                                            @change="loadAllData"
                                         >
                                             <option value="">Seleziona un'azienda</option>
                                             <option v-for="company in companies" :key="company.id" :value="company.id">
@@ -657,7 +657,7 @@ export default {
     },
     data() {
         return {
-            loading: false,
+            loading: true,
             saving: false,
             errors: [],
             successMessage: '',
@@ -708,11 +708,10 @@ export default {
         await this.loadCurrentUser();
         if (this.isSuperAdmin) {
             await this.loadCompanies();
+            this.loading = false;
         } else {
             this.selectedCompanyId = this.currentUser.company_id;
-            await this.loadSettings();
-            await this.loadAccountingEntries();
-            await this.loadSuppliers();
+            await this.loadAllData();
         }
     },
     methods: {
@@ -732,7 +731,7 @@ export default {
                 console.error('Error loading companies:', error);
             }
         },
-        async loadSettings() {
+        async loadAllData() {
             if (!this.selectedCompanyId) return;
 
             this.loading = true;
@@ -740,50 +739,56 @@ export default {
             this.successMessage = '';
 
             try {
-                const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
-                const response = await axios.get('/api/settings', { params });
-
-                const data = response.data.data;
-                this.form = {
-                    deposit_percentage: data.deposit_percentage || 30.00,
-                    card_fees_percentage: data.card_fees_percentage || 5.00,
-                    deposit_accounting_entry_id: data.deposit_accounting_entry_id || null,
-                    deposit_reason: data.deposit_reason || null,
-                    balance_accounting_entry_id: data.balance_accounting_entry_id || null,
-                    balance_reason: data.balance_reason || null,
-                    commission_accounting_entry_id: data.commission_accounting_entry_id || null,
-                    commission_reason: data.commission_reason || null,
-                    fuel_accounting_entry_id: data.fuel_accounting_entry_id || null,
-                    fuel_reason: data.fuel_reason || null,
-                    toll_accounting_entry_id: data.toll_accounting_entry_id || null,
-                    toll_reason: data.toll_reason || null,
-                    parking_accounting_entry_id: data.parking_accounting_entry_id || null,
-                    parking_reason: data.parking_reason || null,
-                    other_vehicle_accounting_entry_id: data.other_vehicle_accounting_entry_id || null,
-                    other_vehicle_reason: data.other_vehicle_reason || null,
-                    driver_cost_accounting_entry_id: data.driver_cost_accounting_entry_id || null,
-                    driver_cost_reason: data.driver_cost_reason || null,
-                    colleague_cost_accounting_entry_id: data.colleague_cost_accounting_entry_id || null,
-                    colleague_cost_reason: data.colleague_cost_reason || null,
-                    experience_accounting_entry_id: data.experience_accounting_entry_id || null,
-                    experience_reason: data.experience_reason || null,
-                    handling_fees_accounting_entry_id: data.handling_fees_accounting_entry_id || null,
-                    handling_fees_reason: data.handling_fees_reason || null,
-                    card_fees_accounting_entry_id: data.card_fees_accounting_entry_id || null,
-                    card_fees_reason: data.card_fees_reason || null,
-                    activity_confirmation_text: data.activity_confirmation_text || null,
-                    activity_confirmation_role: data.activity_confirmation_role || null,
-                    default_supplier_id: data.default_supplier_id || null,
-                };
-
-                await this.loadAccountingEntries();
-                await this.loadSuppliers();
+                await Promise.all([
+                    this.loadSettings(),
+                    this.loadAccountingEntries(),
+                    this.loadSuppliers(),
+                ]);
             } catch (error) {
-                console.error('Error loading settings:', error);
+                console.error('Error loading settings page data:', error);
                 this.errors = ['Errore durante il caricamento delle impostazioni'];
             } finally {
                 this.loading = false;
             }
+        },
+        async loadSettings() {
+            if (!this.selectedCompanyId) return;
+
+            const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
+            const response = await axios.get('/api/settings', { params });
+
+            const data = response.data.data;
+            this.form = {
+                deposit_percentage: data.deposit_percentage || 30.00,
+                card_fees_percentage: data.card_fees_percentage || 5.00,
+                deposit_accounting_entry_id: data.deposit_accounting_entry_id || null,
+                deposit_reason: data.deposit_reason || null,
+                balance_accounting_entry_id: data.balance_accounting_entry_id || null,
+                balance_reason: data.balance_reason || null,
+                commission_accounting_entry_id: data.commission_accounting_entry_id || null,
+                commission_reason: data.commission_reason || null,
+                fuel_accounting_entry_id: data.fuel_accounting_entry_id || null,
+                fuel_reason: data.fuel_reason || null,
+                toll_accounting_entry_id: data.toll_accounting_entry_id || null,
+                toll_reason: data.toll_reason || null,
+                parking_accounting_entry_id: data.parking_accounting_entry_id || null,
+                parking_reason: data.parking_reason || null,
+                other_vehicle_accounting_entry_id: data.other_vehicle_accounting_entry_id || null,
+                other_vehicle_reason: data.other_vehicle_reason || null,
+                driver_cost_accounting_entry_id: data.driver_cost_accounting_entry_id || null,
+                driver_cost_reason: data.driver_cost_reason || null,
+                colleague_cost_accounting_entry_id: data.colleague_cost_accounting_entry_id || null,
+                colleague_cost_reason: data.colleague_cost_reason || null,
+                experience_accounting_entry_id: data.experience_accounting_entry_id || null,
+                experience_reason: data.experience_reason || null,
+                handling_fees_accounting_entry_id: data.handling_fees_accounting_entry_id || null,
+                handling_fees_reason: data.handling_fees_reason || null,
+                card_fees_accounting_entry_id: data.card_fees_accounting_entry_id || null,
+                card_fees_reason: data.card_fees_reason || null,
+                activity_confirmation_text: data.activity_confirmation_text || null,
+                activity_confirmation_role: data.activity_confirmation_role || null,
+                default_supplier_id: data.default_supplier_id || null,
+            };
         },
         async loadAccountingEntries() {
             if (!this.selectedCompanyId) return;
@@ -799,16 +804,9 @@ export default {
         async loadSuppliers() {
             if (!this.selectedCompanyId) return;
 
-            try {
-                const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
-                params.role = 'collaboratore';
-                params.is_fornitore = 1;
-                params.per_page = 1000;
-                const response = await axios.get('/api/users', { params });
-                this.suppliers = response.data.data || [];
-            } catch (error) {
-                console.error('Error loading suppliers:', error);
-            }
+            const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
+            const response = await axios.get('/api/settings/suppliers', { params });
+            this.suppliers = response.data.data || [];
         },
         async saveSettings() {
             this.saving = true;

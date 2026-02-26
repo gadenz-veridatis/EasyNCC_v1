@@ -484,7 +484,7 @@ const deleteActivity = async (id) => {
 
 const formatDateTime = (date) => {
     if (!date) return '-';
-    return moment(date).format('DD/MM/YYYY HH:mm');
+    return moment.utc(date).format('DD/MM/YYYY HH:mm');
 };
 
 const getPaymentBadgeClass = (paymentType) => {

@@ -18,6 +18,7 @@ class DictionaryController extends Controller
         'activity-types' => \App\Models\ActivityType::class,
         'service-types' => \App\Models\ServiceType::class,
         'accounting-entries' => \App\Models\AccountingEntry::class,
+        'transaction-statuses' => \App\Models\TransactionStatus::class,
     ];
 
     /**
@@ -53,12 +54,12 @@ class DictionaryController extends Controller
                 $query->where('company_id', $request->company_id);
             }
 
-            // Use 'city' for ZTL, 'name' for others
-            $orderField = $type === 'ztl' ? 'city' : 'name';
+            // Use 'city' for ZTL, 'sort_order' for transaction-statuses, 'name' for others
+            $orderField = $type === 'ztl' ? 'city' : ($type === 'transaction-statuses' ? 'sort_order' : 'name');
             $items = $query->orderBy($orderField)->get();
         } else {
             // Other users see only their company's items
-            $orderField = $type === 'ztl' ? 'city' : 'name';
+            $orderField = $type === 'ztl' ? 'city' : ($type === 'transaction-statuses' ? 'sort_order' : 'name');
             $items = $model->where('company_id', $request->user()->company_id)
                 ->with($relationships)
                 ->orderBy($orderField)
@@ -258,6 +259,17 @@ class DictionaryController extends Controller
                 $baseRules['abbreviation'] = 'required|string|max:20';
                 $baseRules['type'] = 'required|in:debit,credit';
                 // 'description' viene usato per 'notes' nel frontend
+                break;
+
+            case 'transaction-statuses':
+                $baseRules['code'] = 'required|string|max:50';
+                $baseRules['abbreviation'] = 'nullable|string|max:20';
+                $baseRules['color'] = 'nullable|string|max:50';
+                $baseRules['transaction_type_group'] = 'required|in:purchase,sale,both';
+                $baseRules['is_final'] = 'boolean';
+                $baseRules['is_active'] = 'boolean';
+                $baseRules['sort_order'] = 'nullable|integer|min:0';
+                unset($baseRules['description']);
                 break;
         }
 

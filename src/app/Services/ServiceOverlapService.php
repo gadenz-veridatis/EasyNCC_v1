@@ -25,6 +25,8 @@ class ServiceOverlapService
 
         $vehicleDeparture = $serviceData['vehicle_departure_datetime'] ?? null;
         $vehicleReturn = $serviceData['vehicle_return_datetime'] ?? null;
+        $pickupDatetime = $serviceData['pickup_datetime'] ?? null;
+        $dropoffDatetime = $serviceData['dropoff_datetime'] ?? null;
         $vehicleId = $serviceData['vehicle_id'] ?? null;
         $driverIds = $serviceData['driver_ids'] ?? [];
         $companyId = $serviceData['company_id'] ?? null;
@@ -33,12 +35,23 @@ class ServiceOverlapService
             return $overlaps;
         }
 
+        // Compute effective busy period: broadest range across all datetime fields
+        $effectiveStart = $vehicleDeparture;
+        $effectiveEnd = $vehicleReturn;
+
+        if ($pickupDatetime && $pickupDatetime < $effectiveStart) {
+            $effectiveStart = $pickupDatetime;
+        }
+        if ($dropoffDatetime && $dropoffDatetime > $effectiveEnd) {
+            $effectiveEnd = $dropoffDatetime;
+        }
+
         // Check vehicle overlaps
         if ($vehicleId) {
             $vehicleOverlaps = $this->checkVehicleOverlaps(
                 $vehicleId,
-                $vehicleDeparture,
-                $vehicleReturn,
+                $effectiveStart,
+                $effectiveEnd,
                 $companyId,
                 $excludeServiceId
             );
@@ -49,8 +62,8 @@ class ServiceOverlapService
         if (!empty($driverIds)) {
             $driverOverlaps = $this->checkDriverOverlaps(
                 $driverIds,
-                $vehicleDeparture,
-                $vehicleReturn,
+                $effectiveStart,
+                $effectiveEnd,
                 $companyId,
                 $excludeServiceId
             );
@@ -82,14 +95,14 @@ class ServiceOverlapService
         }
 
         // Find overlapping services for this vehicle
+        // Use the broadest time range: LEAST(pickup, departure) to GREATEST(dropoff, return)
         $query = Service::where('company_id', $companyId)
             ->where('vehicle_id', $vehicleId)
             ->whereNull('deleted_at')
             ->where(function ($q) use ($departure, $return) {
-                // Time overlap condition: new service overlaps if
-                // (new_start < existing_end) AND (new_end > existing_start)
-                $q->where('vehicle_departure_datetime', '<', $return)
-                  ->where('vehicle_return_datetime', '>', $departure);
+                // Time overlap: effective_start < other_effective_end AND effective_end > other_effective_start
+                $q->whereRaw('LEAST(COALESCE(pickup_datetime, vehicle_departure_datetime), vehicle_departure_datetime) < ?', [$return])
+                  ->whereRaw('GREATEST(COALESCE(dropoff_datetime, vehicle_return_datetime), vehicle_return_datetime) > ?', [$departure]);
             });
 
         if ($excludeServiceId) {
@@ -99,7 +112,7 @@ class ServiceOverlapService
         // Exclude cancelled/completed services if status logic is needed
         // For now, include all active services
 
-        $overlappingServices = $query->with(['vehicle', 'drivers'])->get();
+        $overlappingServices = $query->get();
 
         foreach ($overlappingServices as $service) {
             $overlaps[] = [
@@ -132,44 +145,65 @@ class ServiceOverlapService
     ): array {
         $overlaps = [];
 
+        // Batch load all drivers with profiles (1 query instead of N)
+        $drivers = User::with('driverProfile')
+            ->whereIn('id', $driverIds)
+            ->get()
+            ->keyBy('id');
+
+        // Filter to only non-overlapping drivers
+        $checkDriverIds = [];
         foreach ($driverIds as $driverId) {
-            // Check if driver allows overlapping
-            $driver = User::with('driverProfile')->find($driverId);
-            if (!$driver || !$driver->driverProfile || $driver->driverProfile->allow_overlapping) {
-                continue;
+            $driver = $drivers->get($driverId);
+            if ($driver && $driver->driverProfile && !$driver->driverProfile->allow_overlapping) {
+                $checkDriverIds[] = $driverId;
             }
+        }
 
-            // Find overlapping services for this driver
-            $query = Service::where('company_id', $companyId)
-                ->whereNull('deleted_at')
-                ->whereHas('drivers', function ($q) use ($driverId) {
-                    $q->where('users.id', $driverId);
-                })
-                ->where(function ($q) use ($departure, $return) {
-                    $q->where('vehicle_departure_datetime', '<', $return)
-                      ->where('vehicle_return_datetime', '>', $departure);
-                });
+        if (empty($checkDriverIds)) {
+            return $overlaps;
+        }
 
-            if ($excludeServiceId) {
-                $query->where('id', '!=', $excludeServiceId);
-            }
+        // Single query for all driver overlaps
+        // Use the broadest time range: LEAST(pickup, departure) to GREATEST(dropoff, return)
+        $query = Service::where('company_id', $companyId)
+            ->whereNull('deleted_at')
+            ->whereHas('drivers', function ($q) use ($checkDriverIds) {
+                $q->whereIn('users.id', $checkDriverIds);
+            })
+            ->where(function ($q) use ($departure, $return) {
+                $q->whereRaw('LEAST(COALESCE(pickup_datetime, vehicle_departure_datetime), vehicle_departure_datetime) < ?', [$return])
+                  ->whereRaw('GREATEST(COALESCE(dropoff_datetime, vehicle_return_datetime), vehicle_return_datetime) > ?', [$departure]);
+            });
 
-            $overlappingServices = $query->with(['vehicle', 'drivers'])->get();
+        if ($excludeServiceId) {
+            $query->where('id', '!=', $excludeServiceId);
+        }
 
-            foreach ($overlappingServices as $service) {
-                $overlaps[] = [
-                    'overlapping_service_id' => $service->id,
-                    'overlapping_service_reference' => $service->reference_number,
-                    'overlap_type' => 'driver',
-                    'vehicle_id' => null,
-                    'vehicle_plate' => null,
-                    'vehicle_brand' => null,
-                    'vehicle_model' => null,
-                    'driver_id' => $driverId,
-                    'driver_name' => $driver->surname . ' ' . $driver->name,
-                    'service_departure' => $service->vehicle_departure_datetime,
-                    'service_return' => $service->vehicle_return_datetime,
-                ];
+        // Load only the drivers from our checklist
+        $overlappingServices = $query->with(['drivers' => function ($q) use ($checkDriverIds) {
+            $q->whereIn('users.id', $checkDriverIds);
+        }])->get();
+
+        // Build overlap entries per driver per service
+        foreach ($overlappingServices as $service) {
+            foreach ($service->drivers as $serviceDriver) {
+                if (in_array($serviceDriver->id, $checkDriverIds)) {
+                    $driverModel = $drivers->get($serviceDriver->id);
+                    $overlaps[] = [
+                        'overlapping_service_id' => $service->id,
+                        'overlapping_service_reference' => $service->reference_number,
+                        'overlap_type' => 'driver',
+                        'vehicle_id' => null,
+                        'vehicle_plate' => null,
+                        'vehicle_brand' => null,
+                        'vehicle_model' => null,
+                        'driver_id' => $serviceDriver->id,
+                        'driver_name' => $driverModel->surname . ' ' . $driverModel->name,
+                        'service_departure' => $service->vehicle_departure_datetime,
+                        'service_return' => $service->vehicle_return_datetime,
+                    ];
+                }
             }
         }
 
@@ -264,6 +298,8 @@ class ServiceOverlapService
         $serviceData = [
             'vehicle_departure_datetime' => $service->vehicle_departure_datetime?->format('Y-m-d H:i:s'),
             'vehicle_return_datetime' => $service->vehicle_return_datetime?->format('Y-m-d H:i:s'),
+            'pickup_datetime' => $service->pickup_datetime?->format('Y-m-d H:i:s'),
+            'dropoff_datetime' => $service->dropoff_datetime?->format('Y-m-d H:i:s'),
             'vehicle_id' => $service->vehicle_id,
             'driver_ids' => $driverIds,
             'company_id' => $service->company_id,

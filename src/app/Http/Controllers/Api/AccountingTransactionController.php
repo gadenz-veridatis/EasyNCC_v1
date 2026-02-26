@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AccountingTransaction;
 use App\Models\Service;
+use App\Models\TransactionStatus;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -170,6 +171,15 @@ class AccountingTransactionController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // Get valid status codes for the user's company
+        $companyId = $request->user()->isSuperAdmin() && $request->filled('company_id')
+            ? $request->company_id
+            : $request->user()->company_id;
+        $validStatuses = TransactionStatus::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->pluck('code')
+            ->toArray();
+
         $validated = $request->validate([
             'service_id' => 'nullable|exists:services,id',
             'transaction_date' => 'required|date',
@@ -184,7 +194,7 @@ class AccountingTransactionController extends Controller
             'payment_type' => 'nullable|string|max:255',
             'payment_reason' => 'nullable|string|max:255',
             'iban' => 'nullable|string|max:255',
-            'status' => 'required|in:to_pay,paid,suspended,cancelled,to_collect,collected',
+            'status' => 'required|string|in:' . implode(',', $validStatuses),
             'notes' => 'nullable|string',
             'is_automatic' => 'sometimes|boolean',
         ]);
@@ -221,6 +231,13 @@ class AccountingTransactionController extends Controller
      */
     public function update(Request $request, AccountingTransaction $accountingTransaction): JsonResponse
     {
+        // Get valid status codes for the transaction's company
+        $companyId = $accountingTransaction->company_id;
+        $validStatuses = TransactionStatus::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->pluck('code')
+            ->toArray();
+
         $validated = $request->validate([
             'service_id' => 'sometimes|nullable|exists:services,id',
             'transaction_date' => 'sometimes|required|date',
@@ -235,7 +252,7 @@ class AccountingTransactionController extends Controller
             'payment_type' => 'nullable|string|max:255',
             'payment_reason' => 'nullable|string|max:255',
             'iban' => 'nullable|string|max:255',
-            'status' => 'sometimes|required|in:to_pay,paid,suspended,cancelled,to_collect,collected',
+            'status' => 'sometimes|required|string|in:' . implode(',', $validStatuses),
             'notes' => 'nullable|string',
             'is_automatic' => 'sometimes|boolean',
         ]);
@@ -302,6 +319,99 @@ class AccountingTransactionController extends Controller
         return response()->json([
             'success' => true,
             'data' => $users,
+        ]);
+    }
+
+    /**
+     * Batch upsert/delete accounting transactions for a service.
+     * Replaces multiple sequential API calls with a single atomic operation.
+     */
+    public function batchUpsert(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'service_id' => 'required|exists:services,id',
+            'operations' => 'required|array|min:1',
+            'operations.*.action' => 'required|in:upsert,delete',
+            'operations.*.find_by' => 'required|array',
+            'operations.*.find_by.transaction_type' => 'required|string',
+            'operations.*.find_by.installment' => 'required|string',
+            'operations.*.find_by.accounting_entry_id' => 'nullable|integer',
+            'operations.*.data' => 'required_if:operations.*.action,upsert|array',
+        ]);
+
+        $serviceId = $validated['service_id'];
+
+        // Determine company_id
+        if ($request->user()->isSuperAdmin() && $request->filled('company_id')) {
+            $companyId = $request->company_id;
+        } else {
+            $companyId = $request->user()->company_id;
+        }
+
+        // Load final status codes for this company to skip updates on finalized transactions
+        $finalStatusCodes = TransactionStatus::where('company_id', $companyId)
+            ->where('is_final', true)
+            ->pluck('code')
+            ->toArray();
+
+        DB::transaction(function () use ($validated, $serviceId, $companyId, $finalStatusCodes) {
+            foreach ($validated['operations'] as $operation) {
+                $findBy = $operation['find_by'];
+
+                // Build query to find existing transaction
+                $query = AccountingTransaction::where('service_id', $serviceId)
+                    ->where('transaction_type', $findBy['transaction_type'])
+                    ->where('installment', $findBy['installment']);
+
+                if (!empty($findBy['accounting_entry_id'])) {
+                    $query->where('accounting_entry_id', $findBy['accounting_entry_id']);
+                }
+
+                $existing = $query->first();
+
+                if ($operation['action'] === 'upsert') {
+                    $data = $operation['data'];
+                    if ($existing) {
+                        // Skip update if the existing transaction has a final status
+                        if (in_array($existing->status, $finalStatusCodes)) {
+                            continue;
+                        }
+                        // Update only restricted fields for automatic transactions
+                        $existing->update([
+                            'amount' => $data['amount'] ?? $existing->amount,
+                            'counterpart_id' => $data['counterpart_id'] ?? $existing->counterpart_id,
+                            'transaction_type' => $data['transaction_type'] ?? $existing->transaction_type,
+                            'accounting_entry_id' => $data['accounting_entry_id'] ?? $existing->accounting_entry_id,
+                            'transaction_date' => $data['transaction_date'] ?? $existing->transaction_date,
+                        ]);
+                    } else {
+                        // Create new automatic transaction
+                        AccountingTransaction::create(array_merge($data, [
+                            'service_id' => $serviceId,
+                            'company_id' => $companyId,
+                            'is_automatic' => true,
+                        ]));
+                    }
+                } elseif ($operation['action'] === 'delete') {
+                    if ($existing) {
+                        // Skip delete if the existing transaction has a final status
+                        if (in_array($existing->status, $finalStatusCodes)) {
+                            continue;
+                        }
+                        $existing->delete();
+                    }
+                }
+            }
+        });
+
+        // Return updated list of transactions for this service
+        $transactions = AccountingTransaction::where('service_id', $serviceId)
+            ->with(['accountingEntry:id,name,abbreviation', 'counterpart:id,name,surname'])
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $transactions,
         ]);
     }
 

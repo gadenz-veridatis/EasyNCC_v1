@@ -110,6 +110,7 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
 
     // Services - all can view, admin/operator can manage
     Route::get('services', [ServiceController::class, 'index']);
+    Route::get('services/form-data', [ServiceController::class, 'formData']);
     Route::get('services/{service}', [ServiceController::class, 'show']);
 
     Route::middleware(['role:super-admin,admin,operator'])->group(function () {
@@ -140,6 +141,7 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::get('accounting-transactions/services', [AccountingTransactionController::class, 'servicesForDropdown']);
         Route::get('accounting-transactions/counterparts', [AccountingTransactionController::class, 'counterpartsForDropdown']);
         Route::post('accounting-transactions', [AccountingTransactionController::class, 'store']);
+        Route::post('accounting-transactions/batch', [AccountingTransactionController::class, 'batchUpsert']);
         Route::get('accounting-transactions/{accountingTransaction}', [AccountingTransactionController::class, 'show']);
         Route::put('accounting-transactions/{accountingTransaction}', [AccountingTransactionController::class, 'update']);
         Route::patch('accounting-transactions/{accountingTransaction}', [AccountingTransactionController::class, 'update']);
@@ -181,6 +183,7 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::get('settings', [SettingsController::class, 'index']);
         Route::put('settings', [SettingsController::class, 'update']);
         Route::get('settings/accounting-entries', [SettingsController::class, 'getAccountingEntries']);
+        Route::get('settings/suppliers', [SettingsController::class, 'getSuppliers']);
     });
 
     // Telegram Config - only admin and super-admin can access
