@@ -489,44 +489,6 @@
                                 </div>
                             </div>
 
-                            <!-- Buttons -->
-                            <div class="mt-4">
-                                <template v-if="isEdit">
-                                    <button
-                                        @click="submitForm(false)"
-                                        type="button"
-                                        class="btn btn-primary"
-                                        :disabled="submitting"
-                                    >
-                                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                                        Salva
-                                    </button>
-                                </template>
-                                <template v-else>
-                                    <button
-                                        @click="submitForm(true)"
-                                        type="button"
-                                        class="btn btn-primary"
-                                        :disabled="submitting"
-                                    >
-                                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                                        Crea
-                                    </button>
-                                    <button
-                                        @click="submitForm(false)"
-                                        type="button"
-                                        class="btn btn-success ms-2"
-                                        :disabled="submitting"
-                                    >
-                                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                                        Crea ed Esci
-                                    </button>
-                                </template>
-                                <Link :href="route('easyncc.users.index')" class="btn btn-secondary ms-2">
-                                    Esci
-                                </Link>
-                            </div>
-
                             <!-- Error Message -->
                             <div v-if="error" class="alert alert-danger mt-3" role="alert">
                                 {{ error }}
@@ -536,6 +498,47 @@
                 </BCard>
             </BCol>
         </BRow>
+
+        <!-- Sticky Buttons Bar -->
+        <div class="sticky-buttons-bar">
+            <div class="d-flex align-items-center gap-2">
+                <template v-if="isEdit">
+                    <button
+                        @click="submitForm(false)"
+                        type="button"
+                        class="btn btn-primary"
+                        :disabled="submitting"
+                    >
+                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                        <i v-else class="ri-save-line me-1"></i>
+                        Salva ed Esci
+                    </button>
+                </template>
+                <template v-else>
+                    <button
+                        @click="submitForm(true)"
+                        type="button"
+                        class="btn btn-primary"
+                        :disabled="submitting"
+                    >
+                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                        Crea
+                    </button>
+                    <button
+                        @click="submitForm(false)"
+                        type="button"
+                        class="btn btn-success"
+                        :disabled="submitting"
+                    >
+                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                        Crea ed Esci
+                    </button>
+                </template>
+                <Link :href="exitRoute" class="btn btn-secondary">
+                    Esci
+                </Link>
+            </div>
+        </div>
     </Layout>
 </template>
 
@@ -566,6 +569,24 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin');
 
 // Check if we're in edit mode - props.user must exist AND have an id
 const isEdit = ref(!!(props.user && props.user.id));
+
+// Determine the correct exit/redirect route based on user role
+const getRedirectRoute = (role) => {
+    if (role === 'driver') return route('easyncc.drivers.index');
+    if (role === 'collaboratore') {
+        // Check profileData to distinguish committente from fornitore
+        if (profileData.value.is_committente) return route('easyncc.committenti.index');
+        if (profileData.value.is_fornitore) return route('easyncc.fornitori.index');
+        // Fallback: check referrer URL
+        if (window.location.href.includes('/committenti')) return route('easyncc.committenti.index');
+        if (window.location.href.includes('/fornitori')) return route('easyncc.fornitori.index');
+    }
+    return route('easyncc.users.index');
+};
+const exitRoute = computed(() => {
+    const role = form.value.role || (isEdit.value ? props.user?.role : '');
+    return getRedirectRoute(role);
+});
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -779,16 +800,16 @@ const submitForm = async (stayOnPage = false) => {
         });
 
         if (isEdit.value) {
-            // After editing, return to the users list
-            router.visit(route('easyncc.users.index'));
+            // After editing, return to the appropriate list based on role
+            router.visit(getRedirectRoute(form.value.role));
         } else {
             // For new creation
             if (stayOnPage && response.data?.id) {
                 // Redirect to edit page
                 router.visit(route('easyncc.users.edit', response.data.id));
             } else {
-                // Redirect to index
-                router.visit(route('easyncc.users.index'));
+                // Redirect to the appropriate list based on role
+                router.visit(getRedirectRoute(form.value.role));
             }
         }
     } catch (err) {
@@ -851,3 +872,16 @@ const formatDateTime = (date) => {
     return moment.utc(date).format('DD/MM/YYYY HH:mm');
 };
 </script>
+
+<style scoped>
+.sticky-buttons-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 100;
+    background-color: #fff;
+    border-top: 2px solid #dee2e6;
+    padding: 12px 20px;
+    margin: 0 -12px -12px -12px;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+}
+</style>

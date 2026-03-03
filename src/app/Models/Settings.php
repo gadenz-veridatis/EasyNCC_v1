@@ -42,6 +42,8 @@ class Settings extends Model
         'handling_fees_reason',
         'card_fees_accounting_entry_id',
         'card_fees_reason',
+        'telegram_trigger_status_id',
+        'telegram_accepted_status_id',
     ];
 
     protected $casts = [
@@ -118,5 +120,21 @@ class Settings extends Model
     public function cardFeesAccountingEntry(): BelongsTo
     {
         return $this->belongsTo(AccountingEntry::class, 'card_fees_accounting_entry_id');
+    }
+
+    /**
+     * Status che triggera invio notifica Telegram.
+     */
+    public function telegramTriggerStatus(): BelongsTo
+    {
+        return $this->belongsTo(ServiceStatus::class, 'telegram_trigger_status_id');
+    }
+
+    /**
+     * Status da impostare quando driver accetta via Telegram.
+     */
+    public function telegramAcceptedStatus(): BelongsTo
+    {
+        return $this->belongsTo(ServiceStatus::class, 'telegram_accepted_status_id');
     }
 }

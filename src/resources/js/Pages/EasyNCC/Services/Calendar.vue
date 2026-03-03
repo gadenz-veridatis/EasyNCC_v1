@@ -71,6 +71,31 @@
                             </BRow>
                         </div>
 
+                        <!-- Driver Legend with Toggle -->
+                        <div v-if="allDrivers.length > 0" class="driver-legend d-flex flex-wrap align-items-center gap-2 mb-3 p-2 border rounded bg-light">
+                            <span class="small text-muted fw-semibold me-1">Driver:</span>
+                            <button
+                                v-for="driver in allDrivers"
+                                :key="driver.id"
+                                class="btn btn-sm driver-legend-item"
+                                :style="getLegendStyle(driver)"
+                                @click="toggleDriverVisibility(driver.id)"
+                                :title="hiddenDriverIds.has(driver.id) ? 'Mostra servizi di ' + driver.name : 'Nascondi servizi di ' + driver.name"
+                            >
+                                <i :class="hiddenDriverIds.has(driver.id) ? 'ri-eye-off-line' : 'ri-eye-line'" class="me-1"></i>
+                                {{ driver.name }} {{ driver.surname }}
+                            </button>
+                            <button
+                                v-if="hiddenDriverIds.size > 0"
+                                class="btn btn-sm btn-outline-secondary"
+                                @click="showAllDrivers"
+                                title="Mostra tutti i driver"
+                            >
+                                <i class="ri-eye-line me-1"></i>
+                                Tutti
+                            </button>
+                        </div>
+
                         <!-- Calendar (always in DOM so FullCalendar can initialize) -->
                         <div id="calendar-container" style="min-height: 600px; position: relative;">
                             <!-- Loading Overlay -->
@@ -375,6 +400,48 @@ const filters = ref({
     passenger_name: '',
 });
 
+// Driver legend toggle
+const hiddenDriverIds = ref(new Set());
+
+const toggleDriverVisibility = (driverId) => {
+    const newSet = new Set(hiddenDriverIds.value);
+    if (newSet.has(driverId)) {
+        newSet.delete(driverId);
+    } else {
+        newSet.add(driverId);
+    }
+    hiddenDriverIds.value = newSet;
+    updateEventVisibility();
+};
+
+const showAllDrivers = () => {
+    hiddenDriverIds.value = new Set();
+    updateEventVisibility();
+};
+
+const updateEventVisibility = () => {
+    if (!calendarInstance) return;
+    calendarInstance.getEvents().forEach(event => {
+        const service = event.extendedProps.service;
+        const serviceDriverIds = (service.drivers || []).map(d => d.id);
+        // Nascondi se TUTTI i driver del servizio sono nascosti
+        const allHidden = serviceDriverIds.length > 0 &&
+            serviceDriverIds.every(id => hiddenDriverIds.value.has(id));
+        event.setProp('display', allHidden ? 'none' : 'auto');
+    });
+};
+
+const getLegendStyle = (driver) => {
+    const color = driver.driver_profile?.color || '#6c757d';
+    const isHidden = hiddenDriverIds.value.has(driver.id);
+    return {
+        backgroundColor: isHidden ? 'transparent' : color,
+        color: isHidden ? color : '#fff',
+        border: `2px solid ${color}`,
+        opacity: isHidden ? 0.5 : 1,
+    };
+};
+
 const hasActiveFilters = computed(() => {
     return filters.value.driver_id !== '' ||
            filters.value.vehicle_id !== '' ||
@@ -546,6 +613,10 @@ const loadServices = async (start = null, end = null) => {
             // Add new events
             const events = mapServicesToEvents(services.value);
             events.forEach(event => calendarInstance.addEvent(event));
+            // Re-apply driver visibility toggles
+            if (hiddenDriverIds.value.size > 0) {
+                updateEventVisibility();
+            }
         }
     } catch (err) {
         error.value = 'Errore nel caricamento dei servizi';
@@ -580,6 +651,9 @@ const initializeCalendar = async () => {
                 initialView: 'dayGridMonth',
                 timeZone: 'UTC',
                 locale: 'it',
+                navLinks: true,
+                navLinkDayClick: 'timeGridDay',
+                slotEventOverlap: false,
                 events: [],
                 eventClick: handleEventClick,
                 editable: false,
@@ -1193,5 +1267,31 @@ onUnmounted(() => {
 
 .popover-inline-editable:hover {
     background-color: rgba(var(--bs-primary-rgb), 0.08);
+}
+
+/* Driver Legend */
+.driver-legend-item {
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.driver-legend-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Nav Links - day numbers clickable */
+:deep(.fc-daygrid-day-number),
+:deep(.fc-col-header-cell-cushion) {
+    cursor: pointer;
+    text-decoration: none;
+}
+
+:deep(.fc-daygrid-day-number:hover) {
+    color: #007bff;
+    text-decoration: underline;
 }
 </style>

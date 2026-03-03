@@ -277,7 +277,7 @@ export default {
             return this.currentUser?.role === 'super-admin';
         },
         suggestedWebhookUrl() {
-            return window.location.origin + '/api/telegram/webhook';
+            return window.location.origin + '/api/telegram/webhook/' + this.selectedCompanyId;
         },
     },
     async mounted() {

@@ -283,14 +283,22 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <a
-                                        v-if="doc.file_path"
-                                        :href="doc.file_path"
-                                        target="_blank"
-                                        class="btn btn-sm btn-soft-primary"
-                                    >
-                                        <i class="ri-download-line"></i>
-                                    </a>
+                                    <div v-if="doc.file_path" class="d-flex gap-1">
+                                        <button
+                                            class="btn btn-sm btn-soft-info"
+                                            @click="previewAttachment(selectedDriver.id, doc)"
+                                            title="Anteprima"
+                                        >
+                                            <i class="ri-eye-line"></i>
+                                        </button>
+                                        <button
+                                            class="btn btn-sm btn-soft-primary"
+                                            @click="downloadAttachment(selectedDriver.id, doc)"
+                                            title="Scarica"
+                                        >
+                                            <i class="ri-download-line"></i>
+                                        </button>
+                                    </div>
                                     <span v-else class="text-muted small">Nessun file</span>
                                 </td>
                             </tr>
@@ -301,6 +309,36 @@
                     <i class="ri-file-list-line display-4 text-muted"></i>
                     <p class="text-muted mt-2">Nessun documento caricato</p>
                 </div>
+            </div>
+        </BModal>
+
+        <!-- Document Preview Modal -->
+        <BModal
+            v-model="showPreviewModalFlag"
+            :title="previewTitle"
+            size="xl"
+            hide-footer
+            centered
+        >
+            <div v-if="previewLoading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Caricamento...</span>
+                </div>
+                <p class="mt-2 text-muted">Caricamento anteprima...</p>
+            </div>
+            <div v-else-if="previewUrl">
+                <iframe
+                    v-if="previewIsPdf"
+                    :src="previewUrl"
+                    style="width: 100%; height: 75vh; border: none;"
+                ></iframe>
+                <div v-else class="text-center">
+                    <img :src="previewUrl" class="img-fluid" style="max-height: 75vh;" />
+                </div>
+            </div>
+            <div v-else class="text-center py-4">
+                <i class="ri-file-damage-line display-4 text-muted"></i>
+                <p class="text-muted mt-2">Nessun file disponibile per l'anteprima</p>
             </div>
         </BModal>
     </Layout>
@@ -325,6 +363,13 @@ const showDeleted = ref(false);
 // Documents modal
 const showDocumentsModalFlag = ref(false);
 const selectedDriver = ref(null);
+
+// Document Preview
+const showPreviewModalFlag = ref(false);
+const previewUrl = ref(null);
+const previewIsPdf = ref(false);
+const previewLoading = ref(false);
+const previewTitle = ref('Anteprima Documento');
 
 // User info
 const currentUser = ref(null);
@@ -491,6 +536,50 @@ const showDocumentsModal = async (driver) => {
     } catch (err) {
         console.error('Error loading driver documents:', err);
         Swal.fire('Errore!', 'Errore nel caricamento dei documenti.', 'error');
+    }
+};
+
+const previewAttachment = async (driverId, attachment) => {
+    previewTitle.value = `${attachment.attachment_type || 'Documento'} - ${selectedDriver.value?.surname || ''} ${selectedDriver.value?.name || ''}`;
+    previewLoading.value = true;
+    previewUrl.value = null;
+    showPreviewModalFlag.value = true;
+
+    try {
+        const response = await axios.get(`/api/users/${driverId}/attachments/${attachment.id}/download`, {
+            responseType: 'blob'
+        });
+        const blob = response.data;
+        const contentType = response.headers['content-type'] || blob.type || '';
+        previewIsPdf.value = contentType.includes('pdf');
+        previewUrl.value = URL.createObjectURL(blob);
+    } catch (err) {
+        console.error('Error loading attachment preview:', err);
+        previewUrl.value = null;
+        Swal.fire('Errore', 'Impossibile caricare l\'anteprima del documento.', 'error');
+        showPreviewModalFlag.value = false;
+    } finally {
+        previewLoading.value = false;
+    }
+};
+
+const downloadAttachment = async (driverId, attachment) => {
+    try {
+        const response = await axios.get(`/api/users/${driverId}/attachments/${attachment.id}/download`, {
+            responseType: 'blob'
+        });
+        const blob = response.data;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = attachment.file_name || attachment.attachment_type || 'download';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error('Error downloading attachment:', err);
+        Swal.fire('Errore', 'Impossibile scaricare il documento.', 'error');
     }
 };
 

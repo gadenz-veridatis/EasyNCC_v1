@@ -145,7 +145,7 @@
                                         </td>
                                         <!-- Scadenza Bollo -->
                                         <td>
-                                            <div v-if="getAttachmentByType(vehicle, 'Bollo')" @click="showAttachmentsModal(vehicle)" class="cursor-pointer" style="cursor: pointer;">
+                                            <div v-if="getAttachmentByType(vehicle, 'Bollo')" @click="showDocumentPreview(vehicle, 'Bollo')" class="cursor-pointer" style="cursor: pointer;">
                                                 <div class="small" :class="getExpiryColorClass(getAttachmentByType(vehicle, 'Bollo').expiration_date)">
                                                     <i class="ri-calendar-line"></i>
                                                     {{ formatDate(getAttachmentByType(vehicle, 'Bollo').expiration_date) }}
@@ -160,7 +160,7 @@
                                         </td>
                                         <!-- Scadenza Assicurazione -->
                                         <td>
-                                            <div v-if="getAttachmentByType(vehicle, 'Assicurazione')" @click="showAttachmentsModal(vehicle)" class="cursor-pointer" style="cursor: pointer;">
+                                            <div v-if="getAttachmentByType(vehicle, 'Assicurazione')" @click="showDocumentPreview(vehicle, 'Assicurazione')" class="cursor-pointer" style="cursor: pointer;">
                                                 <div class="small" :class="getExpiryColorClass(getAttachmentByType(vehicle, 'Assicurazione').expiration_date)">
                                                     <i class="ri-calendar-line"></i>
                                                     {{ formatDate(getAttachmentByType(vehicle, 'Assicurazione').expiration_date) }}
@@ -175,7 +175,7 @@
                                         </td>
                                         <!-- Scadenza Revisione -->
                                         <td>
-                                            <div v-if="getAttachmentByType(vehicle, 'Revisione')" @click="showAttachmentsModal(vehicle)" class="cursor-pointer" style="cursor: pointer;">
+                                            <div v-if="getAttachmentByType(vehicle, 'Revisione')" @click="showDocumentPreview(vehicle, 'Revisione')" class="cursor-pointer" style="cursor: pointer;">
                                                 <div class="small" :class="getExpiryColorClass(getAttachmentByType(vehicle, 'Revisione').expiration_date)">
                                                     <i class="ri-calendar-line"></i>
                                                     {{ formatDate(getAttachmentByType(vehicle, 'Revisione').expiration_date) }}
@@ -412,14 +412,22 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <a
-                                        v-if="doc.file_path"
-                                        :href="doc.file_path"
-                                        target="_blank"
-                                        class="btn btn-sm btn-soft-primary"
-                                    >
-                                        <i class="ri-download-line"></i>
-                                    </a>
+                                    <div v-if="doc.file_path" class="d-flex gap-1">
+                                        <button
+                                            class="btn btn-sm btn-soft-info"
+                                            @click="previewAttachmentInModal(selectedVehicle.id, doc)"
+                                            title="Anteprima"
+                                        >
+                                            <i class="ri-eye-line"></i>
+                                        </button>
+                                        <button
+                                            class="btn btn-sm btn-soft-primary"
+                                            @click="downloadAttachment(selectedVehicle.id, doc)"
+                                            title="Scarica"
+                                        >
+                                            <i class="ri-download-line"></i>
+                                        </button>
+                                    </div>
                                     <span v-else class="text-muted small">Nessun file</span>
                                 </td>
                             </tr>
@@ -430,6 +438,36 @@
                     <i class="ri-file-list-line display-4 text-muted"></i>
                     <p class="text-muted mt-2">Nessun allegato caricato</p>
                 </div>
+            </div>
+        </BModal>
+
+        <!-- Document Preview Modal -->
+        <BModal
+            v-model="showPreviewModalFlag"
+            :title="previewTitle"
+            size="xl"
+            hide-footer
+            centered
+        >
+            <div v-if="previewLoading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Caricamento...</span>
+                </div>
+                <p class="mt-2 text-muted">Caricamento anteprima...</p>
+            </div>
+            <div v-else-if="previewUrl">
+                <iframe
+                    v-if="previewIsPdf"
+                    :src="previewUrl"
+                    style="width: 100%; height: 75vh; border: none;"
+                ></iframe>
+                <div v-else class="text-center">
+                    <img :src="previewUrl" class="img-fluid" style="max-height: 75vh;" />
+                </div>
+            </div>
+            <div v-else class="text-center py-4">
+                <i class="ri-file-damage-line display-4 text-muted"></i>
+                <p class="text-muted mt-2">Nessun file disponibile per l'anteprima</p>
             </div>
         </BModal>
 
@@ -519,6 +557,13 @@ const totalRecords = ref(0);
 const showAttachmentsModalFlag = ref(false);
 const showUnavailabilitiesModalFlag = ref(false);
 const selectedVehicle = ref(null);
+
+// Document Preview
+const showPreviewModalFlag = ref(false);
+const previewUrl = ref(null);
+const previewIsPdf = ref(false);
+const previewLoading = ref(false);
+const previewTitle = ref('Anteprima Documento');
 
 const filters = ref({
     company_id: '',
@@ -718,6 +763,79 @@ const showUnavailabilitiesModal = async (vehicle) => {
     } catch (err) {
         console.error('Error loading vehicle unavailabilities:', err);
         Swal.fire('Errore!', 'Errore nel caricamento delle inattività.', 'error');
+    }
+};
+
+const showDocumentPreview = async (vehicle, typeName) => {
+    const attachment = getAttachmentByType(vehicle, typeName);
+    if (!attachment) {
+        Swal.fire('Attenzione', `Nessun documento di tipo "${typeName}" trovato.`, 'warning');
+        return;
+    }
+    previewTitle.value = `${typeName} - ${vehicle.license_plate}`;
+    previewLoading.value = true;
+    previewUrl.value = null;
+    showPreviewModalFlag.value = true;
+
+    try {
+        const response = await axios.get(`/api/vehicles/${vehicle.id}/attachments/${attachment.id}/download`, {
+            responseType: 'blob'
+        });
+        const blob = response.data;
+        const contentType = response.headers['content-type'] || blob.type || '';
+        previewIsPdf.value = contentType.includes('pdf');
+        previewUrl.value = URL.createObjectURL(blob);
+    } catch (err) {
+        console.error('Error loading document preview:', err);
+        previewUrl.value = null;
+        Swal.fire('Errore', 'Impossibile caricare l\'anteprima del documento.', 'error');
+        showPreviewModalFlag.value = false;
+    } finally {
+        previewLoading.value = false;
+    }
+};
+
+const previewAttachmentInModal = async (vehicleId, attachment) => {
+    previewTitle.value = `${attachment.attachment_type || 'Documento'} - ${selectedVehicle.value?.license_plate || ''}`;
+    previewLoading.value = true;
+    previewUrl.value = null;
+    showPreviewModalFlag.value = true;
+
+    try {
+        const response = await axios.get(`/api/vehicles/${vehicleId}/attachments/${attachment.id}/download`, {
+            responseType: 'blob'
+        });
+        const blob = response.data;
+        const contentType = response.headers['content-type'] || blob.type || '';
+        previewIsPdf.value = contentType.includes('pdf');
+        previewUrl.value = URL.createObjectURL(blob);
+    } catch (err) {
+        console.error('Error loading attachment preview:', err);
+        previewUrl.value = null;
+        Swal.fire('Errore', 'Impossibile caricare l\'anteprima del documento.', 'error');
+        showPreviewModalFlag.value = false;
+    } finally {
+        previewLoading.value = false;
+    }
+};
+
+const downloadAttachment = async (vehicleId, attachment) => {
+    try {
+        const response = await axios.get(`/api/vehicles/${vehicleId}/attachments/${attachment.id}/download`, {
+            responseType: 'blob'
+        });
+        const blob = response.data;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = attachment.file_name || attachment.attachment_type || 'download';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error('Error downloading attachment:', err);
+        Swal.fire('Errore', 'Impossibile scaricare il documento.', 'error');
     }
 };
 

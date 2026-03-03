@@ -384,6 +384,11 @@ export default {
                   Telegram Bot
                 </Link>
               </li>
+              <li class="nav-item">
+                <Link href="/easyncc/telegram/users" class="nav-link">
+                  Utenti Telegram
+                </Link>
+              </li>
             </ul>
           </div>
         </li>

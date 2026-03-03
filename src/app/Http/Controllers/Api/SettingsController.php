@@ -61,6 +61,8 @@ class SettingsController extends Controller
                     'handling_fees_reason' => null,
                     'card_fees_accounting_entry_id' => null,
                     'card_fees_reason' => null,
+                    'telegram_trigger_status_id' => null,
+                    'telegram_accepted_status_id' => null,
                 ]
             ]);
         }
@@ -106,6 +108,8 @@ class SettingsController extends Controller
             'handling_fees_reason' => 'nullable|string|max:255',
             'card_fees_accounting_entry_id' => 'nullable|exists:accounting_entries,id',
             'card_fees_reason' => 'nullable|string|max:255',
+            'telegram_trigger_status_id' => 'nullable|exists:service_statuses,id',
+            'telegram_accepted_status_id' => 'nullable|exists:service_statuses,id',
         ]);
 
         $user = Auth::user();
@@ -150,6 +154,8 @@ class SettingsController extends Controller
                 'handling_fees_reason' => $validated['handling_fees_reason'] ?? null,
                 'card_fees_accounting_entry_id' => $validated['card_fees_accounting_entry_id'] ?? null,
                 'card_fees_reason' => $validated['card_fees_reason'] ?? null,
+                'telegram_trigger_status_id' => $validated['telegram_trigger_status_id'] ?? null,
+                'telegram_accepted_status_id' => $validated['telegram_accepted_status_id'] ?? null,
             ]
         );
 
@@ -206,6 +212,29 @@ class SettingsController extends Controller
 
         return response()->json([
             'data' => $suppliers
+        ]);
+    }
+
+    /**
+     * Get available service statuses for settings dropdowns.
+     */
+    public function getServiceStatuses(Request $request)
+    {
+        $user = Auth::user();
+
+        if ($user->role === 'super-admin' && $request->has('company_id')) {
+            $companyId = $request->company_id;
+        } else {
+            $companyId = $user->company_id;
+        }
+
+        $statuses = \App\Models\ServiceStatus::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json([
+            'data' => $statuses
         ]);
     }
 }

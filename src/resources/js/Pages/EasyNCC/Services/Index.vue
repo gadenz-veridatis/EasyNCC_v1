@@ -278,9 +278,39 @@
                                                     <i class="ri-delete-bin-line"></i>
                                                 </button>
                                             </div>
-                                            <!-- Riga 2: Stato servizio -->
-                                            <div class="mb-1" v-if="service.status">
-                                                <span class="badge" :class="getStatusBadgeClass(service.status.name)">{{ service.status.name }}</span>
+                                            <!-- Riga 2: Stato servizio (inline editable) -->
+                                            <div class="mb-1">
+                                                <!-- Display mode -->
+                                                <span
+                                                    v-if="editingStatus !== service.id"
+                                                    class="badge inline-editable"
+                                                    :class="getStatusBadgeClass(service.status?.name)"
+                                                    @click="startEditStatus(service)"
+                                                    title="Clicca per modificare lo stato"
+                                                    style="cursor: pointer;"
+                                                >
+                                                    {{ service.status?.name || 'Nessuno stato' }}
+                                                    <i class="ri-pencil-line ms-1" style="font-size: 0.6rem;"></i>
+                                                </span>
+                                                <!-- Edit mode -->
+                                                <select
+                                                    v-else
+                                                    v-model="editingStatusValue"
+                                                    :ref="el => statusInputRefs[service.id] = el"
+                                                    @change="saveStatus(service)"
+                                                    @keydown.escape="cancelEditStatus"
+                                                    @blur="cancelEditStatus"
+                                                    class="form-select form-select-sm"
+                                                    style="font-size: 0.7rem; min-width: 130px; padding: 2px 24px 2px 6px;"
+                                                >
+                                                    <option
+                                                        v-for="status in serviceStatuses"
+                                                        :key="status.id"
+                                                        :value="status.id"
+                                                    >
+                                                        {{ status.name }}
+                                                    </option>
+                                                </select>
                                             </div>
                                             <!-- Riga 3: Indicatori -->
                                             <div class="d-flex align-items-center gap-2 small">
@@ -640,18 +670,19 @@
                                                 @click="showEconomicsModal(service)"
                                                 title="Clicca per vedere i dettagli economici"
                                             >
-                                                <div v-if="service.service_price > 0" class="d-flex flex-wrap gap-1">
-                                                    <div class="text-center">
-                                                        <div class="text-muted" style="font-size: 0.65rem;">Imponibile</div>
-                                                        <span class="badge bg-success px-2 py-1" style="font-size: 0.85rem;">&euro;{{ formatCurrency(service.service_price) }}</span>
-                                                    </div>
-                                                    <div v-if="service.deposit_amount > 0" class="text-center">
+                                                <div v-if="(parseFloat(service.deposit_amount) || 0) > 0 || getBalanceValue(service) > 0">
+                                                    <div v-if="(parseFloat(service.deposit_amount) || 0) > 0" class="text-start mb-1">
                                                         <div class="text-muted" style="font-size: 0.65rem;">Acconto</div>
-                                                        <span class="badge bg-success bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.deposit_amount) }}</span>
+                                                        <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.deposit_amount) }}</span>
                                                     </div>
-                                                    <div v-if="getBalanceValue(service) > 0" class="text-center">
+                                                    <div v-if="getBalanceValue(service) > 0" class="text-start mb-1">
                                                         <div class="text-muted" style="font-size: 0.65rem;">{{ getBalanceLabel(service) }}</div>
-                                                        <span class="badge bg-success bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(getBalanceValue(service)) }}</span>
+                                                        <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(getBalanceValue(service)) }}</span>
+                                                    </div>
+                                                    <hr class="my-1" style="border-color: #ccc;">
+                                                    <div class="text-start">
+                                                        <div class="text-muted" style="font-size: 0.65rem;">TOTALE</div>
+                                                        <span class="badge bg-danger px-2 py-1" style="font-size: 0.85rem;">&euro;{{ formatCurrency((parseFloat(service.deposit_amount) || 0) + getBalanceValue(service)) }}</span>
                                                     </div>
                                                 </div>
                                                 <span v-else class="text-muted small">--</span>
@@ -659,32 +690,32 @@
                                         </td>
                                         <!-- Costi -->
                                         <td>
-                                            <div v-if="hasAnyCost(service)" class="d-flex flex-wrap gap-1">
-                                                <div v-if="service.driver_compensation > 0" class="text-center">
+                                            <div v-if="hasAnyCost(service)" class="d-flex flex-column gap-1">
+                                                <div v-if="service.driver_compensation > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Autista</div>
                                                     <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.driver_compensation) }}</span>
                                                 </div>
-                                                <div v-if="service.colleague_cost > 0" class="text-center">
+                                                <div v-if="service.colleague_cost > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Collega</div>
                                                     <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.colleague_cost) }}</span>
                                                 </div>
-                                                <div v-if="service.intermediary_commission > 0" class="text-center">
+                                                <div v-if="service.intermediary_commission > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Intermediazione</div>
                                                     <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.intermediary_commission) }}</span>
                                                 </div>
-                                                <div v-if="service.fuel_cost > 0" class="text-center">
+                                                <div v-if="service.fuel_cost > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Carburante</div>
                                                     <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.fuel_cost) }}</span>
                                                 </div>
-                                                <div v-if="service.toll_cost > 0" class="text-center">
+                                                <div v-if="service.toll_cost > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Pedaggi</div>
                                                     <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.toll_cost) }}</span>
                                                 </div>
-                                                <div v-if="service.parking_cost > 0" class="text-center">
+                                                <div v-if="service.parking_cost > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Parcheggi</div>
                                                     <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.parking_cost) }}</span>
                                                 </div>
-                                                <div v-if="service.other_vehicle_costs > 0" class="text-center">
+                                                <div v-if="service.other_vehicle_costs > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Altri costi</div>
                                                     <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.other_vehicle_costs) }}</span>
                                                 </div>
@@ -1122,6 +1153,7 @@ import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import moment from 'moment';
+import Swal from 'sweetalert2';
 
 const services = ref([]);
 const loading = ref(false);
@@ -1166,6 +1198,11 @@ const editingDatetimeValues = ref({
     vehicle_return_datetime: '',
 });
 
+// Inline status editing
+const editingStatus = ref(null);
+const editingStatusValue = ref(null);
+const statusInputRefs = ref({});
+
 // Overlap confirmation state
 const showOverlapConfirmationModal = ref(false);
 const pendingOverlaps = ref([]);
@@ -1181,6 +1218,7 @@ const drivers = ref([]);
 const vehicles = ref([]);
 const companies = ref([]);
 const dressCodes = ref([]);
+const serviceStatuses = ref([]);
 const currentUser = ref(null);
 
 // Filters
@@ -1242,7 +1280,8 @@ const loadDictionaries = async () => {
             axios.get('/api/users', { params: { is_intermediario: true, per_page: 200 } }),
             axios.get('/api/users', { params: { role: 'driver', per_page: 200 } }),
             axios.get('/api/vehicles', { params: { per_page: 200 } }),
-            axios.get('/api/dictionaries/dress-codes')
+            axios.get('/api/dictionaries/dress-codes'),
+            axios.get('/api/dictionaries/service-statuses')
         ];
 
         // Se l'utente è super-admin, carica anche le aziende
@@ -1259,7 +1298,8 @@ const loadDictionaries = async () => {
             drivers: responses[3].data,
             vehicles: responses[4].data,
             dressCodes: responses[5].data,
-            companies: responses[6]?.data
+            serviceStatuses: responses[6].data,
+            companies: responses[7]?.data
         });
 
         serviceTypes.value = responses[0].data.data || [];
@@ -1268,9 +1308,10 @@ const loadDictionaries = async () => {
         drivers.value = responses[3].data.data || [];
         vehicles.value = responses[4].data.data || [];
         dressCodes.value = responses[5].data.data || [];
+        serviceStatuses.value = responses[6].data.data || [];
 
-        if (isSuperAdmin.value && responses[6]) {
-            companies.value = responses[6].data.data || [];
+        if (isSuperAdmin.value && responses[7]) {
+            companies.value = responses[7].data.data || [];
         }
     } catch (err) {
         console.error('Error loading dictionaries:', err);
@@ -1484,6 +1525,75 @@ const cancelEditDressCode = () => {
     editingDressCodeValue.value = null;
 };
 
+// Inline status editing functions
+const startEditStatus = (service) => {
+    editingStatus.value = service.id;
+    editingStatusValue.value = service.status_id;
+    nextTick(() => {
+        const select = statusInputRefs.value[service.id];
+        if (select) {
+            select.focus();
+        }
+    });
+};
+
+const saveStatus = async (service) => {
+    if (!editingStatus.value || editingStatus.value !== service.id) {
+        return;
+    }
+
+    const newStatusId = editingStatusValue.value;
+    const newStatus = serviceStatuses.value.find(s => s.id === newStatusId);
+    const newStatusName = newStatus?.name?.toLowerCase() || '';
+
+    // Check if changing to "assegnato" - warn about Telegram notification
+    if (newStatusName.includes('assegnato') && service.status_id !== newStatusId) {
+        editingStatus.value = null;
+
+        const result = await Swal.fire({
+            title: 'Notifica al Driver',
+            html: 'Cambiando lo stato in <strong>"Assegnato"</strong> verrà inviato un messaggio Telegram al driver per richiedere la conferma del servizio.<br><br>Vuoi procedere?',
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sì, procedi',
+            cancelButtonText: 'Annulla',
+        });
+
+        if (!result.isConfirmed) {
+            editingStatusValue.value = null;
+            return;
+        }
+    }
+
+    try {
+        const payload = { status_id: newStatusId };
+        await axios.put(`/api/services/${service.id}`, payload);
+
+        // Update local service data
+        const serviceIndex = services.value.findIndex(s => s.id === service.id);
+        if (serviceIndex !== -1) {
+            services.value[serviceIndex].status_id = newStatusId;
+            services.value[serviceIndex].status = newStatus || null;
+        }
+
+        editingStatus.value = null;
+        editingStatusValue.value = null;
+    } catch (err) {
+        error.value = 'Errore nell\'aggiornamento dello stato';
+        console.error('Error updating status:', err);
+        await loadServices();
+        editingStatus.value = null;
+        editingStatusValue.value = null;
+    }
+};
+
+const cancelEditStatus = () => {
+    editingStatus.value = null;
+    editingStatusValue.value = null;
+};
+
 // Inline vehicle editing functions
 const startEditVehicle = (service) => {
     editingVehicle.value = service.id;
@@ -1506,11 +1616,11 @@ const saveVehicle = async (service) => {
         vehicle_id: editingVehicleValue.value || null
     };
 
-    const success = await saveServiceField(service.id, payload);
-    if (success) {
-        editingVehicle.value = null;
-        editingVehicleValue.value = null;
-    }
+    // Clear editing state immediately - overlap modal handles the rest if needed
+    editingVehicle.value = null;
+    editingVehicleValue.value = null;
+
+    await saveServiceField(service.id, payload);
 };
 
 const cancelEditVehicle = () => {
@@ -1539,12 +1649,14 @@ const saveDrivers = async (service) => {
         driver_ids: editingDriversValue.value
     };
 
+    // Clear editing state immediately - overlap modal handles the rest if needed
+    editingDrivers.value = null;
+    editingDriversValue.value = [];
+
     const success = await saveServiceField(service.id, payload);
     if (success) {
         // Reload to get driver colors/profiles
         await loadServices();
-        editingDrivers.value = null;
-        editingDriversValue.value = [];
     }
 };
 
@@ -2071,6 +2183,14 @@ const cancelOverlapConfirmation = () => {
     showOverlapConfirmationModal.value = false;
     pendingSavePayload.value = null;
     pendingSaveServiceId.value = null;
+    // Clear all editing states
+    editingVehicle.value = null;
+    editingVehicleValue.value = null;
+    editingDrivers.value = null;
+    editingDriversValue.value = [];
+    editingDatetimes.value = null;
+    // Reload services to revert any visual inconsistencies
+    loadServices();
 };
 
 // Datetime inline editing functions

@@ -55,7 +55,7 @@ class VehicleAttachmentController extends Controller
     /**
      * Download the specified attachment.
      */
-    public function download(Vehicle $vehicle, VehicleAttachment $attachment): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function download(Vehicle $vehicle, VehicleAttachment $attachment): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         // Verify attachment belongs to vehicle
         if ($attachment->vehicle_id !== $vehicle->id) {

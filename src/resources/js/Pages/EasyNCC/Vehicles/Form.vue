@@ -282,44 +282,6 @@
                             </div>
                         </div>
 
-                        <!-- Buttons -->
-                        <div class="mt-4">
-                            <template v-if="isEdit">
-                                <button
-                                    @click="submitForm(false)"
-                                    type="button"
-                                    class="btn btn-primary"
-                                    :disabled="submitting"
-                                >
-                                    <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                                    Salva
-                                </button>
-                            </template>
-                            <template v-else>
-                                <button
-                                    @click="submitForm(true)"
-                                    type="button"
-                                    class="btn btn-primary"
-                                    :disabled="submitting"
-                                >
-                                    <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                                    Crea
-                                </button>
-                                <button
-                                    @click="submitForm(false)"
-                                    type="button"
-                                    class="btn btn-success ms-2"
-                                    :disabled="submitting"
-                                >
-                                    <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                                    Crea ed Esci
-                                </button>
-                            </template>
-                            <Link :href="route('easyncc.vehicles.index')" class="btn btn-secondary ms-2">
-                                Esci
-                            </Link>
-                        </div>
-
                         <!-- Error Message -->
                         <div v-if="error" class="alert alert-danger mt-3" role="alert">
                             {{ error }}
@@ -328,6 +290,48 @@
                 </BCard>
             </BCol>
         </BRow>
+
+        <!-- Sticky Buttons Bar -->
+        <div class="sticky-buttons-bar">
+            <div class="d-flex align-items-center gap-2">
+                <template v-if="isEdit">
+                    <button
+                        @click="submitForm(false)"
+                        type="button"
+                        class="btn btn-primary"
+                        :disabled="submitting"
+                    >
+                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                        <i v-else class="ri-save-line me-1"></i>
+                        Salva ed Esci
+                    </button>
+                </template>
+                <template v-else>
+                    <button
+                        @click="submitForm(true)"
+                        type="button"
+                        class="btn btn-primary"
+                        :disabled="submitting"
+                    >
+                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                        Crea
+                    </button>
+                    <button
+                        @click="submitForm(false)"
+                        type="button"
+                        class="btn btn-success"
+                        :disabled="submitting"
+                    >
+                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                        Crea ed Esci
+                    </button>
+                </template>
+                <Link :href="route('easyncc.vehicles.index')" class="btn btn-secondary">
+                    Esci
+                </Link>
+            </div>
+        </div>
+
         <!-- ZTL Edit Modal -->
         <BModal v-model="showZtlModal" :title="ztlModalTitle" hide-footer size="lg">
             <form @submit.prevent="saveZtl">
@@ -627,6 +631,17 @@ const formatDateTime = (date) => {
 </script>
 
 <style scoped>
+.sticky-buttons-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 100;
+    background-color: #fff;
+    border-top: 2px solid #dee2e6;
+    padding: 12px 20px;
+    margin: 0 -12px -12px -12px;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+}
+
 .ztl-tag {
     cursor: pointer;
     transition: opacity 0.2s;

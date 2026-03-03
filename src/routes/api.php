@@ -10,7 +10,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DressCodeController;
 use App\Http\Controllers\Api\ServiceStatusController;
 use App\Http\Controllers\Api\PaymentTypeController;
-use App\Http\Controllers\API\DictionaryController;
+use App\Http\Controllers\Api\DictionaryController;
 use App\Http\Controllers\Api\DriverAttachmentController;
 use App\Http\Controllers\Api\VehicleAttachmentController;
 use App\Http\Controllers\Api\VehicleUnavailabilityController;
@@ -19,6 +19,11 @@ use App\Http\Controllers\Api\AccountingTransactionController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\TelegramConfigController;
+use App\Http\Controllers\Api\TelegramChatController;
+use App\Http\Controllers\Api\TelegramUserController;
+use App\Http\Controllers\Api\TelegramNotificationController;
+use App\Http\Controllers\Api\TelegramWebhookController;
+use App\Http\Controllers\Api\GlobalSearchController;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,6 +39,10 @@ use App\Http\Controllers\Api\TelegramConfigController;
 // Public routes
 Route::post('/login', [UserController::class, 'login'])->name('api.login');
 
+// Telegram webhook - public endpoint (called by Telegram servers)
+Route::post('/telegram/webhook/{companyId}', [TelegramWebhookController::class, 'handle'])
+    ->where('companyId', '[0-9]+');
+
 // Protected routes - require authentication + active user
 Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function () {
 
@@ -41,6 +50,9 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
     Route::get('/user', function (Request $request) {
         return $request->user()->load(['company', 'driverProfile', 'clientProfile', 'operatorProfile']);
     });
+
+    // Global Search - accessible to all authenticated users
+    Route::get('search', [GlobalSearchController::class, 'search']);
 
     // Dashboard - accessible to all authenticated users
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
@@ -184,7 +196,14 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::put('settings', [SettingsController::class, 'update']);
         Route::get('settings/accounting-entries', [SettingsController::class, 'getAccountingEntries']);
         Route::get('settings/suppliers', [SettingsController::class, 'getSuppliers']);
+        Route::get('settings/service-statuses', [SettingsController::class, 'getServiceStatuses']);
     });
+
+    // Telegram Notifications - accessible to all authenticated users
+    Route::get('notifications', [TelegramNotificationController::class, 'index']);
+    Route::get('notifications/unread-count', [TelegramNotificationController::class, 'unreadCount']);
+    Route::post('notifications/mark-all-read', [TelegramNotificationController::class, 'markAllAsRead']);
+    Route::post('notifications/{id}/mark-read', [TelegramNotificationController::class, 'markAsRead']);
 
     // Telegram Config - only admin and super-admin can access
     Route::middleware(['role:super-admin,admin'])->group(function () {
@@ -193,5 +212,14 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::post('telegram/webhook/activate', [TelegramConfigController::class, 'activateWebhook']);
         Route::post('telegram/webhook/deactivate', [TelegramConfigController::class, 'deactivateWebhook']);
         Route::get('telegram/webhook/info', [TelegramConfigController::class, 'webhookInfo']);
+
+        Route::get('telegram/users', [TelegramUserController::class, 'index']);
+        Route::put('telegram/users/{id}/associate', [TelegramUserController::class, 'associate']);
+        Route::get('telegram/users/available-drivers', [TelegramUserController::class, 'availableDrivers']);
+
+        Route::get('telegram/chat/conversations', [TelegramChatController::class, 'conversations']);
+        Route::get('telegram/chat/messages', [TelegramChatController::class, 'messages']);
+        Route::post('telegram/chat/send', [TelegramChatController::class, 'send']);
+        Route::post('telegram/chat/mark-read', [TelegramChatController::class, 'markAsRead']);
     });
 });

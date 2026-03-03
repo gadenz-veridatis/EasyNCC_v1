@@ -9,23 +9,9 @@ const logout = () => {
 <script>
 import { Link } from '@inertiajs/vue3';
 import simplebar from "simplebar-vue";
+import axios from "axios";
 
-import i18n from "../i18n";
 
-import us_flag from "@assets/images/flags/us.svg";
-import spain from "@assets/images/flags/spain.svg";
-import germany from "@assets/images/flags/germany.svg";
-import italy from "@assets/images/flags/italy.svg";
-import russia from "@assets/images/flags/russia.svg";
-import china from "@assets/images/flags/china.svg";
-import french from "@assets/images/flags/french.svg";
-import ae from "@assets/images/flags/ae.svg";
-
-import img1 from "@assets/images/products/img-1.png";
-import img2 from "@assets/images/products/img-2.png";
-import img3 from "@assets/images/products/img-3.png";
-import img4 from "@assets/images/products/img-4.png";
-import img5 from "@assets/images/products/img-5.png";
 
 /**
  * Nav-bar Component
@@ -33,94 +19,17 @@ import img5 from "@assets/images/products/img-5.png";
 export default {
   data() {
     return {
-      languages: [{
-        flag: us_flag,
-        language: "en",
-        title: "English",
-      },
-      {
-        flag: spain,
-        language: "sp",
-        title: "Española",
-      },
-      {
-        flag: germany,
-        language: "gr",
-        title: "Deutsche",
-      },
-      {
-        flag: italy,
-        language: "it",
-        title: "italiana",
-      },
-      {
-        flag: russia,
-        language: "ru",
-        title: "русский",
-      },
-      {
-        flag: china,
-        language: "ch",
-        title: "中國人",
-      },
-      {
-        flag: french,
-        language: "fr",
-        title: "Français",
-      },
-      {
-        flag: ae,
-        language: "ar",
-        title: "Arabic",
-      },
-      ],
-      cartItems: [
-        {
-          id: 1,
-          productImage: img1,
-          productName: "Branded T-Shirts",
-          productLink: "/ecommerce/product-details",
-          quantity: "10 x $32",
-          itemPrice: "320",
-        },
-        {
-          id: 2,
-          productImage: img2,
-          productName: "Bentwood Chair",
-          productLink: "/ecommerce/product-details",
-          quantity: "5 x $18",
-          itemPrice: "89",
-        },
-        {
-          id: 3,
-          productImage: img3,
-          productName: "Borosil Paper Cup",
-          productLink: "/ecommerce/product-details",
-          quantity: "3 x $250",
-          itemPrice: "750",
-        },
-        {
-          id: 4,
-          productImage: img4,
-          productName: "Gray Styled T-Shirt",
-          productLink: "/ecommerce/product-details",
-          quantity: "1 x $1250",
-          itemPrice: "1250",
-        },
-        {
-          id: 5,
-          productImage: img5,
-          productName: "Stillbird Helmet",
-          productLink: "/ecommerce/product-details",
-          quantity: "2 x $495",
-          itemPrice: "990",
-        },
-      ],
-      lan: i18n.locale,
-      text: null,
-      flag: null,
-      value: null,
       myVar: 1,
+      // Search
+      searchQuery: '',
+      searchResults: null,
+      searchLoading: false,
+      searchTimeout: null,
+      // Notifications
+      notifications: [],
+      unreadCount: 0,
+      notificationPollingInterval: null,
+      loadingNotifications: false,
     };
   },
   components: {
@@ -130,51 +39,157 @@ export default {
 
   methods: {
     ...layoutMethods,
-    isCustomDropdown() {
-      //Search bar
-      var searchOptions = document.getElementById("search-close-options");
-      var dropdown = document.getElementById("search-dropdown");
-      var searchInput = document.getElementById("search-options");
-
-      // Check if elements exist before adding event listeners
-      if (!searchInput || !dropdown || !searchOptions) {
+    onSearchInput() {
+      if (this.searchTimeout) clearTimeout(this.searchTimeout);
+      const query = this.searchQuery.trim();
+      if (query.length < 2) {
+        this.searchResults = null;
+        this.searchLoading = false;
+        this.hideSearchDropdown();
         return;
       }
-
-      searchInput.addEventListener("focus", () => {
-        var inputLength = searchInput.value.length;
-        if (inputLength > 0) {
-          dropdown.classList.add("show");
-          searchOptions.classList.remove("d-none");
-        } else {
-          dropdown.classList.remove("show");
-          searchOptions.classList.add("d-none");
-        }
-      });
-
-      searchInput.addEventListener("keyup", () => {
-        var inputLength = searchInput.value.length;
-        if (inputLength > 0) {
-          dropdown.classList.add("show");
-          searchOptions.classList.remove("d-none");
-        } else {
-          dropdown.classList.remove("show");
-          searchOptions.classList.add("d-none");
-        }
-      });
-
-      searchOptions.addEventListener("click", () => {
-        searchInput.value = "";
-        dropdown.classList.remove("show");
-        searchOptions.classList.add("d-none");
-      });
-
+      this.searchLoading = true;
+      this.showSearchDropdown();
+      this.searchTimeout = setTimeout(() => {
+        this.performSearch(query);
+      }, 300);
+    },
+    async performSearch(query) {
+      try {
+        const response = await axios.get('/api/search', { params: { q: query } });
+        this.searchResults = response.data;
+        this.searchLoading = false;
+        this.showSearchDropdown();
+      } catch (error) {
+        this.searchLoading = false;
+        this.searchResults = null;
+      }
+    },
+    showSearchDropdown() {
+      const dropdown = document.getElementById("search-dropdown");
+      const closeBtn = document.getElementById("search-close-options");
+      if (dropdown) dropdown.classList.add("show");
+      if (closeBtn) closeBtn.classList.remove("d-none");
+    },
+    hideSearchDropdown() {
+      const dropdown = document.getElementById("search-dropdown");
+      const closeBtn = document.getElementById("search-close-options");
+      if (dropdown) dropdown.classList.remove("show");
+      if (closeBtn) closeBtn.classList.add("d-none");
+    },
+    clearSearch() {
+      this.searchQuery = '';
+      this.searchResults = null;
+      this.searchLoading = false;
+      this.hideSearchDropdown();
+    },
+    onSearchFocus() {
+      if (this.searchQuery.trim().length >= 2 && this.searchResults) {
+        this.showSearchDropdown();
+      }
+    },
+    initSearchClickOutside() {
       document.body.addEventListener("click", (e) => {
-        if (e.target.getAttribute("id") !== "search-options") {
-          dropdown.classList.remove("show");
-          searchOptions.classList.add("d-none");
+        const searchArea = document.querySelector('.app-search');
+        if (searchArea && !searchArea.contains(e.target)) {
+          this.hideSearchDropdown();
         }
       });
+    },
+    navigateToResult(type, item) {
+      this.clearSearch();
+      switch (type) {
+        case 'services':
+          window.location.href = `/easyncc/services/${item.id}/edit`;
+          break;
+        case 'drivers':
+          window.location.href = `/easyncc/drivers/${item.id}/edit`;
+          break;
+        case 'vehicles':
+          window.location.href = `/easyncc/vehicles/${item.id}/edit`;
+          break;
+        case 'clients':
+          window.location.href = `/easyncc/committenti/${item.id}/edit`;
+          break;
+        case 'suppliers':
+          window.location.href = `/easyncc/fornitori/${item.id}/edit`;
+          break;
+        case 'accounting':
+          window.location.href = `/easyncc/accounting-transactions`;
+          break;
+      }
+    },
+    getEntityLabel(type) {
+      const labels = {
+        services: 'Servizi',
+        drivers: 'Driver',
+        vehicles: 'Veicoli',
+        clients: 'Committenti',
+        suppliers: 'Fornitori',
+        accounting: 'Contabilità',
+      };
+      return labels[type] || type;
+    },
+    getEntityIcon(type) {
+      const icons = {
+        services: 'ri-list-check',
+        drivers: 'ri-steering-2-line',
+        vehicles: 'ri-car-line',
+        clients: 'ri-building-4-line',
+        suppliers: 'ri-store-2-line',
+        accounting: 'ri-money-euro-circle-line',
+      };
+      return icons[type] || 'ri-search-line';
+    },
+    formatResultTitle(type, item) {
+      switch (type) {
+        case 'services':
+          return `${item.reference_number || 'N/A'} - ${item.pickup_address || ''}`;
+        case 'drivers':
+          return `${item.name || ''} ${item.surname || ''}`.trim();
+        case 'vehicles':
+          return `${item.license_plate || ''} - ${item.brand || ''} ${item.model || ''}`.trim();
+        case 'clients':
+        case 'suppliers': {
+          const businessName = item.client_profile?.business_name;
+          const fullName = `${item.name || ''} ${item.surname || ''}`.trim();
+          return businessName ? `${businessName} (${fullName})` : fullName;
+        }
+        case 'accounting': {
+          const ref = item.service?.reference_number || '';
+          const counterpart = item.counterpart ? `${item.counterpart.name || ''} ${item.counterpart.surname || ''}`.trim() : '';
+          return `${item.transaction_type || ''} - ${ref}${counterpart ? ' - ' + counterpart : ''}`;
+        }
+        default:
+          return '';
+      }
+    },
+    formatResultSubtitle(type, item) {
+      switch (type) {
+        case 'services': {
+          const price = item.service_price ? `€ ${parseFloat(item.service_price).toFixed(2)}` : '';
+          const date = item.pickup_datetime ? new Date(item.pickup_datetime).toLocaleDateString('it-IT') : '';
+          return [date, price].filter(Boolean).join(' - ');
+        }
+        case 'drivers':
+          return item.email || item.phone || '';
+        case 'vehicles':
+          return '';
+        case 'clients':
+        case 'suppliers':
+          return item.email || '';
+        case 'accounting': {
+          const amount = item.amount ? `€ ${parseFloat(item.amount).toFixed(2)}` : '';
+          const date = item.transaction_date ? new Date(item.transaction_date).toLocaleDateString('it-IT') : '';
+          return [date, amount].filter(Boolean).join(' - ');
+        }
+        default:
+          return '';
+      }
+    },
+    hasAnyResults() {
+      if (!this.searchResults) return false;
+      return Object.values(this.searchResults).some(arr => arr && arr.length > 0);
     },
     toggleHamburgerMenu() {
       var windowSize = document.documentElement.clientWidth;
@@ -227,73 +242,100 @@ export default {
     toggleRightSidebar() {
       this.$parent.toggleRightSidebar();
     },
-    initFullScreen() {
-      document.body.classList.toggle("fullscreen-enable");
-      if (
-        !document.fullscreenElement &&
-        /* alternative standard method */
-        !document.mozFullScreenElement &&
-        !document.webkitFullscreenElement
-      ) {
-        // current working methods
-        if (document.documentElement.requestFullscreen) {
-          document.documentElement.requestFullscreen();
-        } else if (document.documentElement.mozRequestFullScreen) {
-          document.documentElement.mozRequestFullScreen();
-        } else if (document.documentElement.webkitRequestFullscreen) {
-          document.documentElement.webkitRequestFullscreen(
-            Element.ALLOW_KEYBOARD_INPUT
-          );
-        }
-      } else {
-        if (document.cancelFullScreen) {
-          document.cancelFullScreen();
-        } else if (document.mozCancelFullScreen) {
-          document.mozCancelFullScreen();
-        } else if (document.webkitCancelFullScreen) {
-          document.webkitCancelFullScreen();
-        }
+    async loadNotifications() {
+      try {
+        const response = await axios.get('/api/notifications');
+        this.notifications = response.data.data || [];
+      } catch (error) {
+        // silently fail
       }
     },
-    setLanguage(locale, country, flag) {
-      this.lan = locale;
-      this.text = country;
-      this.flag = flag;
-      document.getElementById("header-lang-img").setAttribute("src", flag);
-      i18n.global.locale = locale;
-    },
-    toggleDarkMode() {
-
-      if (document.documentElement.getAttribute("data-bs-theme") == "dark") {
-        document.documentElement.setAttribute("data-bs-theme", "light");
-      } else {
-        document.documentElement.setAttribute("data-bs-theme", "dark");
+    async loadUnreadCount() {
+      try {
+        const response = await axios.get('/api/notifications/unread-count');
+        this.unreadCount = response.data.count || 0;
+      } catch (error) {
+        // silently fail
       }
-
-      const mode = document.documentElement.getAttribute("data-bs-theme")
-      this.changeMode({
-        mode: mode,
-      });
     },
-    removeItem(cartItem) {
-      this.cartItems = this.cartItems.filter(item => item.id !== cartItem.id)
-      this.$emit("cart-item-price", this.cartItems.length);
+    async markAllNotificationsRead() {
+      try {
+        await axios.post('/api/notifications/mark-all-read');
+        this.unreadCount = 0;
+        this.notifications.forEach(n => {
+          n.is_read = true;
+          n.read_at = new Date().toISOString();
+        });
+      } catch (error) {
+        console.error('Error marking notifications as read:', error);
+      }
+    },
+    async markNotificationRead(notification) {
+      if (notification.is_read) return;
+      try {
+        await axios.post(`/api/notifications/${notification.id}/mark-read`);
+        notification.is_read = true;
+        notification.read_at = new Date().toISOString();
+        this.unreadCount = Math.max(0, this.unreadCount - 1);
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+      }
+    },
+    getNotificationIcon(type) {
+      switch (type) {
+        case 'new_message': return 'bx bx-message-dots';
+        case 'service_accepted': return 'bx bx-check-circle';
+        case 'service_notification_sent': return 'bx bx-send';
+        default: return 'bx bx-bell';
+      }
+    },
+    getNotificationIconClass(type) {
+      switch (type) {
+        case 'new_message': return 'bg-info-subtle text-info';
+        case 'service_accepted': return 'bg-success-subtle text-success';
+        case 'service_notification_sent': return 'bg-primary-subtle text-primary';
+        default: return 'bg-warning-subtle text-warning';
+      }
+    },
+    formatTimeAgo(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMin = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMin < 1) return 'Adesso';
+      if (diffMin < 60) return `${diffMin} min fa`;
+      if (diffHours < 24) return `${diffHours} ore fa`;
+      if (diffDays < 7) return `${diffDays} giorni fa`;
+      return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    },
+    navigateToNotification(notification) {
+      this.markNotificationRead(notification);
+      if (notification.type === 'new_message') {
+        window.location.href = '/easyncc/telegram/chat';
+      } else if (notification.type === 'service_accepted') {
+        window.location.href = '/easyncc/telegram/chat';
+      }
+    },
+    startNotificationPolling() {
+      this.loadUnreadCount();
+      this.loadNotifications();
+      this.notificationPollingInterval = setInterval(() => {
+        this.loadUnreadCount();
+      }, 30000); // Poll every 30 seconds
+    },
+    stopNotificationPolling() {
+      if (this.notificationPollingInterval) {
+        clearInterval(this.notificationPollingInterval);
+        this.notificationPollingInterval = null;
+      }
     },
   },
 
-  computed: {
-    calculateTotalPrice() {
-      return this.cartItems.reduce((total, item) => total + parseFloat(item.itemPrice), 0).toFixed(2);
-    },
-  },
   mounted() {
-    this.flag = this.$i18n.locale;
-    this.languages.forEach((item) => {
-      if (item.language == this.flag) {
-        document.getElementById("header-lang-img") ? document.getElementById("header-lang-img").setAttribute("src", item.flag) : '';
-      }
-    });
-
     document.addEventListener("scroll", function () {
       var pageTopbar = document.getElementById("page-topbar");
       if (pageTopbar) {
@@ -304,7 +346,13 @@ export default {
     if (document.getElementById("topnav-hamburger-icon"))
       document.getElementById("topnav-hamburger-icon").addEventListener("click", this.toggleHamburgerMenu);
 
-    this.isCustomDropdown();
+    this.initSearchClickOutside();
+
+    // Start notification polling
+    this.startNotificationPolling();
+  },
+  beforeUnmount() {
+    this.stopNotificationPolling();
   },
 };
 </script>
@@ -344,79 +392,63 @@ export default {
           </button>
 
           <!-- App Search-->
-          <form class="app-search d-none d-md-block">
+          <form class="app-search d-none d-md-block" @submit.prevent>
             <div class="position-relative">
-              <input type="text" class="form-control" placeholder="Search..." autocomplete="off" id="search-options" value="" />
+              <input type="text" class="form-control" placeholder="Cerca servizi, driver, veicoli..." autocomplete="off" id="search-options"
+                v-model="searchQuery" @input="onSearchInput" @focus="onSearchFocus" />
               <span class="mdi mdi-magnify search-widget-icon"></span>
-              <span class="mdi mdi-close-circle search-widget-icon search-widget-icon-close d-none" id="search-close-options"></span>
+              <span class="mdi mdi-close-circle search-widget-icon search-widget-icon-close d-none" id="search-close-options" @click="clearSearch"></span>
             </div>
-            <div class="dropdown-menu dropdown-menu-lg" id="search-dropdown">
-              <simplebar data-simplebar style="max-height: 320px">
-                <div class="dropdown-header">
-                  <h6 class="text-overflow text-muted mb-0 text-uppercase">
-                    Recent Searches
-                  </h6>
+            <div class="dropdown-menu dropdown-menu-lg" id="search-dropdown" style="min-width: 380px;">
+              <simplebar data-simplebar style="max-height: 400px">
+                <!-- Loading -->
+                <div v-if="searchLoading" class="text-center py-4">
+                  <div class="spinner-border spinner-border-sm text-primary"></div>
+                  <p class="mt-2 text-muted mb-0 fs-13">Ricerca in corso...</p>
                 </div>
 
-                <div class="dropdown-item bg-transparent text-wrap">
-                  <Link href="/" class="btn btn-soft-secondary btn-sm rounded-pill">how to setup <i class="mdi mdi-magnify ms-1"></i></Link>
-                  <Link href="/" class="btn btn-soft-secondary btn-sm rounded-pill">buttons <i class="mdi mdi-magnify ms-1"></i></Link>
-                </div>
-                <div class="dropdown-header mt-2">
-                  <h6 class="text-overflow text-muted mb-1 text-uppercase">
-                    Pages
-                  </h6>
+                <!-- No results -->
+                <div v-else-if="searchResults && !hasAnyResults()" class="text-center py-4">
+                  <i class="ri-search-line fs-1 text-muted"></i>
+                  <p class="mt-2 text-muted mb-0">Nessun risultato per "<strong>{{ searchQuery }}</strong>"</p>
                 </div>
 
-                <BLink href="javascript:void(0);" class="dropdown-item notify-item">
-                  <i class=" ri-bubble-chart-line align-middle fs-18 text-muted me-2"></i>
-                  <span>Analytics Dashboard</span>
-                </BLink>
-
-                <BLink href="javascript:void(0);" class="dropdown-item notify-item">
-                  <i class="ri-lifebuoy-line align-middle fs-18 text-muted me-2"></i>
-                  <span>Help Center</span>
-                </BLink>
-
-                <BLink href="javascript:void(0);" class="dropdown-item notify-item">
-                  <i class=" ri-user-settings-line align-middle fs-18 text-muted me-2"></i>
-                  <span>My account settings</span>
-                </BLink>
-
-                <div class="dropdown-header mt-2">
-                  <h6 class="text-overflow text-muted mb-2 text-uppercase">
-                    Members
-                  </h6>
-                </div>
-
-                <div class="notification-list">
-                  <BLink href="javascript:void(0);" class="d-flex dropdown-item notify-item py-2">
-                    <img src="@assets/images/users/avatar-2.jpg" class="me-3 rounded-circle avatar-xs" alt="user-pic" />
-                    <div class="flex-grow-1">
-                      <h6 class="m-0">Angela Bernier</h6>
-                      <span class="fs-11 mb-0 text-muted">Manager</span>
-                    </div>
-                  </BLink>
-                  <BLink href="javascript:void(0);" class="d-flex dropdown-item notify-item py-2">
-                    <img src="@assets/images/users/avatar-3.jpg" class="me-3 rounded-circle avatar-xs" alt="user-pic" />
-                    <div class="flex-grow-1">
-                      <h6 class="m-0">David Grasso</h6>
-                      <span class="fs-11 mb-0 text-muted">Web Designer</span>
-                    </div>
-                  </BLink>
-                  <BLink href="javascript:void(0);" class="d-flex dropdown-item notify-item py-2">
-                    <img src="@assets/images/users/avatar-5.jpg" class="me-3 rounded-circle avatar-xs" alt="user-pic" />
-                    <div class="flex-grow-1">
-                      <h6 class="m-0">Mike Bunch</h6>
-                      <span class="fs-11 mb-0 text-muted">React Developer</span>
-                    </div>
-                  </BLink>
-                </div>
+                <!-- Results grouped by entity -->
+                <template v-else-if="searchResults">
+                  <template v-for="(items, type) in searchResults" :key="type">
+                    <template v-if="items && items.length > 0">
+                      <div class="dropdown-header mt-1">
+                        <h6 class="text-overflow text-muted mb-0 text-uppercase fs-12">
+                          <i :class="getEntityIcon(type)" class="me-1"></i>
+                          {{ getEntityLabel(type) }}
+                          <span class="badge bg-primary-subtle text-primary ms-1">{{ items.length }}</span>
+                        </h6>
+                      </div>
+                      <a v-for="item in items" :key="item.id"
+                        href="javascript:void(0);"
+                        class="dropdown-item notify-item py-2"
+                        @click="navigateToResult(type, item)">
+                        <div class="d-flex align-items-center">
+                          <div class="avatar-xs me-2 flex-shrink-0">
+                            <span class="avatar-title rounded-circle bg-primary-subtle text-primary fs-14">
+                              <i :class="getEntityIcon(type)"></i>
+                            </span>
+                          </div>
+                          <div class="flex-grow-1 overflow-hidden">
+                            <h6 class="m-0 fs-13 text-truncate">{{ formatResultTitle(type, item) }}</h6>
+                            <p v-if="formatResultSubtitle(type, item)" class="mb-0 fs-11 text-muted text-truncate">{{ formatResultSubtitle(type, item) }}</p>
+                          </div>
+                          <div v-if="type === 'services' && item.status" class="flex-shrink-0 ms-2">
+                            <span class="badge rounded-pill fs-10" :style="{ backgroundColor: item.status.color_code || '#6c757d', color: '#fff' }">
+                              {{ item.status.name }}
+                            </span>
+                          </div>
+                        </div>
+                      </a>
+                    </template>
+                  </template>
+                </template>
               </simplebar>
-
-              <div class="text-center pt-3 pb-1">
-                <Link href="/pages/search-results" class="btn btn-primary btn-sm">View All Results <i class="ri-arrow-right-line ms-1"></i></Link>
-              </div>
             </div>
           </form>
         </div>
@@ -427,11 +459,11 @@ export default {
               <i class="bx bx-search fs-22"></i>
             </template>
             <BDropdownItem aria-labelledby="page-header-search-dropdown">
-              <form class="p-3">
+              <form class="p-3" @submit.prevent>
                 <div class="form-group m-0">
                   <div class="input-group">
-                    <input type="text" class="form-control" placeholder="Search ..." aria-label="Recipient's username" />
-                    <BButton variant="primary" type="submit">
+                    <input type="text" class="form-control" placeholder="Cerca..." v-model="searchQuery" @input="onSearchInput" />
+                    <BButton variant="primary" @click="onSearchInput">
                       <i class="mdi mdi-magnify"></i>
                     </BButton>
                   </div>
@@ -440,162 +472,19 @@ export default {
             </BDropdownItem>
           </BDropdown>
 
-          <BDropdown class="dropdown" variant="ghost-secondary" dropstart :offset="{ alignmentAxis: 55, crossAxis: 15, mainAxis: -50 }" toggle-class="btn-icon btn-topbar rounded-circle arrow-none shadow-none" menu-class="dropdown-menu-end">
-            <template #button-content> <img id="header-lang-img" src="@assets/images/flags/us.svg" alt="Header Language" height="20" class="rounded">
-            </template>
-            <BLink href="javascript:void(0);" class="dropdown-item notify-item language py-2" v-for="(entry, key) in languages" :data-lang="entry.language" :title="entry.title" @click="setLanguage(entry.language, entry.title, entry.flag)" :key="key">
-              <img :src="entry.flag" alt="user-image" class="me-2 rounded" height="18">
-              <span class="align-middle">{{ entry.title }}</span>
-            </BLink>
-          </BDropdown>
-
-          <BDropdown class="dropdown" variant="ghost-secondary" dropstart :offset="{ alignmentAxis: 57, crossAxis: 0, mainAxis: -42 }" toggle-class="btn-icon btn-topbar rounded-circle mode-layout ms-1 arrow-none shadow-none" menu-class="p-0 dropdown-menu-end">
-            <template #button-content>
-              <i class="bx bx-category-alt fs-22"></i>
-            </template>
-            <div class="p-3 border-top-0 dropdown-head border-start-0 border-end-0 border-dashed border dropdown-menu-lg">
-              <BRow class="align-items-center">
-                <BCol>
-                  <h6 class="m-0 fw-semibold fs-15">Web Apps</h6>
-                </BCol>
-                <BCol cols="auto">
-                  <BLink href="#!" class="btn btn-sm btn-soft-info shadow-none">
-                    View All Apps
-                    <i class="ri-arrow-right-s-line align-middle"></i>
-                  </BLink>
-                </BCol>
-              </BRow>
-            </div>
-
-            <div class="p-2">
-              <BRow class="g-0">
-                <BCol>
-                  <BLink class="dropdown-icon-item" href="#!">
-                    <img src="@assets/images/brands/github.png" alt="Github" />
-                    <span>GitHub</span>
-                  </BLink>
-                </BCol>
-                <BCol>
-                  <BLink class="dropdown-icon-item" href="#!">
-                    <img src="@assets/images/brands/bitbucket.png" alt="bitbucket" />
-                    <span>Bitbucket</span>
-                  </BLink>
-                </BCol>
-                <BCol>
-                  <BLink class="dropdown-icon-item" href="#!">
-                    <img src="@assets/images/brands/dribbble.png" alt="dribbble" />
-                    <span>Dribbble</span>
-                  </BLink>
-                </BCol>
-              </BRow>
-
-              <BRow class="g-0">
-                <BCol>
-                  <BLink class="dropdown-icon-item" href="#!">
-                    <img src="@assets/images/brands/dropbox.png" alt="dropbox" />
-                    <span>Dropbox</span>
-                  </BLink>
-                </BCol>
-                <BCol>
-                  <BLink class="dropdown-icon-item" href="#!">
-                    <img src="@assets/images/brands/mail_chimp.png" alt="mail_chimp" />
-                    <span>Mail Chimp</span>
-                  </BLink>
-                </BCol>
-                <BCol>
-                  <BLink class="dropdown-icon-item" href="#!">
-                    <img src="@assets/images/brands/slack.png" alt="slack" />
-                    <span>Slack</span>
-                  </BLink>
-                </BCol>
-              </BRow>
-            </div>
-          </BDropdown>
-
-          <BDropdown variant="ghost-secondary" dropstart :offset="{ alignmentAxis: 57, crossAxis: 0, mainAxis: -42 }" class="ms-1 dropdown" toggle-class="btn-icon btn-topbar rounded-circle mode-layout arrow-none shadow-none" menu-class="dropdown-menu-xl dropdown-menu-end p-0" text="Manual close (auto-close=false)" auto-close="outside">
-            <template #button-content>
-              <i class="bx bx-shopping-bag fs-22"></i>
-              <span class="position-absolute topbar-badge cartitem-badge fs-10 translate-middle badge rounded-pill bg-info">{{
-                cartItems.length }} </span>
-            </template>
-
-            <div class="p-3 border-top-0 border-start-0 dropdown-head border-end-0 border-dashed border dropdown-menu-xl">
-              <BRow class="align-items-center">
-                <BCol>
-                  <h6 class="m-0 fs-16 fw-semibold"> My Cart</h6>
-                </BCol>
-                <BCol cols="auto">
-                  <BBadge variant="warning-subtle" class="bg-warning-subtle text-warning fs-13"><span class="cartitem-badge"> {{ cartItems.length }} </span>
-                    items</BBadge>
-                </BCol>
-              </BRow>
-            </div>
-            <simplebar data-simplebar style="max-height: 300px">
-              <div class="p-2">
-                <div class="text-center empty-cart" id="empty-cart" v-if="cartItems.length === 0">
-                  <div class="avatar-md mx-auto my-3">
-                    <div class="avatar-title bg-info-subtle text-info fs-36 rounded-circle">
-                      <i class="bx bx-cart"></i>
-                    </div>
-                  </div>
-                  <h5 class="mb-3">Your Cart is Empty!</h5>
-                  <Link href="/ecommerce/products" class="btn btn-success w-md mb-3">Shop Now</Link>
-                </div>
-                <div class="d-block dropdown-item dropdown-item-cart text-wrap px-3 py-2" v-for="(item, index) in cartItems" :key="index">
-                  <div class="d-flex align-items-center">
-                    <img :src="item.productImage" class="me-3 rounded-circle avatar-sm p-2 bg-light" />
-                    <div class="flex-grow-1">
-                      <h6 class="mt-0 mb-1 fs-14">
-                        <Link :href="item.productLink" class="text-reset">{{ item.productName }}</Link>
-                      </h6>
-                      <p class="mb-0 fs-12 text-muted">
-                        Quantity: <span>{{ item.quantity }}</span>
-                      </p>
-                    </div>
-                    <div class="px-2">
-                      <h5 class="m-0 fw-normal">$<span class="cart-item-price">{{ item.itemPrice }}</span></h5>
-                    </div>
-                    <div class="ps-2">
-                      <button type="button" class="btn btn-ghost-secondary btn-sm btn-icon remove-item-btn shadow-none" @click="removeItem(item)">
-                        <i class="ri-close-fill fs-16"></i>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </simplebar>
-            <div v-if="cartItems.length" class="p-3 border-bottom-0 border-start-0 border-end-0 border-dashed border" id="checkout-elem">
-              <div class="d-flex justify-content-between align-items-center pb-3">
-                <h5 class="m-0 text-muted">Total:</h5>
-                <div class="px-2">
-                  <h5 class="m-0" id="cart-item-total">${{ calculateTotalPrice }}</h5>
-                </div>
-              </div>
-
-              <Link href="/ecommerce/checkout" class="btn btn-success text-center w-100">
-              Checkout
-              </Link>
-            </div>
-          </BDropdown>
-
-          <div class="ms-1 header-item d-none d-sm-flex">
-            <BButton type="button" variant="ghost-secondary" class="btn-icon btn-topbar rounded-circle shadow-none" data-toggle="fullscreen" @click="initFullScreen">
-              <i class="bx bx-fullscreen fs-22"></i>
-            </BButton>
+          <!-- Chat Telegram -->
+          <div class="ms-1 header-item">
+            <Link href="/easyncc/telegram/chat" class="btn btn-icon btn-topbar btn-ghost-dark rounded-circle shadow-none" title="Chat Telegram">
+              <i class="bx bx-chat fs-22"></i>
+            </Link>
           </div>
 
-          <div class="ms-1 header-item d-none d-sm-flex">
-            <BButton type="button" variant="ghost-secondary" class="btn-icon btn-topbar rounded-circle light-dark-mode shadow-none" @click="toggleDarkMode">
-              <i class="bx bx-moon fs-22"></i>
-            </BButton>
-          </div>
-
-          <BDropdown variant="ghost-dark" dropstart class="ms-1 dropdown" :offset="{ alignmentAxis: 57, crossAxis: 0, mainAxis: -42 }" toggle-class="btn-icon btn-topbar rounded-circle arrow-none shadow-none" id="page-header-notifications-dropdown" menu-class="dropdown-menu-lg dropdown-menu-end p-0" auto-close="outside">
+          <BDropdown variant="ghost-dark" dropstart class="ms-1 dropdown" :offset="{ alignmentAxis: 57, crossAxis: 0, mainAxis: -42 }" toggle-class="btn-icon btn-topbar rounded-circle arrow-none shadow-none" id="page-header-notifications-dropdown" menu-class="dropdown-menu-lg dropdown-menu-end p-0" auto-close="outside" @show="loadNotifications">
             <template #button-content>
               <i class='bx bx-bell fs-22'></i>
-              <span class="position-absolute topbar-badge fs-10 translate-middle badge rounded-pill bg-danger"><span class="notification-badge">3</span><span class="visually-hidden">unread
-                  messages
-                </span>
+              <span v-if="unreadCount > 0" class="position-absolute topbar-badge fs-10 translate-middle badge rounded-pill bg-danger">
+                <span class="notification-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+                <span class="visually-hidden">notifiche non lette</span>
               </span>
             </template>
             <div class="dropdown-head bg-primary bg-pattern rounded-top dropdown-menu-lg">
@@ -603,250 +492,80 @@ export default {
                 <BRow class="align-items-center">
                   <BCol>
                     <h6 class="m-0 fs-16 fw-semibold text-white">
-                      Notifications
+                      Notifiche
                     </h6>
                   </BCol>
                   <BCol cols="auto" class="dropdown-tabs">
-                    <BBadge variant="light-subtle" class="bg-light-subtle text-body fs-13"> 4 New</BBadge>
+                    <BBadge v-if="unreadCount > 0" variant="light-subtle" class="bg-light-subtle text-body fs-13">
+                      {{ unreadCount }} nuove
+                    </BBadge>
                   </BCol>
                 </BRow>
               </div>
             </div>
-            <BTabs nav-class="dropdown-tabs nav-tab-custom bg-primary px-2 pt-2">
-              <BTab title=" All (4) " class="tab-pane fade py-2 ps-2 show" id="all-noti-tab" role="tabpanel">
-                <simplebar data-simplebar style="max-height: 300px" class="pe-2">
-                  <div class="text-reset notification-item d-block dropdown-item position-relative">
+            <div class="py-2 ps-2">
+              <simplebar data-simplebar style="max-height: 350px" class="pe-2">
+                <!-- Loading -->
+                <div v-if="loadingNotifications" class="text-center py-4">
+                  <div class="spinner-border spinner-border-sm text-primary"></div>
+                </div>
+
+                <!-- No notifications -->
+                <div v-else-if="notifications.length === 0" class="text-center py-4">
+                  <i class="bx bx-bell-off fs-1 text-muted"></i>
+                  <p class="mt-2 text-muted mb-0">Nessuna notifica</p>
+                </div>
+
+                <!-- Notification items -->
+                <template v-else>
+                  <div
+                    v-for="notification in notifications"
+                    :key="notification.id"
+                    class="text-reset notification-item d-block dropdown-item position-relative"
+                    :class="{ 'bg-light-subtle': !notification.is_read }"
+                    style="cursor: pointer;"
+                    @click="navigateToNotification(notification)"
+                  >
                     <div class="d-flex">
                       <div class="avatar-xs me-3 flex-shrink-0">
-                        <span class="avatar-title bg-info-subtle text-info rounded-circle fs-16">
-                          <i class="bx bx-badge-check"></i>
+                        <span class="avatar-title rounded-circle fs-16" :class="getNotificationIconClass(notification.type)">
+                          <i :class="getNotificationIcon(notification.type)"></i>
                         </span>
                       </div>
                       <div class="flex-grow-1">
-                        <BLink href="#!" class="stretched-link">
-                          <h6 class="mt-0 mb-2 lh-base">
-                            Your <b>Elite</b> author Graphic Optimization
-                            <span class="text-secondary">reward</span> is
-                            ready!
-                          </h6>
-                        </BLink>
-                        <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                          <span><i class="mdi mdi-clock-outline"></i> Just 30 sec ago</span>
-                        </p>
-                      </div>
-                      <div class="px-2 fs-15">
-                        <input class="form-check-input" type="checkbox" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="text-reset notification-item d-block dropdown-item position-relative">
-                    <div class="d-flex">
-                      <img src="@assets/images/users/avatar-2.jpg" class="me-3 rounded-circle avatar-xs flex-shrink-0" alt="user-pic" />
-                      <div class="flex-grow-1">
-                        <BLink href="#!" class="stretched-link">
-                          <h6 class="mt-0 mb-1 fs-13 fw-semibold">
-                            Angela Bernier
-                          </h6>
-                        </BLink>
-                        <div class="fs-13 text-muted">
-                          <p class="mb-1">
-                            Answered to your comment on the cash flow forecast's graph 🔔.
-                          </p>
+                        <h6 class="mt-0 mb-1 fs-13 fw-semibold" :class="{ 'text-body': notification.is_read }">
+                          {{ notification.title }}
+                        </h6>
+                        <div v-if="notification.body" class="fs-13 text-muted">
+                          <p class="mb-1">{{ notification.body.length > 80 ? notification.body.substring(0, 80) + '...' : notification.body }}</p>
                         </div>
                         <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                          <span><i class="mdi mdi-clock-outline"></i> 48 min ago</span>
+                          <span><i class="mdi mdi-clock-outline"></i> {{ formatTimeAgo(notification.created_at) }}</span>
                         </p>
                       </div>
-                      <div class="px-2 fs-15">
-                        <input class="form-check-input" type="checkbox" />
+                      <div v-if="!notification.is_read" class="px-2 flex-shrink-0 align-self-center">
+                        <span class="badge bg-primary rounded-circle p-1">&nbsp;</span>
                       </div>
                     </div>
                   </div>
+                </template>
 
-                  <div class="text-reset notification-item d-block dropdown-item position-relative">
-                    <div class="d-flex">
-                      <div class="avatar-xs me-3 flex-shrink-0">
-                        <span class="avatar-title bg-danger-subtle text-danger rounded-circle fs-16">
-                          <i class="bx bx-message-square-dots"></i>
-                        </span>
-                      </div>
-                      <div class="flex-grow-1">
-                        <BLink href="#!" class="stretched-link">
-                          <h6 class="mt-0 mb-2 fs-13 lh-base">
-                            You have received <b class="text-success">20</b> new messages in the conversation
-                          </h6>
-                        </BLink>
-                        <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                          <span><i class="mdi mdi-clock-outline"></i> 2 hrs
-                            ago</span>
-                        </p>
-                      </div>
-                      <div class="px-2 fs-15">
-                        <input class="form-check-input" type="checkbox" />
-                      </div>
-                    </div>
-                  </div>
+                <!-- Mark all as read button -->
+                <div v-if="unreadCount > 0" class="my-3 text-center">
+                  <BButton type="button" variant="soft-primary" size="sm" @click="markAllNotificationsRead">
+                    <i class="bx bx-check-double me-1"></i> Segna tutte come lette
+                  </BButton>
+                </div>
 
-                  <div class="text-reset notification-item d-block dropdown-item position-relative">
-                    <div class="d-flex">
-                      <img src="@assets/images/users/avatar-8.jpg" class="me-3 rounded-circle avatar-xs flex-shrink-0" alt="user-pic" />
-                      <div class="flex-grow-1">
-                        <BLink href="#!" class="stretched-link">
-                          <h6 class="mt-0 mb-1 fs-13 fw-semibold">
-                            Maureen Gibson
-                          </h6>
-                        </BLink>
-                        <div class="fs-13 text-muted">
-                          <p class="mb-1">
-                            We talked about a project on linkedin.
-                          </p>
-                        </div>
-                        <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                          <span><i class="mdi mdi-clock-outline"></i> 4 hrs
-                            ago</span>
-                        </p>
-                      </div>
-                      <div class="px-2 fs-15">
-                        <input class="form-check-input" type="checkbox" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="my-3 text-center">
-                    <BButton type="button" variant="soft-success">
-                      View All Notifications
-                      <i class="ri-arrow-right-line align-middle"></i>
-                    </BButton>
-                  </div>
-                </simplebar>
-              </BTab>
-
-              <BTab title="Messages" class="tab-pane fade py-2 ps-2" id="messages-tab" role="tabpanel" aria-labelledby="messages-tab">
-                <simplebar data-simplebar style="max-height: 300px" class="pe-2">
-                  <div class="text-reset notification-item d-block dropdown-item">
-                    <div class="d-flex">
-                      <img src="@assets/images/users/avatar-3.jpg" class="me-3 rounded-circle avatar-xs" alt="user-pic" />
-                      <div class="flex-grow-1">
-                        <BLink href="#!" class="stretched-link">
-                          <h6 class="mt-0 mb-1 fs-13 fw-semibold">
-                            James Lemire
-                          </h6>
-                        </BLink>
-                        <div class="fs-13 text-muted">
-                          <p class="mb-1">
-                            We talked about a project on linkedin.
-                          </p>
-                        </div>
-                        <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                          <span><i class="mdi mdi-clock-outline"></i> 30 min ago</span>
-                        </p>
-                      </div>
-                      <div class="px-2 fs-15">
-                        <input class="form-check-input" type="checkbox" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="text-reset notification-item d-block dropdown-item">
-                    <div class="d-flex">
-                      <img src="@assets/images/users/avatar-2.jpg" class="me-3 rounded-circle avatar-xs" alt="user-pic" />
-                      <div class="flex-grow-1">
-                        <BLink href="#!" class="stretched-link">
-                          <h6 class="mt-0 mb-1 fs-13 fw-semibold">
-                            Angela Bernier
-                          </h6>
-                        </BLink>
-                        <div class="fs-13 text-muted">
-                          <p class="mb-1">
-                            Answered to your comment on the cash flow
-                            forecast's graph 🔔.
-                          </p>
-                        </div>
-                        <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                          <span><i class="mdi mdi-clock-outline"></i> 2 hrs
-                            ago</span>
-                        </p>
-                      </div>
-                      <div class="px-2 fs-15">
-                        <input class="form-check-input" type="checkbox" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="text-reset notification-item d-block dropdown-item">
-                    <div class="d-flex">
-                      <img src="@assets/images/users/avatar-6.jpg" class="me-3 rounded-circle avatar-xs" alt="user-pic" />
-                      <div class="flex-grow-1">
-                        <BLink href="#!" class="stretched-link">
-                          <h6 class="mt-0 mb-1 fs-13 fw-semibold">
-                            Kenneth Brown
-                          </h6>
-                        </BLink>
-                        <div class="fs-13 text-muted">
-                          <p class="mb-1">
-                            Mentionned you in his comment on 📃 invoice
-                            #12501.
-                          </p>
-                        </div>
-                        <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                          <span><i class="mdi mdi-clock-outline"></i> 10 hrs
-                            ago</span>
-                        </p>
-                      </div>
-                      <div class="px-2 fs-15">
-                        <input class="form-check-input" type="checkbox" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="text-reset notification-item d-block dropdown-item">
-                    <div class="d-flex">
-                      <img src="@assets/images/users/avatar-8.jpg" class="me-3 rounded-circle avatar-xs" alt="user-pic" />
-                      <div class="flex-grow-1">
-                        <BLink href="#!" class="stretched-link">
-                          <h6 class="mt-0 mb-1 fs-13 fw-semibold">
-                            Maureen Gibson
-                          </h6>
-                        </BLink>
-                        <div class="fs-13 text-muted">
-                          <p class="mb-1">
-                            We talked about a project on linkedin.
-                          </p>
-                        </div>
-                        <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                          <span><i class="mdi mdi-clock-outline"></i> 3 days
-                            ago</span>
-                        </p>
-                      </div>
-                      <div class="px-2 fs-15">
-                        <input class="form-check-input" type="checkbox" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="my-3 text-center">
-                    <BButton type="button" variant="soft-success">
-                      View All Messages
-                      <i class="ri-arrow-right-line align-middle"></i>
-                    </BButton>
-                  </div>
-                </simplebar>
-              </BTab>
-
-              <BTab title="Alerts" class="p-4">
-                <simplebar data-simplebar style="max-height: 300px" class="pe-2">
-                  <div class="w-25 w-sm-50 pt-3 mx-auto">
-                    <img src="@assets/images/svg/bell.svg" class="img-fluid" alt="user-pic" />
-                  </div>
-                  <div class="text-center pb-5 mt-2">
-                    <h6 class="fs-18 fw-semibold lh-base">
-                      Hey! You have no any notifications
-                    </h6>
-                  </div>
-                </simplebar>
-              </BTab>
-            </BTabs>
+                <!-- Link to chat -->
+                <div class="my-2 text-center">
+                  <Link href="/easyncc/telegram/chat" class="btn btn-sm btn-soft-success">
+                    Apri Chat Telegram
+                    <i class="ri-arrow-right-line align-middle"></i>
+                  </Link>
+                </div>
+              </simplebar>
+            </div>
           </BDropdown>
 
           <BDropdown variant="link" class="ms-sm-3 header-item topbar-user" toggle-class="rounded-circle arrow-none shadow-none" menu-class="dropdown-menu-end" :offset="{ alignmentAxis: -14, crossAxis: 0, mainAxis: 0 }">

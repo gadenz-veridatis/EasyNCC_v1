@@ -609,6 +609,89 @@
                                     </BRow>
                                 </fieldset>
 
+                                <!-- Sezione Notifiche Telegram -->
+                                <fieldset class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-telegram-line me-2"></i>Notifiche Telegram
+                                    </legend>
+
+                                    <BRow>
+                                        <!-- Status che Triggera Notifica -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Stato che Attiva Notifica Telegram
+                                                <span class="text-muted small">(opzionale)</span>
+                                            </label>
+                                            <select
+                                                v-model="form.telegram_trigger_status_id"
+                                                class="form-select"
+                                                :class="{ 'is-invalid': errors.telegram_trigger_status_id }"
+                                            >
+                                                <option :value="null">-- Nessuno (disabilitato) --</option>
+                                                <option
+                                                    v-for="status in serviceStatuses"
+                                                    :key="status.id"
+                                                    :value="status.id"
+                                                >
+                                                    {{ status.name }}
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Quando un servizio passa a questo stato, verrà inviata automaticamente
+                                                la notifica Telegram con PDF ai driver assegnati
+                                            </small>
+                                            <div v-if="errors.telegram_trigger_status_id" class="invalid-feedback">
+                                                {{ errors.telegram_trigger_status_id }}
+                                            </div>
+                                        </BCol>
+
+                                        <!-- Status dopo Accettazione -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Stato dopo Accettazione Driver
+                                                <span class="text-muted small">(opzionale)</span>
+                                            </label>
+                                            <select
+                                                v-model="form.telegram_accepted_status_id"
+                                                class="form-select"
+                                                :class="{ 'is-invalid': errors.telegram_accepted_status_id }"
+                                            >
+                                                <option :value="null">-- Non modificare automaticamente --</option>
+                                                <option
+                                                    v-for="status in serviceStatuses"
+                                                    :key="status.id"
+                                                    :value="status.id"
+                                                >
+                                                    {{ status.name }}
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Quando un driver accetta il servizio tramite Telegram,
+                                                lo stato cambierà automaticamente a questo valore
+                                            </small>
+                                            <div v-if="errors.telegram_accepted_status_id" class="invalid-feedback">
+                                                {{ errors.telegram_accepted_status_id }}
+                                            </div>
+                                        </BCol>
+                                    </BRow>
+
+                                    <!-- Alert informativo -->
+                                    <div class="alert alert-info small mb-0">
+                                        <i class="ri-information-line me-2"></i>
+                                        <strong>Come funziona:</strong>
+                                        <ol class="mb-0 mt-2 ps-3">
+                                            <li>L'operator imposta il servizio allo <strong>Stato Trigger</strong> →
+                                                Sistema invia PDF + bottone "ACCETTA SERVIZIO" ai driver via Telegram</li>
+                                            <li>Il driver clicca "ACCETTA SERVIZIO" →
+                                                Sistema cambia automaticamente lo stato a <strong>Stato Accettato</strong></li>
+                                        </ol>
+                                        <p class="mb-0 mt-2">
+                                            <i class="ri-alert-line me-1"></i>
+                                            Se nessuno stato è selezionato come trigger, le notifiche Telegram saranno disabilitate.
+                                        </p>
+                                    </div>
+                                </fieldset>
+
                                 <!-- Alert per errori -->
                                 <div v-if="errors.length > 0" class="alert alert-danger">
                                     <ul class="mb-0">
@@ -666,6 +749,7 @@ export default {
             selectedCompanyId: '',
             accountingEntries: [],
             suppliers: [],
+            serviceStatuses: [],
             form: {
                 deposit_percentage: 30.00,
                 card_fees_percentage: 5.00,
@@ -696,6 +780,8 @@ export default {
                 activity_confirmation_text: null,
                 activity_confirmation_role: null,
                 default_supplier_id: null,
+                telegram_trigger_status_id: null,
+                telegram_accepted_status_id: null,
             },
         };
     },
@@ -743,6 +829,7 @@ export default {
                     this.loadSettings(),
                     this.loadAccountingEntries(),
                     this.loadSuppliers(),
+                    this.loadServiceStatuses(),
                 ]);
             } catch (error) {
                 console.error('Error loading settings page data:', error);
@@ -788,6 +875,8 @@ export default {
                 activity_confirmation_text: data.activity_confirmation_text || null,
                 activity_confirmation_role: data.activity_confirmation_role || null,
                 default_supplier_id: data.default_supplier_id || null,
+                telegram_trigger_status_id: data.telegram_trigger_status_id || null,
+                telegram_accepted_status_id: data.telegram_accepted_status_id || null,
             };
         },
         async loadAccountingEntries() {
@@ -807,6 +896,18 @@ export default {
             const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
             const response = await axios.get('/api/settings/suppliers', { params });
             this.suppliers = response.data.data || [];
+        },
+        async loadServiceStatuses() {
+            if (!this.selectedCompanyId) return;
+
+            try {
+                const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
+                const response = await axios.get('/api/settings/service-statuses', { params });
+                this.serviceStatuses = response.data.data || [];
+            } catch (error) {
+                console.error('Error loading service statuses:', error);
+                this.serviceStatuses = [];
+            }
         },
         async saveSettings() {
             this.saving = true;
