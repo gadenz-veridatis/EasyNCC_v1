@@ -16,10 +16,19 @@
                     </div>
                 </div>
 
-                <div v-if="selectedCompanyId" class="chat-container" :style="{ height: chatHeight + 'px' }">
+                <!-- Driver not linked to Telegram -->
+                <div v-if="isDriverUser && driverLoaded && !driverLinked" class="alert alert-warning d-flex align-items-center gap-3">
+                    <i class="ri-telegram-line" style="font-size: 2.5rem;"></i>
+                    <div>
+                        <h6 class="alert-heading mb-1">Account Telegram non collegato</h6>
+                        <p class="mb-0">Il tuo profilo non è ancora stato collegato a un account Telegram. Contatta l'amministratore per attivare la possibilità di ricevere e inviare messaggi su Telegram.</p>
+                    </div>
+                </div>
+
+                <div v-if="showChat" class="chat-container" :style="{ height: chatHeight + 'px' }">
                     <BRow class="g-0 h-100">
-                        <!-- Colonna sinistra: Lista conversazioni -->
-                        <BCol md="4" class="h-100 border-end" style="overflow: hidden;">
+                        <!-- Colonna sinistra: Lista conversazioni (hidden for driver) -->
+                        <BCol v-if="!isDriverUser" md="4" class="h-100 border-end" style="overflow: hidden;">
                             <div class="d-flex flex-column h-100">
                                 <!-- Search -->
                                 <div class="p-3 border-bottom">
@@ -99,14 +108,14 @@
                         </BCol>
 
                         <!-- Colonna destra: Chat -->
-                        <BCol md="8" class="h-100" style="overflow: hidden;">
+                        <BCol :md="isDriverUser ? 12 : 8" class="h-100" style="overflow: hidden;">
                             <div v-if="activeConversation" class="d-flex flex-column h-100">
                                 <!-- Chat header -->
                                 <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
                                     <div>
-                                        <div class="fw-bold">{{ getDisplayName(activeConversation) }}</div>
-                                        <small class="text-muted" v-if="activeConversation.username">@{{ activeConversation.username }}</small>
-                                        <small class="text-success ms-2" v-if="activeConversation.driver">
+                                        <div class="fw-bold">{{ isDriverUser ? 'Chat Telegram' : getDisplayName(activeConversation) }}</div>
+                                        <small class="text-muted" v-if="!isDriverUser && activeConversation.username">@{{ activeConversation.username }}</small>
+                                        <small class="text-success ms-2" v-if="!isDriverUser && activeConversation.driver">
                                             <i class="ri-steering-line"></i> {{ activeConversation.driver.surname }} {{ activeConversation.driver.name }}
                                         </small>
                                     </div>
@@ -228,11 +237,22 @@ export default {
             polling: false,
             pollInterval: null,
             chatHeight: 600,
+            driverLoaded: false,
+            driverLinked: false,
         };
     },
     computed: {
         isSuperAdmin() {
             return this.currentUser?.role === 'super-admin';
+        },
+        isDriverUser() {
+            return this.currentUser?.role === 'driver';
+        },
+        showChat() {
+            if (this.isDriverUser) {
+                return this.driverLoaded && this.driverLinked;
+            }
+            return !!this.selectedCompanyId;
         },
         filteredConversations() {
             if (!this.conversationSearch) return this.conversations;
@@ -250,21 +270,26 @@ export default {
         window.addEventListener('resize', this.calculateChatHeight);
 
         await this.loadCurrentUser();
-        if (this.isSuperAdmin) {
+
+        if (this.isDriverUser) {
+            await this.loadDriverConversation();
+        } else if (this.isSuperAdmin) {
             await this.loadCompanies();
         } else {
             this.selectedCompanyId = this.currentUser.company_id;
             await this.loadConversations();
         }
 
-        // Check if we need to auto-open a conversation (from URL params)
-        const urlParams = new URLSearchParams(window.location.search);
-        const chatId = urlParams.get('chat_id');
-        if (chatId) {
-            this.$nextTick(() => {
-                const conv = this.conversations.find(c => String(c.telegram_chat_id) === String(chatId));
-                if (conv) this.selectConversation(conv);
-            });
+        // Check if we need to auto-open a conversation (from URL params) - non-driver only
+        if (!this.isDriverUser) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const chatId = urlParams.get('chat_id');
+            if (chatId) {
+                this.$nextTick(() => {
+                    const conv = this.conversations.find(c => String(c.telegram_chat_id) === String(chatId));
+                    if (conv) this.selectConversation(conv);
+                });
+            }
         }
     },
     beforeUnmount() {
@@ -289,6 +314,28 @@ export default {
                 this.companies = response.data.data || [];
             } catch (error) {
                 console.error('Error loading companies:', error);
+            }
+        },
+        async loadDriverConversation() {
+            try {
+                const response = await axios.get('/api/telegram/chat/driver/conversation');
+                this.driverLoaded = true;
+                this.driverLinked = response.data.linked;
+
+                if (this.driverLinked && response.data.data) {
+                    this.activeConversation = response.data.data;
+                    await this.loadMessages();
+                    await this.markAsRead();
+                    this.startPolling();
+                    this.$nextTick(() => {
+                        this.scrollToBottom();
+                        if (this.$refs.messageInput) this.$refs.messageInput.focus();
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading driver conversation:', error);
+                this.driverLoaded = true;
+                this.driverLinked = false;
             }
         },
         async loadConversations() {
@@ -320,11 +367,16 @@ export default {
 
             this.loadingMessages = true;
             try {
-                const params = {
-                    telegram_user_id: this.activeConversation.id,
-                    company_id: this.selectedCompanyId,
-                };
-                const response = await axios.get('/api/telegram/chat/messages', { params });
+                let response;
+                if (this.isDriverUser) {
+                    response = await axios.get('/api/telegram/chat/driver/messages');
+                } else {
+                    const params = {
+                        telegram_user_id: this.activeConversation.id,
+                        company_id: this.selectedCompanyId,
+                    };
+                    response = await axios.get('/api/telegram/chat/messages', { params });
+                }
                 this.messages = response.data.data || [];
                 this.$nextTick(() => this.scrollToBottom());
             } catch (error) {
@@ -339,20 +391,30 @@ export default {
             this.polling = true;
             try {
                 const lastId = this.messages.length > 0 ? this.messages[this.messages.length - 1].id : 0;
-                const params = {
-                    telegram_user_id: this.activeConversation.id,
-                    company_id: this.selectedCompanyId,
-                    after_id: lastId,
-                };
-                const response = await axios.get('/api/telegram/chat/messages', { params });
+                let response;
+
+                if (this.isDriverUser) {
+                    response = await axios.get('/api/telegram/chat/driver/messages', {
+                        params: { after_id: lastId },
+                    });
+                } else {
+                    const params = {
+                        telegram_user_id: this.activeConversation.id,
+                        company_id: this.selectedCompanyId,
+                        after_id: lastId,
+                    };
+                    response = await axios.get('/api/telegram/chat/messages', { params });
+                }
+
                 const newMessages = response.data.data || [];
 
                 if (newMessages.length > 0) {
                     this.messages.push(...newMessages);
                     this.$nextTick(() => this.scrollToBottom());
                     await this.markAsRead();
-                    // Refresh conversation list for unread counts
-                    await this.loadConversations();
+                    if (!this.isDriverUser) {
+                        await this.loadConversations();
+                    }
                 }
             } catch (error) {
                 console.error('Polling error:', error);
@@ -380,19 +442,27 @@ export default {
             this.newMessage = '';
 
             try {
-                const response = await axios.post('/api/telegram/chat/send', {
-                    telegram_user_id: this.activeConversation.id,
-                    content: messageText,
-                    company_id: this.selectedCompanyId,
-                });
+                let response;
+                if (this.isDriverUser) {
+                    response = await axios.post('/api/telegram/chat/driver/send', {
+                        content: messageText,
+                    });
+                } else {
+                    response = await axios.post('/api/telegram/chat/send', {
+                        telegram_user_id: this.activeConversation.id,
+                        content: messageText,
+                        company_id: this.selectedCompanyId,
+                    });
+                }
 
                 this.messages.push(response.data.data);
                 this.$nextTick(() => {
                     this.scrollToBottom();
                     if (this.$refs.messageInput) this.$refs.messageInput.focus();
                 });
-                // Refresh conversation list
-                await this.loadConversations();
+                if (!this.isDriverUser) {
+                    await this.loadConversations();
+                }
             } catch (error) {
                 console.error('Error sending message:', error);
                 this.newMessage = messageText; // Restore on error
@@ -405,13 +475,16 @@ export default {
             if (!this.activeConversation) return;
 
             try {
-                await axios.post('/api/telegram/chat/mark-read', {
-                    telegram_user_id: this.activeConversation.id,
-                    company_id: this.selectedCompanyId,
-                });
-                // Update local unread count
-                const conv = this.conversations.find(c => c.id === this.activeConversation.id);
-                if (conv) conv.unread_count = 0;
+                if (this.isDriverUser) {
+                    await axios.post('/api/telegram/chat/driver/mark-read');
+                } else {
+                    await axios.post('/api/telegram/chat/mark-read', {
+                        telegram_user_id: this.activeConversation.id,
+                        company_id: this.selectedCompanyId,
+                    });
+                    const conv = this.conversations.find(c => c.id === this.activeConversation.id);
+                    if (conv) conv.unread_count = 0;
+                }
             } catch (error) {
                 console.error('Error marking as read:', error);
             }

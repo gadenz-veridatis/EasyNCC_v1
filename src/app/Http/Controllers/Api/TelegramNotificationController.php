@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\TelegramNotification;
+use App\Models\TelegramUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,14 +19,28 @@ class TelegramNotificationController extends Controller
     {
         $companyId = $this->getCompanyId($request);
 
-        $notifications = TelegramNotification::withoutGlobalScopes()
+        $query = TelegramNotification::withoutGlobalScopes()
             ->where('company_id', $companyId)
             ->with(['telegramUser:id,first_name,last_name,username'])
             ->orderBy('created_at', 'desc')
-            ->limit(30)
-            ->get();
+            ->limit(30);
 
-        return response()->json(['data' => $notifications]);
+        // Driver: only show notifications for their linked Telegram user
+        $user = Auth::user();
+        if ($user->role === 'driver') {
+            $telegramUser = TelegramUser::withoutGlobalScopes()
+                ->where('company_id', $companyId)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($telegramUser) {
+                $query->where('telegram_user_id', $telegramUser->id);
+            } else {
+                return response()->json(['data' => []]);
+            }
+        }
+
+        return response()->json(['data' => $query->get()]);
     }
 
     /**
@@ -35,12 +50,26 @@ class TelegramNotificationController extends Controller
     {
         $companyId = $this->getCompanyId($request);
 
-        $count = TelegramNotification::withoutGlobalScopes()
+        $query = TelegramNotification::withoutGlobalScopes()
             ->where('company_id', $companyId)
-            ->where('is_read', false)
-            ->count();
+            ->where('is_read', false);
 
-        return response()->json(['count' => $count]);
+        // Driver: only count notifications for their linked Telegram user
+        $user = Auth::user();
+        if ($user->role === 'driver') {
+            $telegramUser = TelegramUser::withoutGlobalScopes()
+                ->where('company_id', $companyId)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($telegramUser) {
+                $query->where('telegram_user_id', $telegramUser->id);
+            } else {
+                return response()->json(['count' => 0]);
+            }
+        }
+
+        return response()->json(['count' => $query->count()]);
     }
 
     /**
@@ -50,13 +79,29 @@ class TelegramNotificationController extends Controller
     {
         $companyId = $this->getCompanyId($request);
 
-        TelegramNotification::withoutGlobalScopes()
+        $query = TelegramNotification::withoutGlobalScopes()
             ->where('company_id', $companyId)
-            ->where('is_read', false)
-            ->update([
-                'is_read' => true,
-                'read_at' => now(),
-            ]);
+            ->where('is_read', false);
+
+        // Driver: only mark their own notifications
+        $user = Auth::user();
+        if ($user->role === 'driver') {
+            $telegramUser = TelegramUser::withoutGlobalScopes()
+                ->where('company_id', $companyId)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($telegramUser) {
+                $query->where('telegram_user_id', $telegramUser->id);
+            } else {
+                return response()->json(['message' => 'OK']);
+            }
+        }
+
+        $query->update([
+            'is_read' => true,
+            'read_at' => now(),
+        ]);
 
         return response()->json(['message' => 'Tutte le notifiche segnate come lette']);
     }

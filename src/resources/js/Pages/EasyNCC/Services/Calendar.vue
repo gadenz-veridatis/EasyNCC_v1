@@ -9,7 +9,7 @@
                 <BCard no-body>
                     <BCardHeader class="d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">Calendario Servizi</h5>
-                        <div class="d-flex gap-2">
+                        <div v-if="!isDriver" class="d-flex gap-2">
                             <button
                                 type="button"
                                 class="btn btn-soft-primary btn-sm"
@@ -160,7 +160,7 @@
                 <!-- Pickup - inline editable -->
                 <div class="mb-2">
                     <div class="fw-bold text-success" style="font-size: 0.75rem;">Partenza:</div>
-                    <div v-if="!popoverEditingDatetimes" class="popover-inline-editable" @click.stop="startPopoverEditDatetimes" title="Clicca per modificare orari">
+                    <div v-if="isDriver || !popoverEditingDatetimes" :class="{ 'popover-inline-editable': !isDriver }" @click.stop="!isDriver && startPopoverEditDatetimes()" :title="isDriver ? '' : 'Clicca per modificare orari'">
                         <div class="fw-bold small">{{ formatDateTime(selectedService.pickup_datetime) }}</div>
                         <div class="small text-truncate">{{ selectedService.pickup_address }}</div>
                     </div>
@@ -177,7 +177,7 @@
                 <!-- Dropoff - inline editable -->
                 <div class="mb-2">
                     <div class="fw-bold text-danger" style="font-size: 0.75rem;">Arrivo:</div>
-                    <div v-if="!popoverEditingDatetimes" class="popover-inline-editable" @click.stop="startPopoverEditDatetimes" title="Clicca per modificare orari">
+                    <div v-if="isDriver || !popoverEditingDatetimes" :class="{ 'popover-inline-editable': !isDriver }" @click.stop="!isDriver && startPopoverEditDatetimes()" :title="isDriver ? '' : 'Clicca per modificare orari'">
                         <div class="fw-bold small">{{ formatDateTime(selectedService.dropoff_datetime) }}</div>
                         <div class="small text-truncate">{{ selectedService.dropoff_address }}</div>
                     </div>
@@ -203,13 +203,14 @@
                 <!-- Driver - inline editable -->
                 <div class="mb-2" v-if="selectedService.drivers && selectedService.drivers.length > 0">
                     <div class="text-muted small">Autista</div>
-                    <div v-if="!popoverEditingDrivers">
+                    <div v-if="isDriver || !popoverEditingDrivers">
                         <div
                             v-for="driver in selectedService.drivers"
                             :key="driver.id"
-                            class="small popover-inline-editable"
-                            @click.stop="startPopoverEditDrivers"
-                            title="Clicca per modificare"
+                            class="small"
+                            :class="{ 'popover-inline-editable': !isDriver }"
+                            @click.stop="!isDriver && startPopoverEditDrivers()"
+                            :title="isDriver ? '' : 'Clicca per modificare'"
                         >
                             <span class="badge" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'};`">
                                 {{ driver.surname }} {{ driver.name }}
@@ -243,7 +244,11 @@
                 <!-- Veicolo - inline editable -->
                 <div class="mb-2">
                     <div class="text-muted small">Veicolo</div>
-                    <div v-if="!popoverEditingVehicle && selectedService.vehicle" class="small popover-inline-editable" @click.stop="startPopoverEditVehicle" title="Clicca per modificare">
+                    <div v-if="isDriver && selectedService.vehicle" class="small">
+                        {{ selectedService.vehicle.brand }} {{ selectedService.vehicle.model }} - {{ selectedService.vehicle.license_plate }}
+                    </div>
+                    <div v-else-if="isDriver" class="small text-muted">—</div>
+                    <div v-else-if="!popoverEditingVehicle && selectedService.vehicle" class="small popover-inline-editable" @click.stop="startPopoverEditVehicle" title="Clicca per modificare">
                         {{ selectedService.vehicle.brand }} {{ selectedService.vehicle.model }} - {{ selectedService.vehicle.license_plate }}
                     </div>
                     <div v-else-if="!popoverEditingVehicle" class="small text-muted popover-inline-editable" @click.stop="startPopoverEditVehicle" title="Clicca per assegnare">
@@ -267,7 +272,10 @@
                 <!-- Dress Code - inline editable -->
                 <div class="mb-2">
                     <div class="text-muted small">Dress Code</div>
-                    <div v-if="!popoverEditingDressCode" class="small popover-inline-editable" @click.stop="startPopoverEditDressCode" title="Clicca per modificare">
+                    <div v-if="isDriver" class="small">
+                        <i class="ri-shirt-line me-1"></i>{{ selectedService.dress_code ? selectedService.dress_code.name : 'Nessun dress code' }}
+                    </div>
+                    <div v-else-if="!popoverEditingDressCode" class="small popover-inline-editable" @click.stop="startPopoverEditDressCode" title="Clicca per modificare">
                         <i class="ri-shirt-line me-1"></i>{{ selectedService.dress_code ? selectedService.dress_code.name : 'Nessun dress code' }}
                     </div>
                     <div v-else @click.stop>
@@ -286,21 +294,38 @@
                 </div>
 
                 <!-- Prezzo Totale -->
-                <div class="mb-2">
+                <div class="mb-2" v-if="!isDriver">
                     <div class="text-muted small">Prezzo Totale</div>
                     <div class="fw-bold">
                         <span class="badge bg-success fs-6 px-2 py-1">&euro;{{ formatCurrency(selectedService.service_price || selectedService.price) }}</span>
                     </div>
                 </div>
 
+                <!-- Da Incassare (solo per driver quando driver_must_collect è attivo) -->
+                <div v-if="isDriver && selectedService.driver_must_collect" class="mb-2">
+                    <div class="alert alert-warning py-2 px-3 mb-0 small">
+                        <div class="fw-bold mb-1">
+                            <i class="ri-money-euro-circle-line me-1"></i>Da Incassare
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Per cassa:</span>
+                            <span class="fw-bold">&euro;{{ formatCurrency(selectedService.balance_taxable || 0) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Con Carta:</span>
+                            <span class="fw-bold">&euro;{{ formatCurrency(selectedService.balance_card_fees || 0) }}</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Sovrapposizioni esistenti -->
-                <div v-if="loadingDetail && hasSelectedServiceOverlapCounts" class="mb-2">
+                <div v-if="!isDriver && loadingDetail && hasSelectedServiceOverlapCounts" class="mb-2">
                     <div class="text-warning small fw-bold">
                         <i class="ri-alert-fill me-1"></i>Sovrapposizioni
                         <span class="spinner-border spinner-border-sm ms-1" role="status"></span>
                     </div>
                 </div>
-                <div v-else-if="hasSelectedServiceOverlaps" class="mb-2">
+                <div v-else-if="!isDriver && hasSelectedServiceOverlaps" class="mb-2">
                     <div class="text-warning small fw-bold">
                         <i class="ri-alert-fill me-1"></i>Sovrapposizioni
                     </div>
@@ -323,7 +348,7 @@
                 </div>
 
                 <!-- Conferma sovrapposizioni rilevate dopo salvataggio -->
-                <div v-if="showOverlapConfirmation && pendingOverlaps.length > 0" class="mb-2 border border-warning rounded p-2 bg-warning bg-opacity-10">
+                <div v-if="!isDriver && showOverlapConfirmation && pendingOverlaps.length > 0" class="mb-2 border border-warning rounded p-2 bg-warning bg-opacity-10">
                     <div class="text-warning small fw-bold mb-1">
                         <i class="ri-alert-fill me-1"></i>Sovrapposizioni Rilevate
                     </div>
@@ -365,6 +390,7 @@
                         Visualizza
                     </Link>
                     <Link
+                        v-if="!isDriver"
                         :href="route('easyncc.services.edit', selectedService.id)"
                         class="btn btn-info btn-sm flex-fill"
                     >
@@ -392,6 +418,9 @@ const loading = ref(true);
 const error = ref('');
 const services = ref([]);
 const showFilters = ref(false);
+const currentUser = ref(null);
+const isDriver = computed(() => currentUser.value?.role === 'driver');
+const acceptedStatusId = ref(null);
 
 // Filter state
 const filters = ref({
@@ -555,6 +584,18 @@ const mapServicesToEvents = (servicesList) => {
         backgroundColor = colors[0];
         borderColor = colors[0];
 
+        // Per utenti driver: grigio chiaro per eventi non assegnati a loro
+        // Colorati se: driver assegnato O status = "Accettato dal Driver" (configurabile)
+        const driverIds = drivers.map(d => d.id);
+        const isAssignedToCurrentDriver = isDriver.value && currentUser.value
+            ? (driverIds.includes(currentUser.value.id) || (acceptedStatusId.value && service.status_id === acceptedStatusId.value))
+            : true; // non-driver users: always "assigned" (normal view)
+
+        if (isDriver.value && !isAssignedToCurrentDriver) {
+            backgroundColor = '#d3d3d3';
+            borderColor = '#c0c0c0';
+        }
+
         // Check for overlaps
         const hasOverlaps = (service.overlaps_count || 0) + (service.overlapped_by_count || 0) > 0;
 
@@ -568,8 +609,9 @@ const mapServicesToEvents = (servicesList) => {
             classNames: hasOverlaps ? ['fc-event-overlap'] : [],
             extendedProps: {
                 service: service,
-                driverColors: colors,
-                hasOverlaps: hasOverlaps
+                driverColors: isDriver.value && !isAssignedToCurrentDriver ? ['#d3d3d3'] : colors,
+                hasOverlaps: hasOverlaps,
+                isAssignedToCurrentDriver: isAssignedToCurrentDriver
             }
         };
     });
@@ -671,6 +713,13 @@ const initializeCalendar = async () => {
                         info.el.style.color = '#fff';
                     }
 
+                    // Driver: stile diverso per eventi non assegnati
+                    if (isDriver.value && !info.event.extendedProps.isAssignedToCurrentDriver) {
+                        info.el.style.cursor = 'default';
+                        info.el.style.opacity = '0.6';
+                        info.el.style.color = '#888';
+                    }
+
                     // Aggiungi icona triangolo giallo per eventi sovrapposti
                     if (info.event.extendedProps.hasOverlaps) {
                         const titleEl = info.el.querySelector('.fc-event-title') || info.el.querySelector('.fc-event-title-container');
@@ -726,6 +775,11 @@ const createStripedGradient = (colors) => {
 };
 
 const handleEventClick = (info) => {
+    // Driver: non aprire popup per eventi non assegnati
+    if (isDriver.value && !info.event.extendedProps.isAssignedToCurrentDriver) {
+        return;
+    }
+
     // Chiudi l'hover popover se aperto
     closeHoverPopover();
 
@@ -746,6 +800,11 @@ const handleEventClick = (info) => {
 };
 
 const handleEventHover = (event, info) => {
+    // Driver: non mostrare hover per eventi non assegnati
+    if (isDriver.value && !info.event.extendedProps.isAssignedToCurrentDriver) {
+        return;
+    }
+
     // Cancella timeout precedente se esiste
     if (hoverTimeout) {
         clearTimeout(hoverTimeout);
@@ -1150,6 +1209,20 @@ const handleClickOutside = (event) => {
 onMounted(async () => {
     loading.value = true;
     try {
+        // Load current user first to determine role before rendering events
+        const userRes = await axios.get('/api/user');
+        currentUser.value = userRes.data;
+
+        // Load accepted status ID from settings for driver calendar view
+        if (isDriver.value) {
+            try {
+                const settingsRes = await axios.get('/api/settings/public');
+                acceptedStatusId.value = settingsRes.data?.telegram_accepted_status_id || null;
+            } catch (e) {
+                console.warn('Could not load settings for driver calendar view');
+            }
+        }
+
         await Promise.all([initializeCalendar(), loadDictionaries()]);
     } finally {
         loading.value = false;

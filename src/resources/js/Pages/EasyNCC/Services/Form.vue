@@ -1231,7 +1231,7 @@
                                                     </option>
                                                 </select>
                                             </BCol>
-                                            <BCol md="8" class="mb-3 d-flex align-items-center">
+                                            <BCol md="4" class="mb-3 d-flex align-items-center">
                                                 <div class="form-check form-switch">
                                                     <input
                                                         id="accounting_enabled"
@@ -1244,6 +1244,22 @@
                                                     </label>
                                                     <small class="d-block text-muted">
                                                         Quando attivo, crea/aggiorna automaticamente i movimenti contabili di vendita (acconto e saldo) al salvataggio del servizio
+                                                    </small>
+                                                </div>
+                                            </BCol>
+                                            <BCol md="4" class="mb-3 d-flex align-items-center">
+                                                <div class="form-check form-switch">
+                                                    <input
+                                                        id="driver_must_collect"
+                                                        v-model="form.driver_must_collect"
+                                                        type="checkbox"
+                                                        class="form-check-input"
+                                                    />
+                                                    <label class="form-check-label" for="driver_must_collect">
+                                                        <strong>Driver deve incassare</strong>
+                                                    </label>
+                                                    <small class="d-block text-muted">
+                                                        Se attivo, il driver deve incassare il corrispettivo del servizio
                                                     </small>
                                                 </div>
                                             </BCol>
@@ -3144,6 +3160,7 @@ const form = ref({
     vehicle_return_datetime: '',
     activities: [],
     status_id: '',
+    driver_must_collect: false,
     service_price: null,
     vat_rate: 10,
     card_fees_percentage: 5,

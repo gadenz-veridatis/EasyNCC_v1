@@ -11,6 +11,7 @@
                         <h5 class="card-title mb-0">Lista Servizi</h5>
                         <div class="d-flex gap-2">
                             <button
+                                v-if="!isDriver"
                                 type="button"
                                 class="btn btn-soft-primary btn-sm"
                                 @click="showFilters = !showFilters"
@@ -19,7 +20,7 @@
                                 {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
                                 <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
                             </button>
-                            <Link :href="route('easyncc.services.create')" class="btn btn-primary btn-sm">
+                            <Link v-if="!isDriver" :href="route('easyncc.services.create')" class="btn btn-primary btn-sm">
                                 <i class="bx bx-plus me-1"></i>
                                 Nuovo Servizio
                             </Link>
@@ -27,7 +28,7 @@
                     </BCardHeader>
                     <BCardBody>
                         <!-- Collapsible Filters Section -->
-                        <div v-show="showFilters" class="border rounded p-3 mb-3 bg-light">
+                        <div v-show="!isDriver && showFilters" class="border rounded p-3 mb-3 bg-light">
                         <BRow class="mb-4">
                             <BCol md="2">
                                 <label class="form-label">Nominativo Riferimento</label>
@@ -199,7 +200,7 @@
                         </div>
 
                         <!-- Bulk Actions Area (Collapsible) -->
-                        <div v-show="selectedServices.length > 0" class="border rounded p-3 mb-3 bg-warning bg-opacity-10">
+                        <div v-show="!isDriver && selectedServices.length > 0" class="border rounded p-3 mb-3 bg-warning bg-opacity-10">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <span class="badge bg-primary me-2">{{ selectedServices.length }} servizi selezionati</span>
@@ -225,7 +226,7 @@
                                 <thead class="table-dark">
                                     <tr>
                                         <th scope="col" style="min-width: 140px;">
-                                            <input type="checkbox" v-model="selectAll" @change="toggleSelectAll" class="form-check-input">
+                                            <input v-if="!isDriver" type="checkbox" v-model="selectAll" @change="toggleSelectAll" class="form-check-input">
                                         </th>
                                         <th scope="col" @click="sortBy('reference_number')" style="cursor: pointer;">
                                             Dati Identificativi
@@ -267,34 +268,34 @@
                                         <td>
                                             <!-- Riga 1: Checkbox + Azioni -->
                                             <div class="d-flex align-items-center gap-1 mb-2">
-                                                <input type="checkbox" v-model="selectedServices" :value="service.id" class="form-check-input me-1">
-                                                <Link :href="route('easyncc.services.show', service.id)" class="btn btn-sm btn-soft-primary" title="Visualizza">
+                                                <input v-if="!isDriver" type="checkbox" v-model="selectedServices" :value="service.id" class="form-check-input me-1">
+                                                <Link v-if="!isDriver || isServiceAssignedOrAccepted(service)" :href="route('easyncc.services.show', service.id)" class="btn btn-sm btn-soft-primary" title="Visualizza">
                                                     <i class="ri-eye-line"></i>
                                                 </Link>
-                                                <Link :href="route('easyncc.services.edit', service.id)" class="btn btn-sm btn-soft-info" title="Modifica">
+                                                <Link v-if="!isDriver" :href="route('easyncc.services.edit', service.id)" class="btn btn-sm btn-soft-info" title="Modifica">
                                                     <i class="ri-edit-line"></i>
                                                 </Link>
-                                                <button class="btn btn-sm btn-soft-danger" @click="deleteService(service.id)" title="Elimina">
+                                                <button v-if="!isDriver" class="btn btn-sm btn-soft-danger" @click="deleteService(service.id)" title="Elimina">
                                                     <i class="ri-delete-bin-line"></i>
                                                 </button>
                                             </div>
                                             <!-- Riga 2: Stato servizio (inline editable) -->
                                             <div class="mb-1">
-                                                <!-- Display mode -->
+                                                <!-- Display mode (read-only for drivers) -->
                                                 <span
-                                                    v-if="editingStatus !== service.id"
-                                                    class="badge inline-editable"
-                                                    :class="getStatusBadgeClass(service.status?.name)"
-                                                    @click="startEditStatus(service)"
-                                                    title="Clicca per modificare lo stato"
-                                                    style="cursor: pointer;"
+                                                    v-if="isDriver || editingStatus !== service.id"
+                                                    class="badge"
+                                                    :class="[getStatusBadgeClass(service.status?.name), !isDriver ? 'inline-editable' : '']"
+                                                    @click="!isDriver && startEditStatus(service)"
+                                                    :title="isDriver ? '' : 'Clicca per modificare lo stato'"
+                                                    :style="isDriver ? '' : 'cursor: pointer;'"
                                                 >
                                                     {{ service.status?.name || 'Nessuno stato' }}
-                                                    <i class="ri-pencil-line ms-1" style="font-size: 0.6rem;"></i>
+                                                    <i v-if="!isDriver" class="ri-pencil-line ms-1" style="font-size: 0.6rem;"></i>
                                                 </span>
                                                 <!-- Edit mode -->
                                                 <select
-                                                    v-else
+                                                    v-if="!isDriver && editingStatus === service.id"
                                                     v-model="editingStatusValue"
                                                     :ref="el => statusInputRefs[service.id] = el"
                                                     @change="saveStatus(service)"
@@ -312,13 +313,13 @@
                                                     </option>
                                                 </select>
                                             </div>
-                                            <!-- Riga 3: Indicatori -->
+                                            <!-- Riga 3: Indicatori (driver: solo sovrapposizioni) -->
                                             <div class="d-flex align-items-center gap-2 small">
-                                                <span style="cursor: pointer;" @click="showTransactionsPopup(service)" title="Movimenti contabili">
+                                                <span v-if="!isDriver" style="cursor: pointer;" @click="showTransactionsPopup(service)" title="Movimenti contabili">
                                                     <i class="ri-file-list-line" :class="service.accounting_transactions_count > 0 ? 'text-success' : 'text-muted'"></i>
                                                     {{ service.accounting_transactions_count || 0 }}
                                                 </span>
-                                                <span style="cursor: pointer;" @click="showTasksPopup(service)" title="Task">
+                                                <span v-if="!isDriver" style="cursor: pointer;" @click="showTasksPopup(service)" title="Task">
                                                     <i class="ri-task-line" :class="service.tasks_count > 0 ? getTaskIconClass(service) : 'text-muted'"></i>
                                                     {{ getCompletedTasksCount(service) }}/{{ service.tasks_count || 0 }}
                                                 </span>
@@ -369,19 +370,19 @@
                                         <!-- Data -->
                                         <td>
                                             <!-- Display mode -->
-                                            <div v-if="editingDatetimes !== service.id">
-                                                <div class="mb-2 inline-editable" @click="startEditDatetimes(service)" title="Clicca per modificare orari">
+                                            <div v-if="isDriver || editingDatetimes !== service.id">
+                                                <div class="mb-2" :class="{ 'inline-editable': !isDriver }" @click="!isDriver && startEditDatetimes(service)" :title="isDriver ? '' : 'Clicca per modificare orari'">
                                                     <div class="fw-bold text-success" style="font-size: 0.75rem;">Partenza:</div>
                                                     <div class="fw-bold">{{ formatDate(service.pickup_datetime) }}</div>
                                                     <div class="small text-primary">{{ service.pickup_address }}</div>
                                                 </div>
-                                                <div class="inline-editable" @click="startEditDatetimes(service)" title="Clicca per modificare orari">
+                                                <div :class="{ 'inline-editable': !isDriver }" @click="!isDriver && startEditDatetimes(service)" :title="isDriver ? '' : 'Clicca per modificare orari'">
                                                     <div class="fw-bold text-danger" style="font-size: 0.75rem;">Arrivo:</div>
                                                     <div class="small text-muted">{{ formatDate(service.dropoff_datetime) }}</div>
                                                     <div class="small text-muted">{{ service.dropoff_address }}</div>
                                                 </div>
                                             </div>
-                                            <!-- Edit mode -->
+                                            <!-- Edit mode (not for drivers) -->
                                             <div v-else>
                                                 <div class="mb-1">
                                                     <label class="text-success fw-bold" style="font-size: 0.65rem;">Pickup</label>
@@ -420,17 +421,18 @@
                                             <div class="mb-1">
                                                 <!-- Display mode -->
                                                 <div
-                                                    v-if="editingPassengerCount !== service.id"
-                                                    class="d-flex align-items-center gap-1 inline-editable"
-                                                    @click="startEditPassengerCount(service)"
-                                                    title="Clicca per modificare"
+                                                    v-if="isDriver || editingPassengerCount !== service.id"
+                                                    class="d-flex align-items-center gap-1"
+                                                    :class="{ 'inline-editable': !isDriver }"
+                                                    @click="!isDriver && startEditPassengerCount(service)"
+                                                    :title="isDriver ? '' : 'Clicca per modificare'"
                                                 >
                                                     <div class="fw-bold">
                                                         <i class="ri-user-line"></i> {{ service.passenger_count || 0 }}
                                                     </div>
                                                 </div>
 
-                                                <!-- Edit mode -->
+                                                <!-- Edit mode (not for drivers) -->
                                                 <div v-else class="d-flex gap-2 align-items-center">
                                                     <input
                                                         v-model.number="editingPassengerCountValue"
@@ -479,130 +481,155 @@
                                         </td>
                                         <!-- Committente/Intermediario -->
                                         <td>
-                                            <!-- Committente -->
-                                            <div v-if="service.client">
-                                                <div class="small text-muted mb-1">
-                                                    <span class="badge bg-soft-primary text-primary" style="font-size: 0.7rem;">Committente</span>
+                                            <template v-if="!isDriver || isServiceAssignedOrAccepted(service)">
+                                                <!-- Committente -->
+                                                <div v-if="service.client">
+                                                    <div class="small text-muted mb-1">
+                                                        <span class="badge bg-soft-primary text-primary" style="font-size: 0.7rem;">Committente</span>
+                                                    </div>
+                                                    <div class="fw-bold">
+                                                        {{ service.client.name }} {{ service.client.surname }}
+                                                    </div>
+                                                    <div class="small" v-if="service.client.phone">
+                                                        <i class="ri-phone-line"></i> {{ service.client.phone }}
+                                                    </div>
                                                 </div>
-                                                <div class="fw-bold">
-                                                    {{ service.client.name }} {{ service.client.surname }}
-                                                </div>
-                                                <div class="small" v-if="service.client.phone">
-                                                    <i class="ri-phone-line"></i> {{ service.client.phone }}
-                                                </div>
-                                            </div>
 
-                                            <!-- Intermediario -->
-                                            <div v-if="service.intermediary" class="mt-2 pt-2 border-top">
-                                                <div class="small text-muted mb-1">
-                                                    <span class="badge bg-soft-secondary text-secondary" style="font-size: 0.7rem;">Intermediario</span>
+                                                <!-- Intermediario -->
+                                                <div v-if="service.intermediary" class="mt-2 pt-2 border-top">
+                                                    <div class="small text-muted mb-1">
+                                                        <span class="badge bg-soft-secondary text-secondary" style="font-size: 0.7rem;">Intermediario</span>
+                                                    </div>
+                                                    <div class="small">
+                                                        {{ service.intermediary.name }} {{ service.intermediary.surname }}
+                                                    </div>
+                                                    <div class="small" v-if="service.intermediary.phone">
+                                                        <i class="ri-phone-line"></i> {{ service.intermediary.phone }}
+                                                    </div>
                                                 </div>
-                                                <div class="small">
-                                                    {{ service.intermediary.name }} {{ service.intermediary.surname }}
-                                                </div>
-                                                <div class="small" v-if="service.intermediary.phone">
-                                                    <i class="ri-phone-line"></i> {{ service.intermediary.phone }}
-                                                </div>
+                                            </template>
+                                            <div v-else class="small text-muted fst-italic">
+                                                <i class="ri-information-line me-1"></i>Le informazioni saranno visibili quando il servizio sarà assegnato
                                             </div>
                                         </td>
                                         <!-- Autista -->
                                         <td>
-                                            <!-- Display mode -->
-                                            <div v-if="editingDrivers !== service.id" class="inline-editable" @click="startEditDrivers(service)" title="Clicca per modificare">
-                                                <div v-if="service.drivers && service.drivers.length > 0">
-                                                    <div v-for="driver in service.drivers" :key="driver.id" class="mb-2">
-                                                        <span class="badge text-start" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'}; padding: 0.5rem 0.75rem;`">
-                                                            <div class="fw-bold text-uppercase" style="font-size: 0.9rem;">{{ driver.surname }}</div>
-                                                            <div style="font-size: 0.85rem;">{{ driver.name }}</div>
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div v-else class="text-muted small">
-                                                    Nessun autista
-                                                </div>
-                                            </div>
-
-                                            <!-- Edit mode -->
-                                            <div v-else class="mb-2">
-                                                <select
-                                                    v-model="editingDriversValue"
-                                                    :ref="el => driversInputRefs[service.id] = el"
-                                                    class="form-select form-select-sm"
-                                                    multiple
-                                                    size="5"
-                                                    style="min-width: 200px;"
-                                                >
-                                                    <option v-for="driver in drivers" :key="driver.id" :value="driver.id">
-                                                        {{ driver.surname }} {{ driver.name }}
-                                                    </option>
-                                                </select>
-                                                <div class="d-flex gap-2 mt-2">
-                                                    <button
-                                                        type="button"
-                                                        @click="saveDrivers(service)"
-                                                        class="btn btn-sm btn-success"
-                                                        title="Salva"
-                                                    >
-                                                        <i class="ri-check-line"></i>
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        @click="cancelEditDrivers"
-                                                        class="btn btn-sm btn-secondary"
-                                                        title="Annulla"
-                                                    >
-                                                        <i class="ri-close-line"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <div class="mt-2">
-                                                <!-- Display mode -->
-                                                <div
-                                                    v-if="editingDressCode !== service.id"
-                                                    class="d-flex align-items-center gap-1 inline-editable"
-                                                    @click="startEditDressCode(service)"
-                                                    title="Clicca per modificare"
-                                                >
-                                                        <div style="font-size: 0.75rem;">
-                                                            <i class="ri-shirt-line me-1"></i>
-                                                            {{ service.dress_code ? service.dress_code.name : 'Nessun dress code' }}
+                                            <!-- Driver user: conditional display -->
+                                            <template v-if="isDriver">
+                                                <div v-if="isServiceAssignedOrAccepted(service)">
+                                                    <div v-if="service.drivers && service.drivers.length > 0">
+                                                        <div v-for="driver in service.drivers" :key="driver.id" class="mb-2">
+                                                            <span class="badge text-start" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'}; padding: 0.5rem 0.75rem;`">
+                                                                <div class="fw-bold text-uppercase" style="font-size: 0.9rem;">{{ driver.surname }}</div>
+                                                                <div style="font-size: 0.85rem;">{{ driver.name }}</div>
+                                                            </span>
                                                         </div>
                                                     </div>
-
-                                                    <!-- Edit mode -->
-                                                    <div v-else class="d-flex gap-2 align-items-center">
-                                                        <select
-                                                            v-model="editingDressCodeValue"
-                                                            :ref="el => dressCodeInputRefs[service.id] = el"
-                                                            @keydown.enter="saveDressCode(service)"
-                                                            @keydown.escape="cancelEditDressCode"
-                                                            @change="saveDressCode(service)"
-                                                            class="form-select form-select-sm"
-                                                            style="font-size: 0.75rem; min-width: 150px;"
-                                                        >
-                                                            <option :value="null">Nessun dress code</option>
-                                                            <option
-                                                                v-for="dressCode in dressCodes"
-                                                                :key="dressCode.id"
-                                                                :value="dressCode.id"
-                                                            >
-                                                                {{ dressCode.name }}
-                                                            </option>
-                                                        </select>
+                                                </div>
+                                                <div v-else class="small text-warning fst-italic">
+                                                    <i class="ri-user-add-line me-1"></i>Driver da assegnare
+                                                </div>
+                                                <div class="mt-2">
+                                                    <div style="font-size: 0.75rem;">
+                                                        <i class="ri-shirt-line me-1"></i>
+                                                        {{ service.dress_code ? service.dress_code.name : 'Nessun dress code' }}
                                                     </div>
                                                 </div>
+                                            </template>
+                                            <!-- Non-driver: inline editable -->
+                                            <template v-else>
+                                                <!-- Display mode -->
+                                                <div v-if="editingDrivers !== service.id" class="inline-editable" @click="startEditDrivers(service)" title="Clicca per modificare">
+                                                    <div v-if="service.drivers && service.drivers.length > 0">
+                                                        <div v-for="driver in service.drivers" :key="driver.id" class="mb-2">
+                                                            <span class="badge text-start" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'}; padding: 0.5rem 0.75rem;`">
+                                                                <div class="fw-bold text-uppercase" style="font-size: 0.9rem;">{{ driver.surname }}</div>
+                                                                <div style="font-size: 0.85rem;">{{ driver.name }}</div>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div v-else class="text-muted small">
+                                                        Nessun autista
+                                                    </div>
+                                                </div>
+
+                                                <!-- Edit mode -->
+                                                <div v-else class="mb-2">
+                                                    <select
+                                                        v-model="editingDriversValue"
+                                                        :ref="el => driversInputRefs[service.id] = el"
+                                                        class="form-select form-select-sm"
+                                                        multiple
+                                                        size="5"
+                                                        style="min-width: 200px;"
+                                                    >
+                                                        <option v-for="driver in drivers" :key="driver.id" :value="driver.id">
+                                                            {{ driver.surname }} {{ driver.name }}
+                                                        </option>
+                                                    </select>
+                                                    <div class="d-flex gap-2 mt-2">
+                                                        <button
+                                                            type="button"
+                                                            @click="saveDrivers(service)"
+                                                            class="btn btn-sm btn-success"
+                                                            title="Salva"
+                                                        >
+                                                            <i class="ri-check-line"></i>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            @click="cancelEditDrivers"
+                                                            class="btn btn-sm btn-secondary"
+                                                            title="Annulla"
+                                                        >
+                                                            <i class="ri-close-line"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div class="mt-2">
+                                                    <!-- Display mode -->
+                                                    <div
+                                                        v-if="editingDressCode !== service.id"
+                                                        class="d-flex align-items-center gap-1 inline-editable"
+                                                        @click="startEditDressCode(service)"
+                                                        title="Clicca per modificare"
+                                                    >
+                                                            <div style="font-size: 0.75rem;">
+                                                                <i class="ri-shirt-line me-1"></i>
+                                                                {{ service.dress_code ? service.dress_code.name : 'Nessun dress code' }}
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Edit mode -->
+                                                        <div v-else class="d-flex gap-2 align-items-center">
+                                                            <select
+                                                                v-model="editingDressCodeValue"
+                                                                :ref="el => dressCodeInputRefs[service.id] = el"
+                                                                @keydown.enter="saveDressCode(service)"
+                                                                @keydown.escape="cancelEditDressCode"
+                                                                @change="saveDressCode(service)"
+                                                                class="form-select form-select-sm"
+                                                                style="font-size: 0.75rem; min-width: 150px;"
+                                                            >
+                                                                <option :value="null">Nessun dress code</option>
+                                                                <option
+                                                                    v-for="dressCode in dressCodes"
+                                                                    :key="dressCode.id"
+                                                                    :value="dressCode.id"
+                                                                >
+                                                                    {{ dressCode.name }}
+                                                                </option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                            </template>
                                         </td>
                                         <!-- Veicolo -->
                                         <td>
-                                            <div v-if="service.vehicle">
-                                                <!-- Display mode -->
-                                                <div
-                                                    v-if="editingVehicle !== service.id"
-                                                    class="inline-editable"
-                                                    @click="startEditVehicle(service)"
-                                                    title="Clicca per modificare"
-                                                >
+                                            <!-- Driver user: conditional display -->
+                                            <template v-if="isDriver">
+                                                <div v-if="isServiceAssignedOrAccepted(service) && service.vehicle">
                                                     <div
                                                         class="targa-auto"
                                                         :title="`${service.vehicle.brand} ${service.vehicle.model} - ${service.vehicle.passenger_capacity} posti`"
@@ -610,35 +637,57 @@
                                                         <span class="codice-targa">{{ service.vehicle.license_plate }}</span>
                                                     </div>
                                                 </div>
-
-                                                <!-- Edit mode -->
-                                                <div v-else class="d-flex gap-2 align-items-center">
-                                                    <select
-                                                        v-model="editingVehicleValue"
-                                                        :ref="el => vehicleInputRefs[service.id] = el"
-                                                        @change="saveVehicle(service)"
-                                                        @keydown.escape="cancelEditVehicle"
-                                                        class="form-select form-select-sm"
-                                                        style="min-width: 150px;"
+                                                <div v-else class="small text-warning fst-italic">
+                                                    <i class="ri-car-line me-1"></i>Veicolo da assegnare
+                                                </div>
+                                            </template>
+                                            <!-- Non-driver: inline editable -->
+                                            <template v-else>
+                                                <div v-if="service.vehicle">
+                                                    <!-- Display mode -->
+                                                    <div
+                                                        v-if="editingVehicle !== service.id"
+                                                        class="inline-editable"
+                                                        @click="startEditVehicle(service)"
+                                                        title="Clicca per modificare"
                                                     >
-                                                        <option value="">Seleziona veicolo</option>
-                                                        <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
-                                                            {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
-                                                        </option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div v-else class="text-muted inline-editable" @click="startEditVehicle(service)" title="Clicca per assegnare">
-                                                <i class="ri-add-line"></i> Assegna
-                                            </div>
+                                                        <div
+                                                            class="targa-auto"
+                                                            :title="`${service.vehicle.brand} ${service.vehicle.model} - ${service.vehicle.passenger_capacity} posti`"
+                                                        >
+                                                            <span class="codice-targa">{{ service.vehicle.license_plate }}</span>
+                                                        </div>
+                                                    </div>
 
-                                            <!-- Fornitore trasporto -->
-                                            <div class="small mt-2" v-if="service.supplier">
-                                                <span class="badge bg-soft-info text-info" style="font-size: 0.7rem;">Fornitore</span>
-                                                <div class="text-muted mt-1">
-                                                    <i class="ri-building-line"></i> {{ service.supplier.name }} {{ service.supplier.surname }}
+                                                    <!-- Edit mode -->
+                                                    <div v-else class="d-flex gap-2 align-items-center">
+                                                        <select
+                                                            v-model="editingVehicleValue"
+                                                            :ref="el => vehicleInputRefs[service.id] = el"
+                                                            @change="saveVehicle(service)"
+                                                            @keydown.escape="cancelEditVehicle"
+                                                            class="form-select form-select-sm"
+                                                            style="min-width: 150px;"
+                                                        >
+                                                            <option value="">Seleziona veicolo</option>
+                                                            <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
+                                                                {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
+                                                            </option>
+                                                        </select>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                                <div v-else class="text-muted inline-editable" @click="startEditVehicle(service)" title="Clicca per assegnare">
+                                                    <i class="ri-add-line"></i> Assegna
+                                                </div>
+
+                                                <!-- Fornitore trasporto -->
+                                                <div class="small mt-2" v-if="service.supplier">
+                                                    <span class="badge bg-soft-info text-info" style="font-size: 0.7rem;">Fornitore</span>
+                                                    <div class="text-muted mt-1">
+                                                        <i class="ri-building-line"></i> {{ service.supplier.name }} {{ service.supplier.surname }}
+                                                    </div>
+                                                </div>
+                                            </template>
                                         </td>
                                         <!-- Esperienze -->
                                         <td>
@@ -665,32 +714,53 @@
                                         </td>
                                         <!-- Ricavi -->
                                         <td>
-                                            <div
-                                                style="cursor: pointer;"
-                                                @click="showEconomicsModal(service)"
-                                                title="Clicca per vedere i dettagli economici"
-                                            >
-                                                <div v-if="(parseFloat(service.deposit_amount) || 0) > 0 || getBalanceValue(service) > 0">
-                                                    <div v-if="(parseFloat(service.deposit_amount) || 0) > 0" class="text-start mb-1">
-                                                        <div class="text-muted" style="font-size: 0.65rem;">Acconto</div>
-                                                        <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.deposit_amount) }}</span>
+                                            <!-- Driver: show "Da Incassare" only if assigned/accepted and driver_must_collect -->
+                                            <template v-if="isDriver">
+                                                <div v-if="isServiceAssignedOrAccepted(service) && service.driver_must_collect" class="alert alert-warning py-2 px-3 mb-0 small">
+                                                    <div class="fw-bold mb-1">
+                                                        <i class="ri-money-euro-circle-line me-1"></i>Da Incassare
                                                     </div>
-                                                    <div v-if="getBalanceValue(service) > 0" class="text-start mb-1">
-                                                        <div class="text-muted" style="font-size: 0.65rem;">{{ getBalanceLabel(service) }}</div>
-                                                        <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(getBalanceValue(service)) }}</span>
+                                                    <div class="d-flex justify-content-between">
+                                                        <span>Per cassa:</span>
+                                                        <span class="fw-bold">&euro;{{ formatCurrency(service.balance_taxable || 0) }}</span>
                                                     </div>
-                                                    <hr class="my-1" style="border-color: #ccc;">
-                                                    <div class="text-start">
-                                                        <div class="text-muted" style="font-size: 0.65rem;">TOTALE</div>
-                                                        <span class="badge bg-danger px-2 py-1" style="font-size: 0.85rem;">&euro;{{ formatCurrency((parseFloat(service.deposit_amount) || 0) + getBalanceValue(service)) }}</span>
+                                                    <div class="d-flex justify-content-between">
+                                                        <span>Con Carta:</span>
+                                                        <span class="fw-bold">&euro;{{ formatCurrency(service.balance_card_fees || 0) }}</span>
                                                     </div>
                                                 </div>
                                                 <span v-else class="text-muted small">--</span>
-                                            </div>
+                                            </template>
+                                            <!-- Non-driver: full revenue display -->
+                                            <template v-else>
+                                                <div
+                                                    style="cursor: pointer;"
+                                                    @click="showEconomicsModal(service)"
+                                                    title="Clicca per vedere i dettagli economici"
+                                                >
+                                                    <div v-if="(parseFloat(service.deposit_amount) || 0) > 0 || getBalanceValue(service) > 0">
+                                                        <div v-if="(parseFloat(service.deposit_amount) || 0) > 0" class="text-start mb-1">
+                                                            <div class="text-muted" style="font-size: 0.65rem;">Acconto</div>
+                                                            <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.deposit_amount) }}</span>
+                                                        </div>
+                                                        <div v-if="getBalanceValue(service) > 0" class="text-start mb-1">
+                                                            <div class="text-muted" style="font-size: 0.65rem;">{{ getBalanceLabel(service) }}</div>
+                                                            <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(getBalanceValue(service)) }}</span>
+                                                        </div>
+                                                        <hr class="my-1" style="border-color: #ccc;">
+                                                        <div class="text-start">
+                                                            <div class="text-muted" style="font-size: 0.65rem;">TOTALE</div>
+                                                            <span class="badge bg-danger px-2 py-1" style="font-size: 0.85rem;">&euro;{{ formatCurrency((parseFloat(service.deposit_amount) || 0) + getBalanceValue(service)) }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span v-else class="text-muted small">--</span>
+                                                </div>
+                                            </template>
                                         </td>
                                         <!-- Costi -->
                                         <td>
-                                            <div v-if="hasAnyCost(service)" class="d-flex flex-column gap-1">
+                                            <span v-if="isDriver" class="text-muted small">--</span>
+                                            <div v-else-if="hasAnyCost(service)" class="d-flex flex-column gap-1">
                                                 <div v-if="service.driver_compensation > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Autista</div>
                                                     <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.driver_compensation) }}</span>
@@ -1261,6 +1331,23 @@ const totalItems = ref(0);
 const perPage = ref(15);
 
 const isSuperAdmin = computed(() => currentUser.value?.role === 'super-admin');
+const isDriver = computed(() => currentUser.value?.role === 'driver');
+const acceptedStatusId = ref(null);
+const triggerStatusId = ref(null);
+
+/**
+ * Check if a service is "assigned" or "accepted" by the current driver.
+ * Returns true if: the driver is in the service's drivers list,
+ * OR the service status matches the configured trigger/accepted status.
+ */
+const isServiceAssignedOrAccepted = (service) => {
+    if (!isDriver.value || !currentUser.value) return true;
+    const driverIds = (service.drivers || []).map(d => d.id);
+    if (driverIds.includes(currentUser.value.id)) return true;
+    if (triggerStatusId.value && service.status_id === triggerStatusId.value) return true;
+    if (acceptedStatusId.value && service.status_id === acceptedStatusId.value) return true;
+    return false;
+};
 
 const loadCurrentUser = async () => {
     try {
@@ -2237,6 +2324,16 @@ const cancelEditDatetimes = () => {
 
 onMounted(async () => {
     await loadCurrentUser();
+    // Load public settings for driver users (trigger/accepted status IDs)
+    if (isDriver.value) {
+        try {
+            const res = await axios.get('/api/settings/public');
+            acceptedStatusId.value = res.data.telegram_accepted_status_id || null;
+            triggerStatusId.value = res.data.telegram_trigger_status_id || null;
+        } catch (e) {
+            console.error('Error loading public settings:', e);
+        }
+    }
     await Promise.all([loadDictionaries(), loadServices()]);
 });
 </script>

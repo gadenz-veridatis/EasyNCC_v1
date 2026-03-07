@@ -26,11 +26,11 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
         // Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
         // Vehicles
-        Route::prefix('vehicles')->name('vehicles.')->group(function () {
+        Route::prefix('vehicles')->name('vehicles.')->middleware('role:super-admin,admin,operator')->group(function () {
             Route::get('/', [VehicleWebController::class, 'index'])->name('index');
-            Route::get('/create', [VehicleWebController::class, 'create'])->name('create')->middleware('role:super-admin,admin,operator');
+            Route::get('/create', [VehicleWebController::class, 'create'])->name('create');
             Route::get('/{id}', [VehicleWebController::class, 'show'])->name('show');
-            Route::get('/{id}/edit', [VehicleWebController::class, 'edit'])->name('edit')->middleware('role:super-admin,admin,operator');
+            Route::get('/{id}/edit', [VehicleWebController::class, 'edit'])->name('edit');
         });
 
         // Services
@@ -184,11 +184,12 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
             Route::get('/users', function () {
                 return inertia('EasyNCC/Telegram/Users');
             })->name('users');
-
-            Route::get('/chat', function () {
-                return inertia('EasyNCC/Telegram/Chat');
-            })->name('chat');
         });
+
+        // Telegram Chat - accessible to admin, super-admin, and driver
+        Route::get('/telegram/chat', function () {
+            return inertia('EasyNCC/Telegram/Chat');
+        })->name('telegram.chat')->middleware('role:super-admin,admin,driver');
 
         // Companies
         Route::prefix('companies')->name('companies.')->middleware('role:super-admin')->group(function () {

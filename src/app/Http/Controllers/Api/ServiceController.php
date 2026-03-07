@@ -287,6 +287,7 @@ class ServiceController extends Controller
             'external_driver_name' => 'nullable|string|max:255',
             'external_driver_phone' => 'nullable|string|max:255',
             'driver_not_replaceable' => 'boolean',
+            'driver_must_collect' => 'boolean',
             // Baggage
             'dress_code_id' => 'nullable|exists:dress_codes,id',
             'large_luggage' => 'nullable|integer|min:0',
@@ -472,6 +473,7 @@ class ServiceController extends Controller
             'external_driver_name' => 'nullable|string|max:255',
             'external_driver_phone' => 'nullable|string|max:255',
             'driver_not_replaceable' => 'boolean',
+            'driver_must_collect' => 'boolean',
             // Baggage
             'dress_code_id' => 'nullable|exists:dress_codes,id',
             'large_luggage' => 'nullable|integer|min:0',

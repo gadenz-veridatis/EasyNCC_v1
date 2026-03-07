@@ -199,6 +199,9 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::get('settings/service-statuses', [SettingsController::class, 'getServiceStatuses']);
     });
 
+    // Public settings - accessible to all authenticated users
+    Route::get('settings/public', [SettingsController::class, 'publicSettings']);
+
     // Telegram Notifications - accessible to all authenticated users
     Route::get('notifications', [TelegramNotificationController::class, 'index']);
     Route::get('notifications/unread-count', [TelegramNotificationController::class, 'unreadCount']);
@@ -221,5 +224,13 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::get('telegram/chat/messages', [TelegramChatController::class, 'messages']);
         Route::post('telegram/chat/send', [TelegramChatController::class, 'send']);
         Route::post('telegram/chat/mark-read', [TelegramChatController::class, 'markAsRead']);
+    });
+
+    // Telegram Chat - driver access (filtered to own conversation)
+    Route::middleware(['role:driver'])->group(function () {
+        Route::get('telegram/chat/driver/conversation', [TelegramChatController::class, 'driverConversation']);
+        Route::get('telegram/chat/driver/messages', [TelegramChatController::class, 'driverMessages']);
+        Route::post('telegram/chat/driver/send', [TelegramChatController::class, 'driverSend']);
+        Route::post('telegram/chat/driver/mark-read', [TelegramChatController::class, 'driverMarkAsRead']);
     });
 });

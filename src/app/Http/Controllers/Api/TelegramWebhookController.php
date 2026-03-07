@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccountingTransaction;
+use App\Models\Task;
 use App\Models\TelegramConfig;
 use App\Models\TelegramMessage;
 use App\Models\TelegramNotification;
 use App\Models\TelegramUser;
 use App\Services\TelegramAPI;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -209,6 +212,12 @@ class TelegramWebhookController extends Controller
             return;
         }
 
+        // Handle payment collection callback
+        if (str_starts_with($data, 'incasso:')) {
+            $this->handlePaymentCollection($data, $telegramUser, $chatId, $messageId, $callbackId, $api);
+            return;
+        }
+
         // Unknown callback - just acknowledge
         $api->answerCallbackQuery($callbackId, 'Azione ricevuta');
     }
@@ -336,6 +345,25 @@ class TelegramWebhookController extends Controller
                 'driver_id' => $telegramUser->user_id,
                 'driver' => $driverName,
             ]);
+
+            // Complete the acceptance task via unique tag
+            $acceptTask = Task::withoutGlobalScopes()
+                ->where('company_id', $telegramUser->company_id)
+                ->where('name', 'LIKE', "[TG:ACCEPT:{$serviceId}]%")
+                ->where('status', 'to_complete')
+                ->first();
+
+            if ($acceptTask) {
+                $acceptTask->update(['status' => 'completed']);
+                Log::channel('telegram')->info('Accept task completed', [
+                    'task_id' => $acceptTask->id,
+                    'service_id' => $serviceId,
+                ]);
+            }
+
+            // Handle payment collection if driver must collect
+            $this->handleDriverMustCollect($service, $serviceId, $telegramUser, $chatId, $api);
+
         } catch (\Exception $e) {
             Log::channel('telegram')->error('Error accepting service', [
                 'service_id' => $serviceId,
@@ -343,6 +371,281 @@ class TelegramWebhookController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
             $api->answerCallbackQuery($callbackId, 'Errore nell\'accettazione del servizio');
+        }
+    }
+
+    /**
+     * If driver_must_collect is true, send payment collection message with buttons.
+     */
+    private function handleDriverMustCollect(\App\Models\Service $service, int $serviceId, TelegramUser $telegramUser, int $chatId, TelegramAPI $api): void
+    {
+        $service->refresh();
+        $service->load(['client', 'passengers']);
+
+        if (!$service->driver_must_collect) {
+            return;
+        }
+
+        $balanceTaxable = (float) ($service->balance_taxable ?? 0);
+        $balanceCardFees = (float) ($service->balance_card_fees ?? 0);
+
+        // If both amounts are 0, notify driver and admin, skip payment flow
+        if ($balanceTaxable <= 0 && $balanceCardFees <= 0) {
+            $noAmountText = "<b>⚠️ ATTENZIONE</b>\n\n"
+                . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n\n"
+                . "Il servizio è contrassegnato come \"Da Incassare\" ma gli importi saldo risultano a zero.\n"
+                . "Contatta l'amministrazione per verificare.";
+
+            $result = $api->sendMessage($chatId, $noAmountText);
+
+            TelegramMessage::create([
+                'company_id' => $telegramUser->company_id,
+                'telegram_user_id' => $telegramUser->id,
+                'direction' => 'outbound',
+                'message_type' => 'text',
+                'content' => $noAmountText,
+                'telegram_message_id' => $result['result']['message_id'] ?? null,
+                'is_read' => true,
+            ]);
+
+            TelegramNotification::create([
+                'company_id' => $telegramUser->company_id,
+                'telegram_user_id' => $telegramUser->id,
+                'type' => 'payment_warning',
+                'title' => "Incasso servizio #{$serviceId} - Importi a zero",
+                'body' => "Il servizio ha driver_must_collect attivo ma importi saldo a zero.",
+                'is_read' => false,
+            ]);
+
+            Log::channel('telegram')->warning('Payment collection skipped: amounts are zero', [
+                'service_id' => $serviceId,
+            ]);
+            return;
+        }
+
+        // Send payment collection message with two buttons
+        $amountCassa = number_format($balanceTaxable, 2, ',', '.');
+        $amountCarta = number_format($balanceCardFees, 2, ',', '.');
+
+        $paymentText = "<b>INCASSO RICHIESTO</b>\n\n"
+            . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n"
+            . "<b>Saldo Imponibile:</b> € {$amountCassa}\n"
+            . "<b>Saldo Card Fees:</b> € {$amountCarta}\n\n"
+            . "Seleziona la modalità di incasso:";
+
+        $paymentKeyboard = [
+            'inline_keyboard' => [
+                [
+                    [
+                        'text' => "💵 CASSA € {$amountCassa}",
+                        'callback_data' => "incasso:{$serviceId}:cassa",
+                    ],
+                    [
+                        'text' => "💳 CARTA € {$amountCarta}",
+                        'callback_data' => "incasso:{$serviceId}:carta",
+                    ],
+                ]
+            ]
+        ];
+
+        $paymentResult = $api->sendMessage($chatId, $paymentText, $paymentKeyboard);
+
+        if ($paymentResult && ($paymentResult['ok'] ?? false)) {
+            TelegramMessage::create([
+                'company_id' => $telegramUser->company_id,
+                'telegram_user_id' => $telegramUser->id,
+                'direction' => 'outbound',
+                'message_type' => 'text',
+                'content' => $paymentText,
+                'telegram_message_id' => $paymentResult['result']['message_id'] ?? null,
+                'is_read' => true,
+            ]);
+        }
+
+        // Create collection task with unique tag
+        $pickupTime = $service->pickup_datetime
+            ? Carbon::parse($service->pickup_datetime)->format('H:i')
+            : '';
+        $serviceType = $service->service_type ?? '';
+        $passengerCount = $service->passengers ? $service->passengers->count() : 0;
+        $contactName = '';
+        if ($service->client) {
+            $contactName = trim(($service->client->name ?? '') . ' ' . ($service->client->surname ?? ''));
+        }
+        $clientName = $service->client->business_name ?? $contactName;
+
+        $titleParts = array_filter([$pickupTime, $serviceType, "{$passengerCount} pax", $contactName, $clientName]);
+        $collectionTaskTitle = "[TG:COLLECT:{$serviceId}] " . implode(' | ', $titleParts) . ' - Segnalare modalità di incasso';
+
+        $collectionTask = Task::create([
+            'company_id' => $telegramUser->company_id,
+            'service_id' => $serviceId,
+            'name' => $collectionTaskTitle,
+            'due_date' => $service->pickup_datetime
+                ? Carbon::parse($service->pickup_datetime)->toDateString()
+                : null,
+            'notes' => "Task creato automaticamente all'accettazione del servizio #{$serviceId}. Driver deve incassare.",
+            'status' => 'to_complete',
+        ]);
+
+        if ($telegramUser->user_id) {
+            $collectionTask->assignedUsers()->sync([$telegramUser->user_id]);
+        }
+
+        Log::channel('telegram')->info('Payment collection message sent and task created', [
+            'service_id' => $serviceId,
+            'task_id' => $collectionTask->id,
+            'balance_taxable' => $balanceTaxable,
+            'balance_card_fees' => $balanceCardFees,
+        ]);
+    }
+
+    /**
+     * Handle payment collection callback (incasso:{serviceId}:{metodo}).
+     */
+    private function handlePaymentCollection(string $data, TelegramUser $telegramUser, int $chatId, int $messageId, string $callbackId, TelegramAPI $api): void
+    {
+        $parts = explode(':', $data);
+        if (count($parts) !== 3) {
+            $api->answerCallbackQuery($callbackId, 'Formato callback non valido');
+            return;
+        }
+
+        $serviceId = (int) $parts[1];
+        $metodo = $parts[2]; // 'cassa' o 'carta'
+
+        try {
+            $service = \App\Models\Service::withoutGlobalScopes()
+                ->where('id', $serviceId)
+                ->where('company_id', $telegramUser->company_id)
+                ->first();
+
+            if (!$service) {
+                $api->answerCallbackQuery($callbackId, 'Servizio non trovato');
+                return;
+            }
+
+            $metodoLabel = $metodo === 'cassa' ? 'Contanti' : 'Carta';
+            $amount = $metodo === 'cassa'
+                ? (float) ($service->balance_taxable ?? 0)
+                : (float) ($service->balance_card_fees ?? 0);
+            $amountFormatted = number_format($amount, 2, ',', '.');
+
+            // Find balance sale transaction
+            $balanceTransaction = AccountingTransaction::where('service_id', $serviceId)
+                ->where('company_id', $telegramUser->company_id)
+                ->where('transaction_type', 'sale')
+                ->where('installment', 'balance')
+                ->first();
+
+            if (!$balanceTransaction) {
+                // Transaction not found - notify driver and admin
+                $api->answerCallbackQuery($callbackId, 'Movimento contabile saldo non trovato');
+
+                $errorText = "<b>⚠️ ATTENZIONE</b>\n\n"
+                    . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n\n"
+                    . "Il movimento contabile saldo vendita non è stato trovato.\n"
+                    . "L'incasso <b>non</b> è stato registrato. Contatta l'amministrazione.";
+
+                $result = $api->sendMessage($chatId, $errorText);
+
+                TelegramMessage::create([
+                    'company_id' => $telegramUser->company_id,
+                    'telegram_user_id' => $telegramUser->id,
+                    'direction' => 'outbound',
+                    'message_type' => 'text',
+                    'content' => $errorText,
+                    'telegram_message_id' => $result['result']['message_id'] ?? null,
+                    'is_read' => true,
+                ]);
+
+                $driverName = trim(($telegramUser->first_name ?? '') . ' ' . ($telegramUser->last_name ?? ''));
+                TelegramNotification::create([
+                    'company_id' => $telegramUser->company_id,
+                    'telegram_user_id' => $telegramUser->id,
+                    'type' => 'payment_error',
+                    'title' => "Errore incasso servizio #{$serviceId}",
+                    'body' => "Movimento contabile saldo vendita non trovato. Driver {$driverName} ha tentato incasso {$metodoLabel}.",
+                    'is_read' => false,
+                ]);
+
+                // Remove buttons to prevent repeated attempts
+                $api->editMessageReplyMarkup($chatId, $messageId, null);
+                return;
+            }
+
+            // Update accounting transaction to 'collected'
+            $balanceTransaction->update([
+                'status' => 'collected',
+                'payment_date' => now(),
+                'notes' => ($balanceTransaction->notes ? $balanceTransaction->notes . "\n" : '')
+                    . "Incassato via Telegram ({$metodoLabel}) il " . now()->format('d/m/Y H:i'),
+            ]);
+
+            // Complete the collection task via unique tag
+            $collectionTask = Task::withoutGlobalScopes()
+                ->where('company_id', $telegramUser->company_id)
+                ->where('name', 'LIKE', "[TG:COLLECT:{$serviceId}]%")
+                ->where('status', 'to_complete')
+                ->first();
+
+            if ($collectionTask) {
+                $collectionTask->update(['status' => 'completed']);
+            }
+
+            // Remove inline keyboard buttons
+            $api->editMessageReplyMarkup($chatId, $messageId, null);
+
+            // Acknowledge callback
+            $api->answerCallbackQuery($callbackId, "Incasso registrato: {$metodoLabel}");
+
+            // Send confirmation message
+            $timestamp = now()->format('d/m/Y H:i');
+            $driverName = trim(($telegramUser->first_name ?? '') . ' ' . ($telegramUser->last_name ?? ''));
+
+            $confirmText = "<b>INCASSO REGISTRATO</b>\n\n"
+                . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n"
+                . "<b>Modalità:</b> {$metodoLabel}\n"
+                . "<b>Importo:</b> € {$amountFormatted}\n"
+                . "<b>Registrato da:</b> {$driverName}\n"
+                . "<b>Data/Ora:</b> {$timestamp}";
+
+            $result = $api->sendMessage($chatId, $confirmText);
+
+            TelegramMessage::create([
+                'company_id' => $telegramUser->company_id,
+                'telegram_user_id' => $telegramUser->id,
+                'direction' => 'outbound',
+                'message_type' => 'text',
+                'content' => $confirmText,
+                'telegram_message_id' => $result['result']['message_id'] ?? null,
+                'is_read' => true,
+            ]);
+
+            // Create notification for admin
+            TelegramNotification::create([
+                'company_id' => $telegramUser->company_id,
+                'telegram_user_id' => $telegramUser->id,
+                'type' => 'payment_collected',
+                'title' => "Incasso servizio #{$serviceId}",
+                'body' => "Incassato € {$amountFormatted} ({$metodoLabel}) da {$driverName} il {$timestamp}",
+                'is_read' => false,
+            ]);
+
+            Log::channel('telegram')->info('Payment collection registered', [
+                'service_id' => $serviceId,
+                'method' => $metodo,
+                'amount' => $amount,
+                'driver_id' => $telegramUser->user_id,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::channel('telegram')->error('Error handling payment collection', [
+                'service_id' => $serviceId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            $api->answerCallbackQuery($callbackId, 'Errore nella registrazione dell\'incasso');
         }
     }
 

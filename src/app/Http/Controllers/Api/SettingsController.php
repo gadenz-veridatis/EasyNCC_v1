@@ -237,4 +237,21 @@ class SettingsController extends Controller
             'data' => $statuses
         ]);
     }
+
+    /**
+     * Get public settings (accessible to all authenticated users).
+     * Returns only non-sensitive configuration needed by the frontend.
+     */
+    public function publicSettings(Request $request)
+    {
+        $user = Auth::user();
+        $companyId = $user->company_id;
+
+        $settings = Settings::where('company_id', $companyId)->first();
+
+        return response()->json([
+            'telegram_trigger_status_id' => $settings->telegram_trigger_status_id ?? null,
+            'telegram_accepted_status_id' => $settings->telegram_accepted_status_id ?? null,
+        ]);
+    }
 }

@@ -104,11 +104,6 @@ export default {
                             </BCardBody>
                         </BCard>
 
-                        <div class="mt-4 text-center">
-                            <p class="mb-0">Don't have an account ?
-                                <Link :href="route('register')" class="fw-semibold text-primary text-decoration-underline"> Signup </Link>
-                            </p>
-                        </div>
 
                     </BCol>
                 </BRow>

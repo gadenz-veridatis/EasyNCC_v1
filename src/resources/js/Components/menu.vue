@@ -22,6 +22,18 @@ export default {
         return this.$store ? this.$store.state.layout.layoutType : {} || {};
       },
     },
+    userRole() {
+      return this.$page?.props?.auth?.user?.role;
+    },
+    canManage() {
+      return ['super-admin', 'admin', 'operator'].includes(this.userRole);
+    },
+    isAdmin() {
+      return ['super-admin', 'admin'].includes(this.userRole);
+    },
+    isSuperAdmin() {
+      return this.userRole === 'super-admin';
+    },
   },
 
   watch: {
@@ -211,7 +223,7 @@ export default {
         </li>
 
         <!-- Esperienze -->
-        <li class="nav-item">
+        <li class="nav-item" v-if="canManage">
           <Link href="/easyncc/activities" class="nav-link menu-link">
             <i class="ri-calendar-event-line"></i>
             <span>Esperienze</span>
@@ -219,7 +231,7 @@ export default {
         </li>
 
         <!-- AMMINISTRAZIONE -->
-        <li class="menu-title">
+        <li class="menu-title" v-if="canManage">
           <i class="ri-more-fill"></i>
           <span data-key="t-administration">Amministrazione</span>
         </li>
@@ -233,7 +245,7 @@ export default {
         </li>
 
         <!-- Contabilità -->
-        <li class="nav-item">
+        <li class="nav-item" v-if="canManage">
           <Link href="/easyncc/accounting-transactions" class="nav-link menu-link">
             <i class="ri-money-euro-circle-line"></i>
             <span>Contabilità</span>
@@ -241,13 +253,13 @@ export default {
         </li>
 
         <!-- ANAGRAFICHE -->
-        <li class="menu-title">
+        <li class="menu-title" v-if="canManage">
           <i class="ri-more-fill"></i>
           <span data-key="t-registries">Anagrafiche</span>
         </li>
 
         <!-- Veicoli -->
-        <li class="nav-item">
+        <li class="nav-item" v-if="canManage">
           <Link href="/easyncc/vehicles" class="nav-link menu-link">
             <i class="ri-car-line"></i>
             <span>Veicoli</span>
@@ -255,7 +267,7 @@ export default {
         </li>
 
         <!-- Driver -->
-        <li class="nav-item">
+        <li class="nav-item" v-if="canManage">
           <Link href="/easyncc/drivers" class="nav-link menu-link">
             <i class="ri-steering-2-line"></i>
             <span>Driver</span>
@@ -263,7 +275,7 @@ export default {
         </li>
 
         <!-- Committenti -->
-        <li class="nav-item">
+        <li class="nav-item" v-if="canManage">
           <Link href="/easyncc/committenti" class="nav-link menu-link">
             <i class="ri-building-4-line"></i>
             <span>Committenti</span>
@@ -271,7 +283,7 @@ export default {
         </li>
 
         <!-- Fornitori -->
-        <li class="nav-item">
+        <li class="nav-item" v-if="canManage">
           <Link href="/easyncc/fornitori" class="nav-link menu-link">
             <i class="ri-store-2-line"></i>
             <span>Fornitori</span>
@@ -279,7 +291,7 @@ export default {
         </li>
 
         <!-- ZTL -->
-        <li class="nav-item">
+        <li class="nav-item" v-if="canManage">
           <Link href="/easyncc/dictionaries/ztl" class="nav-link menu-link">
             <i class="ri-road-map-line"></i>
             <span>ZTL</span>
@@ -287,7 +299,7 @@ export default {
         </li>
 
         <!-- Aziende (solo per super-admin) -->
-        <li class="nav-item" v-if="$page.props.auth?.user?.role === 'super-admin'">
+        <li class="nav-item" v-if="isSuperAdmin">
           <Link href="/easyncc/companies" class="nav-link menu-link">
             <i class="ri-building-line"></i>
             <span>Aziende</span>
@@ -295,13 +307,13 @@ export default {
         </li>
 
         <!-- CONFIGURAZIONE -->
-        <li class="menu-title">
+        <li class="menu-title" v-if="canManage">
           <i class="ri-more-fill"></i>
           <span data-key="t-configuration">Configurazione</span>
         </li>
 
         <!-- Utenti -->
-        <li class="nav-item">
+        <li class="nav-item" v-if="canManage">
           <Link href="/easyncc/users" class="nav-link menu-link">
             <i class="ri-user-line"></i>
             <span>Utenti</span>
@@ -309,7 +321,7 @@ export default {
         </li>
 
         <!-- Dizionari -->
-        <li class="nav-item">
+        <li class="nav-item" v-if="isAdmin">
           <a class="nav-link menu-link" href="#sidebarDictionaries" data-bs-toggle="collapse" role="button" aria-expanded="false"
             aria-controls="sidebarDictionaries">
             <i class="ri-book-2-line"></i>
@@ -367,7 +379,7 @@ export default {
         </li>
 
         <!-- Impostazioni (solo per admin e super-admin) -->
-        <li class="nav-item" v-if="$page.props.auth?.user?.role === 'admin' || $page.props.auth?.user?.role === 'super-admin'">
+        <li class="nav-item" v-if="isAdmin">
           <a class="nav-link menu-link" href="#sidebarSettings" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarSettings">
             <i class="ri-settings-3-line"></i>
             <span>Impostazioni</span>

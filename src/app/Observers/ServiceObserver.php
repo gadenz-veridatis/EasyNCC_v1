@@ -4,8 +4,10 @@ namespace App\Observers;
 
 use App\Models\Service;
 use App\Models\ServiceStatus;
+use App\Models\Task;
 use App\Services\ServiceOverlapService;
 use App\Services\TelegramNotificationService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class ServiceObserver
@@ -49,9 +51,62 @@ class ServiceObserver
             if ($service->status_id === $settings->telegram_trigger_status_id) {
                 $notificationService = app(TelegramNotificationService::class);
                 $notificationService->notifyServiceConfirmed($service);
+
+                // Create task "Accettare servizio" for assigned drivers
+                $this->createAcceptTask($service);
             }
         } catch (\Exception $e) {
             Log::channel('telegram')->error('Error in ServiceObserver status change handler', [
+                'service_id' => $service->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Create a task for drivers to accept the service via Telegram.
+     */
+    private function createAcceptTask(Service $service): void
+    {
+        try {
+            $service->load(['drivers', 'client', 'passengers']);
+
+            $pickupTime = $service->pickup_datetime
+                ? Carbon::parse($service->pickup_datetime)->format('H:i')
+                : '';
+            $serviceType = $service->service_type ?? '';
+            $passengerCount = $service->passengers ? $service->passengers->count() : 0;
+            $contactName = '';
+            if ($service->client) {
+                $contactName = trim(($service->client->name ?? '') . ' ' . ($service->client->surname ?? ''));
+            }
+            $clientName = $service->client->business_name ?? $contactName;
+
+            $titleParts = array_filter([$pickupTime, $serviceType, "{$passengerCount} pax", $contactName, $clientName]);
+            $taskTitle = "[TG:ACCEPT:{$service->id}] " . implode(' | ', $titleParts) . ' - Accettare servizio';
+
+            $task = Task::create([
+                'company_id' => $service->company_id,
+                'service_id' => $service->id,
+                'name' => $taskTitle,
+                'due_date' => $service->pickup_datetime
+                    ? Carbon::parse($service->pickup_datetime)->toDateString()
+                    : null,
+                'notes' => "Task creato automaticamente alla notifica Telegram del servizio #{$service->id}",
+                'status' => 'to_complete',
+            ]);
+
+            $driverIds = $service->drivers->pluck('id')->toArray();
+            if (!empty($driverIds)) {
+                $task->assignedUsers()->sync($driverIds);
+            }
+
+            Log::channel('telegram')->info('Accept task created', [
+                'task_id' => $task->id,
+                'service_id' => $service->id,
+            ]);
+        } catch (\Exception $e) {
+            Log::channel('telegram')->error('Error creating accept task', [
                 'service_id' => $service->id,
                 'error' => $e->getMessage(),
             ]);
