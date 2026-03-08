@@ -574,9 +574,14 @@ class TelegramWebhookController extends Controller
                 return;
             }
 
-            // Update accounting transaction to 'collected'
+            // Update service balance_sale_type based on payment method
+            $balanceSaleType = $metodo === 'cassa' ? 'balance_taxable' : 'balance_card_fees';
+            $service->update(['balance_sale_type' => $balanceSaleType]);
+
+            // Update accounting transaction to 'collected' with correct amount
             $balanceTransaction->update([
                 'status' => 'collected',
+                'amount' => $amount,
                 'payment_date' => now(),
                 'notes' => ($balanceTransaction->notes ? $balanceTransaction->notes . "\n" : '')
                     . "Incassato via Telegram ({$metodoLabel}) il " . now()->format('d/m/Y H:i'),
