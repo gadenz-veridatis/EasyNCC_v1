@@ -44,11 +44,37 @@ class Settings extends Model
         'card_fees_reason',
         'telegram_trigger_status_id',
         'telegram_accepted_status_id',
+        'pricing_markups',
+        'pricing_vehicle_costs',
+        'pricing_vehicle_assumptions',
+        'pricing_annual_expenses',
+        'pricing_season_service',
+        'pricing_vehicle_service',
+        'pricing_season_experience',
+        'pricing_vehicle_experience',
+        'pricing_attenuation_transport',
+        'pricing_attenuation_driver',
+        'pricing_extension',
+        'pricing_depreciation',
+        'pricing_toll',
     ];
 
     protected $casts = [
         'deposit_percentage' => 'decimal:2',
         'card_fees_percentage' => 'decimal:2',
+        'pricing_markups' => 'array',
+        'pricing_vehicle_costs' => 'array',
+        'pricing_vehicle_assumptions' => 'array',
+        'pricing_annual_expenses' => 'array',
+        'pricing_season_service' => 'array',
+        'pricing_vehicle_service' => 'array',
+        'pricing_season_experience' => 'array',
+        'pricing_vehicle_experience' => 'array',
+        'pricing_attenuation_transport' => 'array',
+        'pricing_attenuation_driver' => 'array',
+        'pricing_extension' => 'array',
+        'pricing_depreciation' => 'array',
+        'pricing_toll' => 'array',
     ];
 
     // Relationships

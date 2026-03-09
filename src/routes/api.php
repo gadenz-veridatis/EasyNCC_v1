@@ -24,6 +24,8 @@ use App\Http\Controllers\Api\TelegramUserController;
 use App\Http\Controllers\Api\TelegramNotificationController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\GlobalSearchController;
+use App\Http\Controllers\Api\QuoteController;
+use App\Http\Controllers\Api\PricingDestinationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -188,6 +190,28 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::put('dictionaries/{type}/{id}', [DictionaryController::class, 'update']);
         Route::patch('dictionaries/{type}/{id}', [DictionaryController::class, 'update']);
         Route::delete('dictionaries/{type}/{id}', [DictionaryController::class, 'destroy']);
+    });
+
+    // Quotes (Preventivi) - admin and operator can manage
+    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+        Route::get('quotes', [QuoteController::class, 'index']);
+        Route::post('quotes', [QuoteController::class, 'store']);
+        Route::post('quotes/calculate', [QuoteController::class, 'calculate']);
+        Route::get('quotes/{quote}', [QuoteController::class, 'show']);
+        Route::put('quotes/{quote}', [QuoteController::class, 'update']);
+        Route::patch('quotes/{quote}', [QuoteController::class, 'update']);
+        Route::delete('quotes/{quote}', [QuoteController::class, 'destroy']);
+        Route::post('quotes/{id}/restore', [QuoteController::class, 'restore']);
+    });
+
+    // Pricing Destinations - admin can manage, operator can read
+    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+        Route::get('pricing-destinations', [PricingDestinationController::class, 'index']);
+    });
+    Route::middleware(['role:super-admin,admin'])->group(function () {
+        Route::post('pricing-destinations', [PricingDestinationController::class, 'store']);
+        Route::put('pricing-destinations/{pricingDestination}', [PricingDestinationController::class, 'update']);
+        Route::delete('pricing-destinations/{pricingDestination}', [PricingDestinationController::class, 'destroy']);
     });
 
     // Settings - only admin and super-admin can access

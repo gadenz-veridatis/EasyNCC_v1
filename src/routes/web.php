@@ -4,6 +4,7 @@ use App\Http\Controllers\EasyNCC\DashboardController;
 use App\Http\Controllers\EasyNCC\VehicleWebController;
 use App\Http\Controllers\EasyNCC\ServiceWebController;
 use App\Http\Controllers\EasyNCC\UserWebController;
+use App\Http\Controllers\EasyNCC\QuoteWebController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -48,6 +49,14 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
             Route::get('/create', [UserWebController::class, 'create'])->name('create')->middleware('role:super-admin,admin,operator');
             Route::get('/{id}', [UserWebController::class, 'show'])->name('show');
             Route::get('/{id}/edit', [UserWebController::class, 'edit'])->name('edit')->middleware('role:super-admin,admin,operator');
+        });
+
+        // Quotes (Preventivi)
+        Route::prefix('quotes')->name('quotes.')->middleware('role:super-admin,admin,operator')->group(function () {
+            Route::get('/', [QuoteWebController::class, 'index'])->name('index');
+            Route::get('/create', [QuoteWebController::class, 'create'])->name('create');
+            Route::get('/{id}', [QuoteWebController::class, 'show'])->name('show');
+            Route::get('/{id}/edit', [QuoteWebController::class, 'edit'])->name('edit');
         });
 
         // Drivers
@@ -178,6 +187,10 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
         Route::get('/settings/telegram', function () {
             return inertia('EasyNCC/Settings/Telegram');
         })->name('settings.telegram')->middleware('role:super-admin,admin');
+
+        Route::get('/settings/pricing', function () {
+            return inertia('EasyNCC/Settings/Pricing');
+        })->name('settings.pricing')->middleware('role:super-admin,admin');
 
         // Telegram
         Route::prefix('telegram')->name('telegram.')->middleware('role:super-admin,admin')->group(function () {

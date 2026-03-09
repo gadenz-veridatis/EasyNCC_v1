@@ -222,6 +222,14 @@ export default {
           </Link>
         </li>
 
+        <!-- Preventivi -->
+        <li class="nav-item" v-if="canManage">
+          <Link href="/easyncc/quotes" class="nav-link menu-link">
+            <i class="ri-file-list-3-line"></i>
+            <span>Preventivi</span>
+          </Link>
+        </li>
+
         <!-- Esperienze -->
         <li class="nav-item" v-if="canManage">
           <Link href="/easyncc/activities" class="nav-link menu-link">
@@ -399,6 +407,11 @@ export default {
               <li class="nav-item">
                 <Link href="/easyncc/telegram/users" class="nav-link">
                   Utenti Telegram
+                </Link>
+              </li>
+              <li class="nav-item">
+                <Link href="/easyncc/settings/pricing" class="nav-link">
+                  Preventivi
                 </Link>
               </li>
             </ul>

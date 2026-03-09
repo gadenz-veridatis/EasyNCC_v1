@@ -63,6 +63,19 @@ class SettingsController extends Controller
                     'card_fees_reason' => null,
                     'telegram_trigger_status_id' => null,
                     'telegram_accepted_status_id' => null,
+                    'pricing_markups' => null,
+                    'pricing_vehicle_costs' => null,
+                    'pricing_vehicle_assumptions' => null,
+                    'pricing_annual_expenses' => null,
+                    'pricing_season_service' => null,
+                    'pricing_vehicle_service' => null,
+                    'pricing_season_experience' => null,
+                    'pricing_vehicle_experience' => null,
+                    'pricing_attenuation_transport' => null,
+                    'pricing_attenuation_driver' => null,
+                    'pricing_extension' => null,
+                    'pricing_depreciation' => null,
+                    'pricing_toll' => null,
                 ]
             ]);
         }
@@ -110,6 +123,19 @@ class SettingsController extends Controller
             'card_fees_reason' => 'nullable|string|max:255',
             'telegram_trigger_status_id' => 'nullable|exists:service_statuses,id',
             'telegram_accepted_status_id' => 'nullable|exists:service_statuses,id',
+            'pricing_markups' => 'nullable|array',
+            'pricing_vehicle_costs' => 'nullable|array',
+            'pricing_vehicle_assumptions' => 'nullable|array',
+            'pricing_annual_expenses' => 'nullable|array',
+            'pricing_season_service' => 'nullable|array',
+            'pricing_vehicle_service' => 'nullable|array',
+            'pricing_season_experience' => 'nullable|array',
+            'pricing_vehicle_experience' => 'nullable|array',
+            'pricing_attenuation_transport' => 'nullable|array',
+            'pricing_attenuation_driver' => 'nullable|array',
+            'pricing_extension' => 'nullable|array',
+            'pricing_depreciation' => 'nullable|array',
+            'pricing_toll' => 'nullable|array',
         ]);
 
         $user = Auth::user();
@@ -120,6 +146,9 @@ class SettingsController extends Controller
         } else {
             $companyId = $user->company_id;
         }
+
+        // Recupera settings esistenti per preservare pricing config non inviati
+        $existing = Settings::where('company_id', $companyId)->first();
 
         // Cerca o crea settings
         $settings = Settings::updateOrCreate(
@@ -156,6 +185,19 @@ class SettingsController extends Controller
                 'card_fees_reason' => $validated['card_fees_reason'] ?? null,
                 'telegram_trigger_status_id' => $validated['telegram_trigger_status_id'] ?? null,
                 'telegram_accepted_status_id' => $validated['telegram_accepted_status_id'] ?? null,
+                'pricing_markups' => $validated['pricing_markups'] ?? $existing->pricing_markups ?? null,
+                'pricing_vehicle_costs' => $validated['pricing_vehicle_costs'] ?? $existing->pricing_vehicle_costs ?? null,
+                'pricing_vehicle_assumptions' => $validated['pricing_vehicle_assumptions'] ?? $existing->pricing_vehicle_assumptions ?? null,
+                'pricing_annual_expenses' => $validated['pricing_annual_expenses'] ?? $existing->pricing_annual_expenses ?? null,
+                'pricing_season_service' => $validated['pricing_season_service'] ?? $existing->pricing_season_service ?? null,
+                'pricing_vehicle_service' => $validated['pricing_vehicle_service'] ?? $existing->pricing_vehicle_service ?? null,
+                'pricing_season_experience' => $validated['pricing_season_experience'] ?? $existing->pricing_season_experience ?? null,
+                'pricing_vehicle_experience' => $validated['pricing_vehicle_experience'] ?? $existing->pricing_vehicle_experience ?? null,
+                'pricing_attenuation_transport' => $validated['pricing_attenuation_transport'] ?? $existing->pricing_attenuation_transport ?? null,
+                'pricing_attenuation_driver' => $validated['pricing_attenuation_driver'] ?? $existing->pricing_attenuation_driver ?? null,
+                'pricing_extension' => $validated['pricing_extension'] ?? $existing->pricing_extension ?? null,
+                'pricing_depreciation' => $validated['pricing_depreciation'] ?? $existing->pricing_depreciation ?? null,
+                'pricing_toll' => $validated['pricing_toll'] ?? $existing->pricing_toll ?? null,
             ]
         );
 
@@ -249,9 +291,19 @@ class SettingsController extends Controller
 
         $settings = Settings::where('company_id', $companyId)->first();
 
-        return response()->json([
+        $defaults = \Database\Seeders\PricingConfigSeeder::getDefaults();
+
+        $pricingConfig = [];
+        foreach ($defaults as $key => $defaultValue) {
+            $saved = $settings?->$key;
+            $pricingConfig[$key] = $saved !== null ? $saved : $defaultValue;
+        }
+
+        return response()->json(array_merge([
             'telegram_trigger_status_id' => $settings->telegram_trigger_status_id ?? null,
             'telegram_accepted_status_id' => $settings->telegram_accepted_status_id ?? null,
-        ]);
+            'deposit_percentage' => $settings->deposit_percentage ?? 30,
+            'card_fees_percentage' => $settings->card_fees_percentage ?? 5,
+        ], $pricingConfig));
     }
 }
