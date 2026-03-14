@@ -5,6 +5,7 @@ use App\Http\Controllers\EasyNCC\VehicleWebController;
 use App\Http\Controllers\EasyNCC\ServiceWebController;
 use App\Http\Controllers\EasyNCC\UserWebController;
 use App\Http\Controllers\EasyNCC\QuoteWebController;
+use App\Http\Controllers\EasyNCC\QuoteEmailTemplateWebController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -191,6 +192,17 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
         Route::get('/settings/pricing', function () {
             return inertia('EasyNCC/Settings/Pricing');
         })->name('settings.pricing')->middleware('role:super-admin,admin');
+
+        Route::get('/settings/quote-email-templates', [QuoteEmailTemplateWebController::class, 'index'])
+            ->name('settings.quote-email-templates')->middleware('role:super-admin,admin');
+
+        Route::get('/settings/sumup', function () {
+            return inertia('EasyNCC/Settings/SumupConfigs');
+        })->name('settings.sumup')->middleware('role:super-admin,admin');
+
+        Route::get('/settings/gmail', function () {
+            return inertia('EasyNCC/Settings/GmailAccounts');
+        })->name('settings.gmail')->middleware('role:super-admin,admin');
 
         // Telegram
         Route::prefix('telegram')->name('telegram.')->middleware('role:super-admin,admin')->group(function () {

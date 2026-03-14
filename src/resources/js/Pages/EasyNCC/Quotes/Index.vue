@@ -51,6 +51,16 @@
                                         </select>
                                     </BCol>
                                     <BCol md="2" class="mb-2">
+                                        <label class="form-label small">Stato</label>
+                                        <select v-model="filters.status" class="form-select form-select-sm" @change="loadQuotes(1)">
+                                            <option value="">Tutti</option>
+                                            <option value="draft">Bozza</option>
+                                            <option value="approved">Approvato</option>
+                                            <option value="sent">Inviato</option>
+                                            <option value="deposit_received">Acconto Ricevuto</option>
+                                        </select>
+                                    </BCol>
+                                    <BCol md="2" class="mb-2">
                                         <label class="form-label small">Stagionalità</label>
                                         <select v-model="filters.seasonality" class="form-select form-select-sm" @change="loadQuotes(1)">
                                             <option value="">Tutte</option>
@@ -107,15 +117,15 @@
                                         </th>
                                         <th>Destinazione</th>
                                         <th>Tipo</th>
+                                        <th>Stato</th>
                                         <th class="text-end text-nowrap" role="button" @click="sortBy('taxable_price_rounded')">
                                             Imponibile <i :class="sortIcon('taxable_price_rounded')"></i>
                                         </th>
-                                        <th class="text-end text-nowrap" role="button" @click="sortBy('final_price_rounded')">
-                                            Prezzo Finale <i :class="sortIcon('final_price_rounded')"></i>
-                                        </th>
                                         <th class="text-end">Prezzo Cliente</th>
-                                        <th>Creato da</th>
-                                        <th style="width: 120px">Azioni</th>
+                                        <th class="text-end">Deposito</th>
+                                        <th class="text-end">Saldo</th>
+                                        <th>Creato</th>
+                                        <th style="width: 160px">Azioni</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -127,15 +137,41 @@
                                         <td>
                                             <span class="badge bg-info-subtle text-info">{{ quote.service_type || '-' }}</span>
                                         </td>
+                                        <td>
+                                            <span class="badge" :class="`bg-${getStatusColor(quote.status)}-subtle text-${getStatusColor(quote.status)}`">
+                                                {{ getStatusLabel(quote.status) }}
+                                            </span>
+                                            <div v-if="getStatusDate(quote)" class="mt-1">
+                                                <small class="text-muted">{{ getStatusDate(quote) }}</small>
+                                            </div>
+                                            <button
+                                                v-if="quote.rendered_body_html && (quote.status === 'approved' || quote.status === 'sent' || quote.status === 'deposit_received')"
+                                                class="btn btn-link btn-sm p-0 mt-1 d-block"
+                                                @click="openEmailPreview(quote)"
+                                                title="Vedi email"
+                                            >
+                                                <i class="ri-mail-line me-1"></i><small>Vedi email</small>
+                                            </button>
+                                        </td>
                                         <td class="text-end">{{ formatCurrency(quote.taxable_price_rounded) }}</td>
-                                        <td class="text-end fw-semibold">{{ formatCurrency(quote.final_price_rounded) }}</td>
                                         <td class="text-end">
                                             <span :class="quote.client_price < quote.final_price_rounded ? 'text-success' : ''">
                                                 {{ formatCurrency(quote.client_price) }}
                                             </span>
                                         </td>
+                                        <td class="text-end">{{ formatCurrency(quote.deposit_total) }}</td>
+                                        <td class="text-end">
+                                            <div>{{ formatCurrency(quote.balance_taxable) }}</div>
+                                            <div v-if="quote.balance_handling_fees > 0">
+                                                <small class="text-muted">HF: {{ formatCurrency(quote.balance_handling_fees) }}</small>
+                                            </div>
+                                            <div v-if="quote.balance_card_fees > 0">
+                                                <small class="text-muted">CF: {{ formatCurrency(quote.balance_card_fees) }}</small>
+                                            </div>
+                                        </td>
                                         <td>
                                             <small class="text-muted">{{ quote.creator?.name }} {{ quote.creator?.surname }}</small>
+                                            <div><small class="text-muted">{{ formatDateTime(quote.created_at) }}</small></div>
                                         </td>
                                         <td>
                                             <div class="d-flex gap-1">
@@ -145,6 +181,16 @@
                                                 <Link :href="`/easyncc/quotes/${quote.id}/edit`" class="btn btn-sm btn-outline-primary" title="Modifica">
                                                     <i class="ri-pencil-line"></i>
                                                 </Link>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-sm btn-outline-warning"
+                                                    title="Duplica"
+                                                    @click="duplicateQuote(quote.id)"
+                                                    :disabled="duplicatingId === quote.id"
+                                                >
+                                                    <span v-if="duplicatingId === quote.id" class="spinner-border spinner-border-sm"></span>
+                                                    <i v-else class="ri-file-copy-line"></i>
+                                                </button>
                                                 <button
                                                     type="button"
                                                     class="btn btn-sm btn-outline-danger"
@@ -211,6 +257,19 @@
                 </BCard>
             </BCol>
         </BRow>
+        <!-- Email Preview Modal -->
+        <BModal v-model="showEmailModal" :title="emailPreviewTitle" hide-footer size="xl">
+            <div v-if="emailPreviewQuote">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Oggetto</label>
+                    <div class="form-control bg-light">{{ emailPreviewQuote.rendered_subject || '-' }}</div>
+                </div>
+                <div>
+                    <label class="form-label fw-bold">Corpo Email</label>
+                    <div class="border rounded p-3 bg-white" v-html="emailPreviewQuote.rendered_body_html"></div>
+                </div>
+            </div>
+        </BModal>
     </Layout>
 </template>
 
@@ -232,9 +291,13 @@ export default {
             pagination: { current_page: 1, last_page: 1, per_page: 10, total: 0 },
             sortField: 'created_at',
             sortDirection: 'desc',
+            duplicatingId: null,
+            showEmailModal: false,
+            emailPreviewQuote: null,
             filters: {
                 search: '',
                 service_type: '',
+                status: '',
                 seasonality: '',
                 date_from: '',
                 date_to: '',
@@ -242,6 +305,12 @@ export default {
         };
     },
     computed: {
+        emailPreviewTitle() {
+            if (!this.emailPreviewQuote) return 'Email';
+            const s = this.emailPreviewQuote.status;
+            if (s === 'sent' || s === 'deposit_received') return 'Email Inviata';
+            return 'Bozza Email';
+        },
         activeFiltersCount() {
             return Object.values(this.filters).filter(v => v !== '').length;
         },
@@ -300,8 +369,22 @@ export default {
             }
         },
         resetFilters() {
-            this.filters = { search: '', service_type: '', seasonality: '', date_from: '', date_to: '' };
+            this.filters = { search: '', service_type: '', status: '', seasonality: '', date_from: '', date_to: '' };
             this.loadQuotes(1);
+        },
+        async duplicateQuote(id) {
+            this.duplicatingId = id;
+            try {
+                const response = await axios.post(`/api/quotes/${id}/duplicate`);
+                if (response.data.success) {
+                    this.$inertia.visit(`/easyncc/quotes/${response.data.data.id}/edit`);
+                }
+            } catch (error) {
+                console.error('Error duplicating quote:', error);
+                alert(error.response?.data?.message || 'Errore durante la duplicazione del preventivo');
+            } finally {
+                this.duplicatingId = null;
+            }
         },
         async deleteQuote(id) {
             if (!confirm('Eliminare questo preventivo?')) return;
@@ -313,12 +396,33 @@ export default {
                 alert('Errore durante l\'eliminazione del preventivo');
             }
         },
+        openEmailPreview(quote) {
+            this.emailPreviewQuote = quote;
+            this.showEmailModal = true;
+        },
+        getStatusDate(quote) {
+            if (quote.status === 'deposit_received' && quote.deposit_received_at) return moment(quote.deposit_received_at).format('DD/MM/YYYY HH:mm');
+            if (quote.status === 'sent' && quote.sent_at) return moment(quote.sent_at).format('DD/MM/YYYY HH:mm');
+            if (quote.status === 'approved' && quote.approved_at) return moment(quote.approved_at).format('DD/MM/YYYY HH:mm');
+            return null;
+        },
         formatDate(date) {
             return date ? moment(date).format('DD/MM/YYYY') : '-';
+        },
+        formatDateTime(date) {
+            return date ? moment(date).format('DD/MM/YYYY HH:mm') : '-';
         },
         formatCurrency(amount) {
             if (amount === null || amount === undefined) return '-';
             return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(amount);
+        },
+        getStatusLabel(status) {
+            const labels = { draft: 'Bozza', approved: 'Approvato', sent: 'Inviato', deposit_received: 'Acconto Ricevuto' };
+            return labels[status] || status || 'Bozza';
+        },
+        getStatusColor(status) {
+            const colors = { draft: 'secondary', approved: 'warning', sent: 'info', deposit_received: 'success' };
+            return colors[status] || 'secondary';
         },
     },
 };

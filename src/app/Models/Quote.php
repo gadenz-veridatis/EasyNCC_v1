@@ -6,16 +6,24 @@ use App\Traits\HasCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Quote extends Model
 {
     use HasFactory, HasCompany, SoftDeletes;
 
+    const STATUS_DRAFT = 'draft';
+    const STATUS_APPROVED = 'approved';
+    const STATUS_SENT = 'sent';
+    const STATUS_DEPOSIT_RECEIVED = 'deposit_received';
+
     protected $fillable = [
         'company_id',
         'user_id',
+        'status',
         'client_name',
+        'client_email',
         'service_date',
         'reference_url',
         'notes',
@@ -57,6 +65,19 @@ class Quote extends Model
         'balance_taxable',
         'balance_handling_fees',
         'balance_card_fees',
+        'sumup_config_id',
+        'gmail_account_id',
+        'email_template_id',
+        'rendered_subject',
+        'rendered_body_html',
+        'sumup_checkout_id',
+        'sumup_checkout_url',
+        'gmail_draft_id',
+        'gmail_thread_id',
+        'service_id',
+        'approved_at',
+        'sent_at',
+        'deposit_received_at',
         'created_by',
         'updated_by',
     ];
@@ -96,6 +117,9 @@ class Quote extends Model
         'balance_taxable' => 'decimal:2',
         'balance_handling_fees' => 'decimal:2',
         'balance_card_fees' => 'decimal:2',
+        'approved_at' => 'datetime',
+        'sent_at' => 'datetime',
+        'deposit_received_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
@@ -111,5 +135,30 @@ class Quote extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function sumupConfig(): BelongsTo
+    {
+        return $this->belongsTo(SumupConfig::class);
+    }
+
+    public function gmailAccount(): BelongsTo
+    {
+        return $this->belongsTo(GmailAccount::class);
+    }
+
+    public function emailTemplate(): BelongsTo
+    {
+        return $this->belongsTo(QuoteEmailTemplate::class, 'email_template_id');
+    }
+
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(Service::class);
+    }
+
+    public function stateTransitions(): HasMany
+    {
+        return $this->hasMany(QuoteStateTransition::class)->orderBy('created_at');
     }
 }

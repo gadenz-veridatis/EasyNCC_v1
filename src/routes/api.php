@@ -25,6 +25,10 @@ use App\Http\Controllers\Api\TelegramNotificationController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\GlobalSearchController;
 use App\Http\Controllers\Api\QuoteController;
+use App\Http\Controllers\Api\QuoteEmailTemplateController;
+use App\Http\Controllers\Api\SumupConfigController;
+use App\Http\Controllers\Api\GmailAccountController;
+use App\Http\Controllers\Api\SumUpWebhookController;
 use App\Http\Controllers\Api\PricingDestinationController;
 
 /*
@@ -43,6 +47,10 @@ Route::post('/login', [UserController::class, 'login'])->name('api.login');
 
 // Telegram webhook - public endpoint (called by Telegram servers)
 Route::post('/telegram/webhook/{companyId}', [TelegramWebhookController::class, 'handle'])
+    ->where('companyId', '[0-9]+');
+
+// SumUp webhook - public endpoint (called by SumUp servers)
+Route::post('/sumup/webhook/{companyId}', [SumUpWebhookController::class, 'handle'])
     ->where('companyId', '[0-9]+');
 
 // Protected routes - require authentication + active user
@@ -202,6 +210,38 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::patch('quotes/{quote}', [QuoteController::class, 'update']);
         Route::delete('quotes/{quote}', [QuoteController::class, 'destroy']);
         Route::post('quotes/{id}/restore', [QuoteController::class, 'restore']);
+        Route::post('quotes/{quote}/transition', [QuoteController::class, 'transition']);
+        Route::get('quotes/{quote}/transitions', [QuoteController::class, 'getTransitions']);
+        Route::post('quotes/{quote}/preview-email', [QuoteController::class, 'previewEmail']);
+        Route::post('quotes/{quote}/duplicate', [QuoteController::class, 'duplicate']);
+    });
+
+    // Quote Email Templates - admin can manage
+    Route::middleware(['role:super-admin,admin'])->group(function () {
+        Route::get('quote-email-templates', [QuoteEmailTemplateController::class, 'index']);
+        Route::post('quote-email-templates', [QuoteEmailTemplateController::class, 'store']);
+        Route::get('quote-email-templates/placeholders', [QuoteEmailTemplateController::class, 'placeholders']);
+        Route::get('quote-email-templates/{id}', [QuoteEmailTemplateController::class, 'show']);
+        Route::put('quote-email-templates/{id}', [QuoteEmailTemplateController::class, 'update']);
+        Route::delete('quote-email-templates/{id}', [QuoteEmailTemplateController::class, 'destroy']);
+        Route::post('quote-email-templates/{id}/set-default', [QuoteEmailTemplateController::class, 'setDefault']);
+    });
+
+    // SumUp Configs - admin can manage
+    Route::middleware(['role:super-admin,admin'])->group(function () {
+        Route::get('sumup-configs', [SumupConfigController::class, 'index']);
+        Route::post('sumup-configs', [SumupConfigController::class, 'store']);
+        Route::put('sumup-configs/{id}', [SumupConfigController::class, 'update']);
+        Route::delete('sumup-configs/{id}', [SumupConfigController::class, 'destroy']);
+    });
+
+    // Gmail Accounts - admin can manage
+    Route::middleware(['role:super-admin,admin'])->group(function () {
+        Route::get('gmail-accounts', [GmailAccountController::class, 'index']);
+        Route::post('gmail-accounts', [GmailAccountController::class, 'store']);
+        Route::put('gmail-accounts/{id}', [GmailAccountController::class, 'update']);
+        Route::delete('gmail-accounts/{id}', [GmailAccountController::class, 'destroy']);
+        Route::post('gmail-accounts/{id}/test-connection', [GmailAccountController::class, 'testConnection']);
     });
 
     // Pricing Destinations - admin can manage, operator can read

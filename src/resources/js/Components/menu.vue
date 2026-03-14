@@ -414,6 +414,21 @@ export default {
                   Preventivi
                 </Link>
               </li>
+              <li class="nav-item">
+                <Link href="/easyncc/settings/quote-email-templates" class="nav-link">
+                  Template Email Preventivi
+                </Link>
+              </li>
+              <li class="nav-item">
+                <Link href="/easyncc/settings/sumup" class="nav-link">
+                  SumUp Merchant
+                </Link>
+              </li>
+              <li class="nav-item">
+                <Link href="/easyncc/settings/gmail" class="nav-link">
+                  Account Gmail
+                </Link>
+              </li>
             </ul>
           </div>
         </li>
