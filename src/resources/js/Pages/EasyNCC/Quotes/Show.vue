@@ -7,25 +7,7 @@
         <BRow>
             <BCol lg="12">
                 <!-- Workflow Stepper -->
-                <BCard no-body class="mb-3">
-                    <BCardBody>
-                        <div class="d-flex justify-content-between align-items-center position-relative" style="padding: 0 2rem;">
-                            <!-- Line behind steps -->
-                            <div class="position-absolute" style="top: 50%; left: 2rem; right: 2rem; height: 2px; background: #e9ecef; z-index: 0;"></div>
-                            <div v-for="(step, idx) in steps" :key="step.key" class="text-center position-relative" style="z-index: 1;">
-                                <div
-                                    class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-1"
-                                    :class="stepClass(idx)"
-                                    style="width: 40px; height: 40px;"
-                                >
-                                    <i v-if="idx < currentStepIndex" class="ri-check-line"></i>
-                                    <span v-else>{{ idx + 1 }}</span>
-                                </div>
-                                <small :class="idx <= currentStepIndex ? 'fw-semibold' : 'text-muted'">{{ step.label }}</small>
-                            </div>
-                        </div>
-                    </BCardBody>
-                </BCard>
+                <QuoteWorkflowStepper :status="quoteData.status" />
 
                 <!-- Status Info Banners -->
                 <BCard v-if="quoteData.status === 'sent'" no-body class="mb-3 border-info">
@@ -59,20 +41,19 @@
                     </BCardBody>
                 </BCard>
 
-                <!-- Dati Cliente e Servizio -->
+                <!-- Dati Cliente -->
                 <BCard no-body class="mb-3">
                     <BCardHeader class="d-flex justify-content-between align-items-center">
                         <h6 class="card-title mb-0">
                             <i class="ri-user-line me-2"></i>Preventivo #{{ quoteData.id }}
-                            <span class="badge ms-2" :class="`bg-${getStatusColor(quoteData.status)}`">
+                            <span class="badge bg-primary-subtle text-primary ms-2">v{{ quoteData.version }}</span>
+                            <span class="badge ms-1" :class="`bg-${getStatusColor(quoteData.status)}`">
                                 {{ getStatusLabel(quoteData.status) }}
                             </span>
                         </h6>
-                        <div class="d-flex gap-2">
-                            <Link :href="`/easyncc/quotes/${quoteData.id}/edit`" class="btn btn-sm btn-outline-primary">
-                                <i class="ri-pencil-line me-1"></i>Modifica
-                            </Link>
-                        </div>
+                        <Link :href="`/easyncc/quotes/${quoteData.id}/edit`" class="btn btn-sm btn-outline-primary">
+                            <i class="ri-pencil-line me-1"></i>Modifica
+                        </Link>
                     </BCardHeader>
                     <BCardBody>
                         <BRow>
@@ -89,18 +70,12 @@
                                 <div class="fw-semibold">{{ formatDate(quoteData.service_date) }}</div>
                             </BCol>
                             <BCol md="2" class="mb-3">
-                                <label class="form-label small text-muted">Destinazione</label>
-                                <div class="fw-semibold">{{ quoteData.destination_name || '-' }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-3">
-                                <label class="form-label small text-muted">Tipo Servizio</label>
-                                <div>
-                                    <span class="badge bg-info-subtle text-info">{{ quoteData.service_type || '-' }}</span>
-                                </div>
+                                <label class="form-label small text-muted">Servizi</label>
+                                <div class="fw-semibold">{{ (quoteData.items || []).length || 1 }} servizio/i</div>
                             </BCol>
                         </BRow>
                         <BRow v-if="quoteData.notes">
-                            <BCol md="12" class="mb-3">
+                            <BCol md="12">
                                 <label class="form-label small text-muted">Note</label>
                                 <div>{{ quoteData.notes }}</div>
                             </BCol>
@@ -108,123 +83,54 @@
                     </BCardBody>
                 </BCard>
 
-                <!-- Dettagli Servizio -->
+                <!-- Servizi -->
                 <BCard no-body class="mb-3">
                     <BCardHeader>
-                        <h6 class="card-title mb-0">
-                            <i class="ri-route-line me-2"></i>Dettagli Servizio
-                        </h6>
+                        <h6 class="card-title mb-0"><i class="ri-route-line me-2"></i>Servizi</h6>
                     </BCardHeader>
-                    <BCardBody>
-                        <BRow>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Km</label>
-                                <div class="fw-semibold">{{ quoteData.mileage }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Extra Km</label>
-                                <div class="fw-semibold">{{ quoteData.extra_km }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Durata (ore)</label>
-                                <div class="fw-semibold">{{ quoteData.duration_hours }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Estensione (ore)</label>
-                                <div class="fw-semibold">{{ quoteData.extension_hours }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Ore Spost. Extra</label>
-                                <div class="fw-semibold">{{ quoteData.extra_travel_hours }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Pedaggio</label>
-                                <div class="fw-semibold">{{ formatCurrency(quoteData.toll_cost) }}</div>
-                            </BCol>
-                        </BRow>
-                        <BRow class="mt-2">
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Pax</label>
-                                <div class="fw-semibold">{{ quoteData.pax_count }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Esperienza p.p.</label>
-                                <div class="fw-semibold">{{ formatCurrency(quoteData.experience_per_pax) }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Stagionalità</label>
-                                <div class="fw-semibold text-capitalize">{{ quoteData.seasonality }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Riempimento</label>
-                                <div class="fw-semibold text-capitalize">{{ quoteData.vehicle_fill }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">VAT</label>
-                                <div class="fw-semibold">{{ quoteData.vat_percentage }}%</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Card Fees</label>
-                                <div class="fw-semibold">{{ quoteData.card_fees_percentage }}%</div>
-                            </BCol>
-                        </BRow>
+                    <BCardBody v-if="quoteData.items && quoteData.items.length > 0" class="p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Destinazione</th>
+                                        <th>Tipo</th>
+                                        <th class="text-end">Km</th>
+                                        <th class="text-end">Ore</th>
+                                        <th class="text-end">Pax</th>
+                                        <th class="text-end">Pedaggio</th>
+                                        <th class="text-end">Imponibile</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(item, idx) in quoteData.items" :key="idx">
+                                        <td>{{ idx + 1 }}</td>
+                                        <td>{{ item.destination_name || '-' }}</td>
+                                        <td><span class="badge" :style="serviceTypeBadgeStyle(item.service_type, '#299cdb')">{{ item.service_type || '-' }}</span></td>
+                                        <td class="text-end">{{ item.mileage }}</td>
+                                        <td class="text-end">{{ item.duration_hours }}</td>
+                                        <td class="text-end">{{ item.pax_count }}</td>
+                                        <td class="text-end">{{ formatCurrency(item.toll_cost) }}</td>
+                                        <td class="text-end fw-bold">{{ formatCurrency(item.taxable_price) }}</td>
+                                    </tr>
+                                    <tr class="table-light fw-bold">
+                                        <td colspan="7" class="text-end">Totale</td>
+                                        <td class="text-end">{{ formatCurrency(itemsTotalTaxable) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </BCardBody>
+                    <BCardBody v-else>
+                        <p class="text-muted mb-0">Nessun servizio associato.</p>
                     </BCardBody>
                 </BCard>
 
                 <!-- Risultato Prezzo -->
                 <BCard no-body class="mb-3">
                     <BCardHeader class="bg-light">
-                        <h6 class="card-title mb-0">
-                            <i class="ri-calculator-line me-2"></i>Risultato Prezzo
-                        </h6>
-                    </BCardHeader>
-                    <BCardBody>
-                        <BRow>
-                            <BCol md="3" class="mb-2">
-                                <label class="form-label small text-muted">Imponibile Trasporto</label>
-                                <div class="fw-semibold">{{ formatCurrency(quoteData.taxable_transport) }}</div>
-                            </BCol>
-                            <BCol md="3" class="mb-2">
-                                <label class="form-label small text-muted">Imponibile Esperienze</label>
-                                <div class="fw-semibold">{{ formatCurrency(quoteData.taxable_experience) }}</div>
-                            </BCol>
-                            <BCol md="3" class="mb-2">
-                                <label class="form-label small text-muted">Maggiorazione</label>
-                                <div class="fw-semibold">{{ formatCurrency(quoteData.surcharge_amount) }}</div>
-                            </BCol>
-                            <BCol md="3" class="mb-2">
-                                <label class="form-label small text-muted">Trasferta</label>
-                                <div class="fw-semibold">{{ formatCurrency(quoteData.travel_costs) }}</div>
-                            </BCol>
-                        </BRow>
-                        <hr />
-                        <BRow>
-                            <BCol md="3" class="mb-2">
-                                <label class="form-label small text-muted">Imponibile Totale</label>
-                                <div class="fs-5 fw-bold text-primary">{{ formatCurrency(quoteData.taxable_price_rounded) }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">VAT</label>
-                                <div class="fw-semibold">{{ formatCurrency(quoteData.vat_amount) }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">CC Fees</label>
-                                <div class="fw-semibold">{{ formatCurrency(quoteData.cc_fees_amount) }}</div>
-                            </BCol>
-                            <BCol md="3" class="mb-2">
-                                <label class="form-label small text-muted">Prezzo Finale</label>
-                                <div class="fs-5 fw-bold text-success">{{ formatCurrency(quoteData.final_price_rounded) }}</div>
-                            </BCol>
-                        </BRow>
-                    </BCardBody>
-                </BCard>
-
-                <!-- Sconto e Deposito -->
-                <BCard no-body class="mb-3">
-                    <BCardHeader>
-                        <h6 class="card-title mb-0">
-                            <i class="ri-money-euro-circle-line me-2"></i>Sconto e Deposito
-                        </h6>
+                        <h6 class="card-title mb-0"><i class="ri-calculator-line me-2"></i>Risultato Prezzo</h6>
                     </BCardHeader>
                     <BCardBody>
                         <BRow>
@@ -236,41 +142,24 @@
                                 <label class="form-label small text-muted">Sconto</label>
                                 <div class="fw-semibold">{{ quoteData.discount_percentage }}%</div>
                             </BCol>
-                            <BCol v-if="quoteData.discount_name" md="3" class="mb-2">
-                                <label class="form-label small text-muted">Promozione</label>
-                                <div class="fw-semibold">{{ quoteData.discount_name }}</div>
+                            <BCol md="2" class="mb-2">
+                                <label class="form-label small text-muted">VAT</label>
+                                <div class="fw-semibold">{{ formatCurrency(quoteData.vat_amount) }}</div>
                             </BCol>
-                            <BCol v-if="quoteData.discount_percentage > 0" md="2" class="mb-2">
-                                <label class="form-label small text-muted">Imponibile Scontato</label>
-                                <div class="fw-semibold">{{ formatCurrency(quoteData.discounted_taxable) }}</div>
+                            <BCol md="3" class="mb-2">
+                                <label class="form-label small text-muted">Prezzo Finale</label>
+                                <div class="fs-5 fw-bold text-success">{{ formatCurrency(quoteData.final_price_rounded) }}</div>
                             </BCol>
                         </BRow>
+                        <hr />
                         <BRow>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Acconto Imponibile</label>
-                                <div class="fw-semibold">{{ formatCurrency(quoteData.deposit_taxable) }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Acconto Handling Fees</label>
-                                <div class="fw-semibold">{{ formatCurrency(quoteData.deposit_handling_fees) }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
+                            <BCol md="3" class="mb-2">
                                 <label class="form-label small text-muted">Acconto Totale</label>
                                 <div class="fw-semibold">{{ formatCurrency(quoteData.deposit_total) }}</div>
                             </BCol>
-                        </BRow>
-                        <BRow>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Saldo Imponibile</label>
+                            <BCol md="3" class="mb-2">
+                                <label class="form-label small text-muted">Saldo</label>
                                 <div class="fw-semibold">{{ formatCurrency(quoteData.balance_taxable) }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Saldo Handling Fees</label>
-                                <div class="fw-semibold">{{ formatCurrency(quoteData.balance_handling_fees) }}</div>
-                            </BCol>
-                            <BCol md="2" class="mb-2">
-                                <label class="form-label small text-muted">Saldo Card Fees</label>
-                                <div class="fw-semibold">{{ formatCurrency(quoteData.balance_card_fees) }}</div>
                             </BCol>
                         </BRow>
                     </BCardBody>
@@ -311,9 +200,7 @@
                                             </span>
                                         </td>
                                         <td>{{ t.actor ? `${t.actor.name} ${t.actor.surname}` : '-' }}</td>
-                                        <td>
-                                            <span class="badge bg-light text-dark">{{ t.transition_source }}</span>
-                                        </td>
+                                        <td><span class="badge bg-light text-dark">{{ t.transition_source }}</span></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -360,6 +247,10 @@ import { Head, Link } from '@inertiajs/vue3';
 import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import moment from "moment";
+import { useServiceTypeColor } from '@/composables/useServiceTypeColor.js';
+
+const { loadServiceTypes, serviceTypeBadgeStyle } = useServiceTypeColor();
+import QuoteWorkflowStepper from './components/QuoteWorkflowStepper.vue';
 
 const STATUS_LABELS = {
     draft: 'Bozza',
@@ -376,9 +267,10 @@ const STATUS_COLORS = {
 };
 
 export default {
-    components: { Head, Link, Layout, PageHeader },
+    components: { Head, Link, Layout, PageHeader, QuoteWorkflowStepper },
     props: {
         quote: { type: Object, required: true },
+        versions: { type: Array, default: () => [] },
     },
     data() {
         return {
@@ -387,25 +279,16 @@ export default {
         };
     },
     computed: {
-        steps() {
-            return [
-                { key: 'draft', label: 'Bozza' },
-                { key: 'approved', label: 'Approvato' },
-                { key: 'sent', label: 'Inviato' },
-                { key: 'deposit_received', label: 'Acconto Ricevuto' },
-            ];
-        },
-        currentStepIndex() {
-            const idx = this.steps.findIndex(s => s.key === this.quoteData.status);
-            return idx >= 0 ? idx : 0;
+        itemsTotalTaxable() {
+            if (!this.quoteData.items || !this.quoteData.items.length) return 0;
+            return this.quoteData.items.reduce((sum, item) => sum + (parseFloat(item.taxable_price) || 0), 0);
         },
     },
+    mounted() {
+        loadServiceTypes();
+    },
     methods: {
-        stepClass(idx) {
-            if (idx < this.currentStepIndex) return 'bg-success text-white';
-            if (idx === this.currentStepIndex) return 'bg-primary text-white';
-            return 'bg-light text-muted border';
-        },
+        serviceTypeBadgeStyle,
         getStatusLabel(status) {
             return STATUS_LABELS[status] || status;
         },
@@ -413,7 +296,7 @@ export default {
             return STATUS_COLORS[status] || 'secondary';
         },
         formatCurrency(amount) {
-            if (amount === null || amount === undefined) return '€ 0,00';
+            if (amount === null || amount === undefined) return '\u20AC 0,00';
             return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(amount);
         },
         formatDate(date) {

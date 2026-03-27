@@ -1,0 +1,6207 @@
+<template>
+    <Head :title="isEdit ? 'Modifica Servizio' : 'Nuovo Servizio'" />
+
+    <Layout>
+        <PageHeader :title="isEdit ? 'Modifica Servizio' : 'Nuovo Servizio'" pageTitle="Servizi" />
+
+        <BRow>
+            <BCol lg="12">
+                <form @submit.prevent>
+                    <BCard no-body class="service-form-card">
+                        <BCardHeader>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">{{ isEdit ? 'Modifica Servizio' : 'Nuovo Servizio' }}</h5>
+
+                                <!-- Quick Navigation - Compact Icon-only Style -->
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="text-muted small me-2" title="Navigazione Rapida">
+                                        <i class="ri-navigation-line"></i>
+                                    </span>
+                                    <a href="#section-identificativi" class="btn btn-sm btn-soft-primary px-2 py-1" title="Identificativi">
+                                        <i class="ri-file-list-3-line"></i>
+                                    </a>
+                                    <a href="#section-passeggeri" class="btn btn-sm btn-soft-primary px-2 py-1" title="Passeggeri">
+                                        <i class="ri-user-3-line"></i>
+                                    </a>
+                                    <a href="#section-committenti" class="btn btn-sm btn-soft-primary px-2 py-1" title="Committenti">
+                                        <i class="ri-building-line"></i>
+                                    </a>
+                                    <a href="#section-intermediari" class="btn btn-sm btn-soft-primary px-2 py-1" title="Intermediari">
+                                        <i class="ri-links-line"></i>
+                                    </a>
+                                    <a href="#section-veicolo" class="btn btn-sm btn-soft-primary px-2 py-1" title="Veicolo">
+                                        <i class="ri-car-line"></i>
+                                    </a>
+                                    <a href="#section-driver" class="btn btn-sm btn-soft-primary px-2 py-1" title="Driver">
+                                        <i class="ri-user-settings-line"></i>
+                                    </a>
+                                    <a href="#section-bagagli" class="btn btn-sm btn-soft-primary px-2 py-1" title="Bagagli">
+                                        <i class="ri-suitcase-line"></i>
+                                    </a>
+                                    <a href="#section-piano" class="btn btn-sm btn-soft-primary px-2 py-1" title="Piano Servizio">
+                                        <i class="ri-map-pin-line"></i>
+                                    </a>
+                                    <a href="#section-note" class="btn btn-sm btn-soft-primary px-2 py-1" title="Note">
+                                        <i class="ri-file-text-line"></i>
+                                    </a>
+                                    <a href="#section-prezzi" class="btn btn-sm btn-soft-primary px-2 py-1" title="Economics">
+                                        <i class="ri-money-euro-box-line"></i>
+                                    </a>
+                                    <a href="#section-contabilita" class="btn btn-sm btn-soft-primary px-2 py-1" title="Contabilità">
+                                        <i class="ri-calculator-line"></i>
+                                    </a>
+                                    <a href="#section-tasks" class="btn btn-sm btn-soft-primary px-2 py-1" title="Tasks">
+                                        <i class="ri-task-line"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </BCardHeader>
+                        <BCardBody class="service-form-body">
+                            <!-- Loading State -->
+                            <div v-if="loading" class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Caricamento...</span>
+                                </div>
+                            </div>
+
+                            <div v-else>
+                                <!-- Company Selection (only for super-admin) -->
+                                <div v-if="isSuperAdmin" class="alert alert-info mb-4">
+                                    <BRow>
+                                        <BCol md="12">
+                                            <label for="company_id" class="form-label fw-bold">Azienda *</label>
+                                            <select
+                                                id="company_id"
+                                                v-model="form.company_id"
+                                                class="form-select"
+                                                required
+                                                @change="onCompanyChange"
+                                            >
+                                                <option value="">Seleziona un'azienda</option>
+                                                <option v-for="company in companies" :key="company.id" :value="company.id">
+                                                    {{ company.name }}
+                                                </option>
+                                            </select>
+                                        </BCol>
+                                    </BRow>
+                                </div>
+
+                                <!-- FIELDSET 1: DATI IDENTIFICATIVI -->
+                                <fieldset id="section-identificativi" class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-file-list-3-line me-2"></i>Dati Identificativi
+                                    </legend>
+                                    <BRow>
+                                        <BCol md="4" class="mb-3">
+                                            <label for="reference_number" class="form-label">Identificativo Servizio *</label>
+                                            <input
+                                                id="reference_number"
+                                                v-model="form.reference_number"
+                                                type="text"
+                                                class="form-control"
+                                                required
+                                                placeholder="Es. SRV001"
+                                            />
+                                        </BCol>
+                                        <BCol md="4" class="mb-3">
+                                            <label for="service_type" class="form-label">Tipologia Servizio *</label>
+                                            <select
+                                                id="service_type"
+                                                v-model="form.service_type"
+                                                class="form-select"
+                                                required
+                                            >
+                                                <option value="">Seleziona tipologia</option>
+                                                <option v-for="serviceType in serviceTypes" :key="serviceType.id" :value="serviceType.name">
+                                                    {{ serviceType.abbreviation }} - {{ serviceType.name }}
+                                                </option>
+                                            </select>
+                                        </BCol>
+                                        <BCol md="4" class="mb-3">
+                                            <label for="passenger_count" class="form-label">Numero Passeggeri *</label>
+                                            <input
+                                                id="passenger_count"
+                                                v-model.number="form.passenger_count"
+                                                type="number"
+                                                class="form-control"
+                                                required
+                                                min="0"
+                                            />
+                                        </BCol>
+                                    </BRow>
+                                </fieldset>
+
+                                <!-- FIELDSET 2: PASSEGGERI -->
+                                <fieldset id="section-passeggeri" class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-user-3-line me-2"></i>Passeggeri
+                                    </legend>
+                                    <div v-for="(passenger, index) in form.passengers" :key="index" class="border rounded p-3 mb-3 bg-light">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <h6 class="mb-0">Passeggero {{ index + 1 }}</h6>
+                                            <button
+                                                type="button"
+                                                class="btn btn-sm btn-soft-danger"
+                                                @click="removePassenger(index)"
+                                                v-if="form.passengers.length > 1"
+                                            >
+                                                <i class="ri-delete-bin-line"></i>
+                                            </button>
+                                        </div>
+                                        <BRow>
+                                            <BCol md="3" class="mb-2">
+                                                <label class="form-label">Cognome *</label>
+                                                <input
+                                                    v-model="passenger.surname"
+                                                    type="text"
+                                                    class="form-control form-control-sm"
+                                                    required
+                                                />
+                                            </BCol>
+                                            <BCol md="3" class="mb-2">
+                                                <label class="form-label">Nome *</label>
+                                                <input
+                                                    v-model="passenger.name"
+                                                    type="text"
+                                                    class="form-control form-control-sm"
+                                                    required
+                                                />
+                                            </BCol>
+                                            <BCol md="3" class="mb-2">
+                                                <label class="form-label">Telefono</label>
+                                                <input
+                                                    v-model="passenger.phone"
+                                                    type="text"
+                                                    class="form-control form-control-sm"
+                                                />
+                                            </BCol>
+                                            <BCol md="3" class="mb-2">
+                                                <label class="form-label">Email</label>
+                                                <input
+                                                    v-model="passenger.email"
+                                                    type="email"
+                                                    class="form-control form-control-sm"
+                                                />
+                                            </BCol>
+                                            <BCol md="4" class="mb-2">
+                                                <label class="form-label">Nazionalità</label>
+                                                <select
+                                                    v-model="passenger.nationality"
+                                                    class="form-select form-select-sm"
+                                                >
+                                                    <option value="">Seleziona nazionalità</option>
+                                                    <option v-for="country in countries" :key="country.code" :value="country.name">
+                                                        {{ country.flag }} {{ country.name }}
+                                                    </option>
+                                                </select>
+                                            </BCol>
+                                            <BCol md="4" class="mb-2">
+                                                <label class="form-label">Provenienza</label>
+                                                <input
+                                                    v-model="passenger.origin"
+                                                    type="text"
+                                                    class="form-control form-control-sm"
+                                                />
+                                            </BCol>
+                                            <BCol md="4" class="mb-2">
+                                                <label class="form-label">Rif. Vettore Provenienza</label>
+                                                <input
+                                                    v-model="passenger.carrier_reference"
+                                                    type="text"
+                                                    class="form-control form-control-sm"
+                                                />
+                                            </BCol>
+                                        </BRow>
+                                    </div>
+                                    <button type="button" class="btn btn-soft-primary btn-sm" @click="addPassenger">
+                                        <i class="ri-add-line me-1"></i>Aggiungi Passeggero
+                                    </button>
+                                </fieldset>
+
+                                <!-- FIELDSET 3: COMMITTENTI -->
+                                <fieldset id="section-committenti" class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-building-line me-2"></i>Committenti
+                                    </legend>
+                                    <BRow>
+                                        <BCol md="12" class="mb-3">
+                                            <label for="client_id" class="form-label">Committente *</label>
+                                            <div class="d-flex gap-2">
+                                                <Multiselect
+                                                    :key="committentiKey"
+                                                    id="client_id"
+                                                    v-model="form.client_id"
+                                                    :options="searchCommittenti"
+                                                    :searchable="true"
+                                                    :loading="committentiLoading"
+                                                    :filter-results="false"
+                                                    :min-chars="0"
+                                                    :delay="300"
+                                                    :resolve-on-load="true"
+                                                    placeholder="Cerca committente..."
+                                                    no-options-text="Nessun committente trovato"
+                                                    no-results-text="Nessun risultato"
+                                                    @change="onClientChange"
+                                                    class="flex-grow-1"
+                                                    :required="true"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-soft-primary"
+                                                    @click="openNewCommittenteModal"
+                                                    title="Aggiungi nuovo committente"
+                                                >
+                                                    <i class="ri-add-line"></i>
+                                                </button>
+                                                <button
+                                                    v-if="hasPassengerData"
+                                                    type="button"
+                                                    class="btn btn-soft-success"
+                                                    @click="createCommittenteFromPassenger"
+                                                    :disabled="creatingCommittenteFromPassenger"
+                                                    title="Crea committente usando i dati del primo passeggero"
+                                                >
+                                                    <span v-if="creatingCommittenteFromPassenger" class="spinner-border spinner-border-sm"></span>
+                                                    <span v-else><i class="ri-user-3-line"></i><i class="ri-arrow-right-line"></i></span>
+                                                </button>
+                                            </div>
+                                        </BCol>
+                                    </BRow>
+                                </fieldset>
+
+                                <!-- FIELDSET 3b: INTERMEDIARI -->
+                                <fieldset id="section-intermediari" class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-links-line me-2"></i>Intermediari
+                                    </legend>
+                                    <BRow>
+                                        <BCol md="8" class="mb-3">
+                                            <label for="intermediary_id" class="form-label">Intermediario</label>
+                                            <div class="d-flex gap-2">
+                                                <Multiselect
+                                                    :key="intermediariKey"
+                                                    id="intermediary_id"
+                                                    v-model="form.intermediary_id"
+                                                    :options="searchIntermediari"
+                                                    :searchable="true"
+                                                    :loading="intermediariLoading"
+                                                    :filter-results="false"
+                                                    :min-chars="0"
+                                                    :delay="300"
+                                                    :resolve-on-load="true"
+                                                    placeholder="Cerca intermediario..."
+                                                    no-options-text="Nessun intermediario trovato"
+                                                    no-results-text="Nessun risultato"
+                                                    @change="onIntermediaryChange"
+                                                    class="flex-grow-1"
+                                                    :canClear="true"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-soft-primary"
+                                                    @click="openNewIntermediarioModal"
+                                                    title="Aggiungi nuovo intermediario"
+                                                >
+                                                    <i class="ri-add-line"></i>
+                                                </button>
+                                            </div>
+                                        </BCol>
+                                    </BRow>
+                                </fieldset>
+
+                                <!-- FIELDSET 4: VEICOLO -->
+                                <fieldset id="section-veicolo" class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-car-line me-2"></i>Veicolo
+                                    </legend>
+                                    <BRow>
+                                        <BCol md="6" class="mb-3">
+                                            <label for="supplier_id" class="form-label">Fornitore</label>
+                                            <div class="d-flex gap-2">
+                                                <Multiselect
+                                                    :key="fornitoriKey"
+                                                    id="supplier_id"
+                                                    v-model="form.supplier_id"
+                                                    :options="searchFornitori"
+                                                    :searchable="true"
+                                                    :loading="fornitoriLoading"
+                                                    :filter-results="false"
+                                                    :min-chars="0"
+                                                    :delay="300"
+                                                    :resolve-on-load="true"
+                                                    placeholder="Cerca fornitore..."
+                                                    no-options-text="Nessun fornitore trovato"
+                                                    no-results-text="Nessun risultato"
+                                                    @change="onSupplierChange"
+                                                    class="flex-grow-1"
+                                                    :canClear="true"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-soft-primary"
+                                                    @click="openNewFornitoreModal"
+                                                    title="Aggiungi nuovo fornitore"
+                                                >
+                                                    <i class="ri-add-line"></i>
+                                                </button>
+                                            </div>
+                                        </BCol>
+                                        <BCol md="8" class="mb-3">
+                                            <label for="vehicle_id" class="form-label">Veicolo *</label>
+                                            <Multiselect
+                                                id="vehicle_id"
+                                                v-model="form.vehicle_id"
+                                                :options="searchVehicles"
+                                                :searchable="true"
+                                                :loading="vehiclesLoading"
+                                                :filter-results="false"
+                                                :min-chars="0"
+                                                :delay="300"
+                                                :resolve-on-load="true"
+                                                placeholder="Cerca veicolo..."
+                                                no-options-text="Nessun veicolo trovato"
+                                                no-results-text="Nessun risultato"
+                                                class="flex-grow-1"
+                                                :required="true"
+                                                :disabled="form.vehicle_not_replaceable"
+                                            />
+                                        </BCol>
+                                        <BCol md="4" class="mb-3">
+                                            <label class="form-label d-block">&nbsp;</label>
+                                            <div class="form-check">
+                                                <input
+                                                    id="vehicle_not_replaceable"
+                                                    v-model="form.vehicle_not_replaceable"
+                                                    type="checkbox"
+                                                    class="form-check-input"
+                                                />
+                                                <label class="form-check-label" for="vehicle_not_replaceable">
+                                                    Veicolo non sostituibile
+                                                </label>
+                                            </div>
+                                        </BCol>
+                                    </BRow>
+
+                                </fieldset>
+
+                                <!-- FIELDSET 5: DRIVER -->
+                                <fieldset id="section-driver" class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-steering-2-line me-2"></i>Driver
+                                    </legend>
+                                    <BRow>
+                                        <BCol md="12" class="mb-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <label for="driver_select" class="form-label mb-0">Driver Assegnati *</label>
+                                                <div class="form-check">
+                                                    <input
+                                                        id="driver_not_replaceable"
+                                                        v-model="form.driver_not_replaceable"
+                                                        type="checkbox"
+                                                        class="form-check-input"
+                                                    />
+                                                    <label class="form-check-label" for="driver_not_replaceable">
+                                                        Autista non sostituibile
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <!-- Searchable dropdown for adding drivers -->
+                                            <Multiselect
+                                                id="driver_select"
+                                                :model-value="null"
+                                                :options="searchDrivers"
+                                                :searchable="true"
+                                                :loading="driversLoading"
+                                                :filter-results="false"
+                                                :min-chars="0"
+                                                :delay="300"
+                                                :resolve-on-load="true"
+                                                placeholder="Cerca un driver da aggiungere..."
+                                                no-options-text="Nessun driver trovato"
+                                                no-results-text="Nessun risultato"
+                                                class="mb-3"
+                                                :disabled="form.driver_not_replaceable"
+                                                @change="addDriverFromMultiselect"
+                                            />
+
+                                            <!-- Selected drivers as badges -->
+                                            <div v-if="selectedDrivers.length > 0" class="border rounded p-3 bg-light">
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    <div
+                                                        v-for="driver in selectedDrivers"
+                                                        :key="driver.id"
+                                                        class="badge bg-white border d-flex align-items-center gap-2 px-3 py-2"
+                                                        style="font-size: 0.9rem;"
+                                                    >
+                                                        <span
+                                                            class="rounded-circle"
+                                                            :style="{
+                                                                backgroundColor: driver.driver_profile?.color || '#6c757d',
+                                                                width: '12px',
+                                                                height: '12px',
+                                                                display: 'inline-block'
+                                                            }"
+                                                        ></span>
+                                                        <span class="text-dark">{{ driverLabel(driver) }}</span>
+                                                        <span v-if="driver.driver_profile?.allow_overlapping" class="badge bg-info-subtle text-info" style="font-size: 0.7rem;">
+                                                            Sovrapponibile
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            class="btn-close btn-sm"
+                                                            style="font-size: 0.7rem;"
+                                                            @click="removeDriver(driver.id)"
+                                                            :title="`Rimuovi ${driverLabel(driver)}`"
+                                                            :disabled="form.driver_not_replaceable"
+                                                        ></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-else class="alert alert-warning mb-0">
+                                                <i class="ri-alert-line me-1"></i>
+                                                Nessun driver assegnato. Seleziona almeno un driver dalla lista.
+                                            </div>
+
+                                            <small class="text-muted d-block mt-2">
+                                                Nota: Assegnando più driver allo stesso servizio, il sistema verificherà eventuali sovrapposizioni orarie per identificare potenziali conflitti.
+                                            </small>
+                                        </BCol>
+                                        <BCol md="6" class="mb-3">
+                                            <label for="external_driver_name" class="form-label">Nome Driver Esterno</label>
+                                            <input
+                                                id="external_driver_name"
+                                                v-model="form.external_driver_name"
+                                                type="text"
+                                                class="form-control"
+                                            />
+                                        </BCol>
+                                        <BCol md="6" class="mb-3">
+                                            <label for="external_driver_phone" class="form-label">Telefono Driver Esterno</label>
+                                            <input
+                                                id="external_driver_phone"
+                                                v-model="form.external_driver_phone"
+                                                type="text"
+                                                class="form-control"
+                                            />
+                                        </BCol>
+                                        <BCol md="4" class="mb-3">
+                                            <label for="dress_code_id" class="form-label">Dress Code</label>
+                                            <select
+                                                id="dress_code_id"
+                                                v-model="form.dress_code_id"
+                                                class="form-select"
+                                            >
+                                                <option value="">Nessuno</option>
+                                                <option v-for="dressCode in dressCodes" :key="dressCode.id" :value="dressCode.id">
+                                                    {{ dressCode.name }}
+                                                </option>
+                                            </select>
+                                        </BCol>
+                                    </BRow>
+
+                                </fieldset>
+
+                                <!-- FIELDSET 6: BAGAGLI -->
+                                <fieldset id="section-bagagli" class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-luggage-cart-line me-2"></i>Bagagli
+                                    </legend>
+                                    <BRow>
+                                        <BCol md="2" class="mb-3">
+                                            <label for="large_luggage" class="form-label">Bagagli Grandi</label>
+                                            <input
+                                                id="large_luggage"
+                                                v-model.number="form.large_luggage"
+                                                type="number"
+                                                class="form-control"
+                                                min="0"
+                                            />
+                                        </BCol>
+                                        <BCol md="2" class="mb-3">
+                                            <label for="medium_luggage" class="form-label">Bagagli Medi</label>
+                                            <input
+                                                id="medium_luggage"
+                                                v-model.number="form.medium_luggage"
+                                                type="number"
+                                                class="form-control"
+                                                min="0"
+                                            />
+                                        </BCol>
+                                        <BCol md="2" class="mb-3">
+                                            <label for="small_luggage" class="form-label">Bagagli Piccoli</label>
+                                            <input
+                                                id="small_luggage"
+                                                v-model.number="form.small_luggage"
+                                                type="number"
+                                                class="form-control"
+                                                min="0"
+                                            />
+                                        </BCol>
+                                        <BCol md="2" class="mb-3">
+                                            <label for="baby_seat_infant" class="form-label">Babyseat Ovetto</label>
+                                            <input
+                                                id="baby_seat_infant"
+                                                v-model.number="form.baby_seat_infant"
+                                                type="number"
+                                                class="form-control"
+                                                min="0"
+                                            />
+                                        </BCol>
+                                        <BCol md="2" class="mb-3">
+                                            <label for="baby_seat_standard" class="form-label">Babyseat Standard</label>
+                                            <input
+                                                id="baby_seat_standard"
+                                                v-model.number="form.baby_seat_standard"
+                                                type="number"
+                                                class="form-control"
+                                                min="0"
+                                            />
+                                        </BCol>
+                                        <BCol md="2" class="mb-3">
+                                            <label for="baby_seat_booster" class="form-label">Babyseat Booster</label>
+                                            <input
+                                                id="baby_seat_booster"
+                                                v-model.number="form.baby_seat_booster"
+                                                type="number"
+                                                class="form-control"
+                                                min="0"
+                                            />
+                                        </BCol>
+                                    </BRow>
+                                </fieldset>
+
+                                <!-- FIELDSET 7: PIANO DI SERVIZIO -->
+                                <fieldset id="section-piano" class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-map-pin-line me-2"></i>Piano di Servizio
+                                    </legend>
+
+                                    <!-- SUBFIELDSET: PICKUP -->
+                                    <fieldset class="border rounded p-3 mb-3 bg-light">
+                                        <legend class="float-none w-auto px-2 fs-6 fw-semibold text-success">
+                                            <i class="ri-map-pin-user-line me-1"></i>Pickup
+                                        </legend>
+                                        <BRow>
+                                            <BCol md="6" class="mb-3">
+                                                <label for="pickup_datetime" class="form-label fw-bold text-success fs-5">
+                                                    <i class="ri-calendar-event-line me-1"></i>Data/Ora Pickup *
+                                                </label>
+                                                <input
+                                                    id="pickup_datetime"
+                                                    v-model="form.pickup_datetime"
+                                                    type="datetime-local"
+                                                    class="form-control form-control-lg border-success"
+                                                    required
+                                                />
+                                            </BCol>
+                                            <BCol md="6" class="mb-3">
+                                                <label for="pickup_location" class="form-label fw-bold text-success fs-5">
+                                                    <i class="ri-map-pin-line me-1"></i>Luogo Pickup *
+                                                </label>
+                                                <input
+                                                    id="pickup_location"
+                                                    v-model="form.pickup_location"
+                                                    type="text"
+                                                    class="form-control form-control-lg border-success"
+                                                    placeholder="Es. Aeroporto Fiumicino, Hotel Excelsior..."
+                                                    required
+                                                />
+                                            </BCol>
+                                            <BCol md="12" class="mb-3">
+                                                <label for="pickup_address" class="form-label">Indirizzo Completo Pickup *</label>
+                                                <input
+                                                    id="pickup_address"
+                                                    v-model="form.pickup_address"
+                                                    type="text"
+                                                    class="form-control"
+                                                    placeholder="Via, numero civico, città, CAP"
+                                                    required
+                                                />
+                                            </BCol>
+                                            <BCol md="6" class="mb-3">
+                                                <label for="vehicle_departure_datetime" class="form-label">Data/Ora Uscita Mezzo *</label>
+                                                <div class="input-group">
+                                                    <input
+                                                        id="vehicle_departure_datetime"
+                                                        v-model="form.vehicle_departure_datetime"
+                                                        type="datetime-local"
+                                                        class="form-control"
+                                                        required
+                                                    />
+                                                    <button type="button" class="btn btn-outline-secondary" @click="form.vehicle_departure_datetime = form.pickup_datetime" title="Copia da Pickup">
+                                                        <i class="ri-file-copy-line"></i>
+                                                    </button>
+                                                </div>
+                                            </BCol>
+                                            <BCol md="3" class="mb-3">
+                                                <label for="pickup_latitude" class="form-label">Latitudine</label>
+                                                <input
+                                                    id="pickup_latitude"
+                                                    v-model="form.pickup_latitude"
+                                                    type="text"
+                                                    class="form-control"
+                                                    placeholder="Es. 41.9028"
+                                                />
+                                            </BCol>
+                                            <BCol md="3" class="mb-3">
+                                                <label for="pickup_longitude" class="form-label">Longitudine</label>
+                                                <input
+                                                    id="pickup_longitude"
+                                                    v-model="form.pickup_longitude"
+                                                    type="text"
+                                                    class="form-control"
+                                                    placeholder="Es. 12.4964"
+                                                />
+                                            </BCol>
+                                        </BRow>
+                                    </fieldset>
+
+                                    <!-- SUBFIELDSET: DROPOFF -->
+                                    <fieldset class="border rounded p-3 mb-3 bg-light">
+                                        <legend class="float-none w-auto px-2 fs-6 fw-semibold text-danger">
+                                            <i class="ri-map-pin-range-line me-1"></i>Dropoff
+                                        </legend>
+                                        <BRow>
+                                            <BCol md="6" class="mb-3">
+                                                <label for="dropoff_datetime" class="form-label fw-bold text-danger fs-5">
+                                                    <i class="ri-calendar-event-line me-1"></i>Data/Ora Dropoff *
+                                                </label>
+                                                <div class="input-group">
+                                                    <input
+                                                        id="dropoff_datetime"
+                                                        v-model="form.dropoff_datetime"
+                                                        type="datetime-local"
+                                                        class="form-control form-control-lg border-danger"
+                                                        required
+                                                    />
+                                                    <button type="button" class="btn btn-outline-danger" @click="form.dropoff_datetime = form.pickup_datetime" title="Copia da Pickup">
+                                                        <i class="ri-file-copy-line"></i>
+                                                    </button>
+                                                </div>
+                                            </BCol>
+                                            <BCol md="6" class="mb-3">
+                                                <label for="dropoff_location" class="form-label fw-bold text-danger fs-5">
+                                                    <i class="ri-map-pin-line me-1"></i>Luogo Dropoff *
+                                                </label>
+                                                <input
+                                                    id="dropoff_location"
+                                                    v-model="form.dropoff_location"
+                                                    type="text"
+                                                    class="form-control form-control-lg border-danger"
+                                                    placeholder="Es. Stazione Termini, Ufficio Cliente..."
+                                                    required
+                                                />
+                                            </BCol>
+                                            <BCol md="12" class="mb-3">
+                                                <label for="dropoff_address" class="form-label">Indirizzo Completo Dropoff *</label>
+                                                <input
+                                                    id="dropoff_address"
+                                                    v-model="form.dropoff_address"
+                                                    type="text"
+                                                    class="form-control"
+                                                    placeholder="Via, numero civico, città, CAP"
+                                                    required
+                                                />
+                                            </BCol>
+                                            <BCol md="6" class="mb-3">
+                                                <label for="vehicle_return_datetime" class="form-label">Data/Ora Rientro Mezzo *</label>
+                                                <div class="input-group">
+                                                    <input
+                                                        id="vehicle_return_datetime"
+                                                        v-model="form.vehicle_return_datetime"
+                                                        type="datetime-local"
+                                                        class="form-control"
+                                                        required
+                                                    />
+                                                    <button type="button" class="btn btn-outline-secondary" @click="form.vehicle_return_datetime = form.dropoff_datetime" title="Copia da Dropoff">
+                                                        <i class="ri-file-copy-line"></i>
+                                                    </button>
+                                                </div>
+                                            </BCol>
+                                            <BCol md="3" class="mb-3">
+                                                <label for="dropoff_latitude" class="form-label">Latitudine</label>
+                                                <input
+                                                    id="dropoff_latitude"
+                                                    v-model="form.dropoff_latitude"
+                                                    type="text"
+                                                    class="form-control"
+                                                    placeholder="Es. 41.9028"
+                                                />
+                                            </BCol>
+                                            <BCol md="3" class="mb-3">
+                                                <label for="dropoff_longitude" class="form-label">Longitudine</label>
+                                                <input
+                                                    id="dropoff_longitude"
+                                                    v-model="form.dropoff_longitude"
+                                                    type="text"
+                                                    class="form-control"
+                                                    placeholder="Es. 12.4964"
+                                                />
+                                            </BCol>
+                                        </BRow>
+                                    </fieldset>
+
+                                    <!-- SUBFIELDSET: ESPERIENZE -->
+                                    <fieldset class="border rounded p-3 mb-0 bg-light">
+                                        <legend class="float-none w-auto px-2 fs-6 fw-semibold text-info">
+                                            <i class="ri-calendar-check-line me-1"></i>Esperienze
+                                        </legend>
+
+                                        <!-- Show message if service not yet saved -->
+                                        <div v-if="!isEdit" class="alert alert-info mb-0">
+                                            <i class="ri-information-line me-1"></i>
+                                            Le esperienze potranno essere aggiunte dopo aver salvato il servizio.
+                                        </div>
+
+                                        <!-- Activity List for Edit Mode -->
+                                        <div v-else>
+                                            <!-- Existing Activities Table -->
+                                            <div v-if="form.activities && form.activities.length > 0" class="table-responsive mb-3">
+                                                <table class="table table-sm table-hover mb-0">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Inizio</th>
+                                                            <th>Fine</th>
+                                                            <th>Descrizione Esperienza</th>
+                                                            <th>Tipo</th>
+                                                            <th>Fornitore</th>
+                                                            <th>Costo</th>
+                                                            <th>€/Persona</th>
+                                                            <th>Pagamento</th>
+                                                            <th class="text-center">Azioni</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="activity in form.activities" :key="activity.id">
+                                                            <td>{{ formatDateTime(activity.start_time) }}</td>
+                                                            <td>{{ formatDateTime(activity.end_time) }}</td>
+                                                            <td>{{ activity.name }}</td>
+                                                            <td>
+                                                                <span v-if="getActivityTypeName(activity.activity_type_id)" class="badge bg-info-subtle text-info">
+                                                                    {{ getActivityTypeName(activity.activity_type_id) }}
+                                                                </span>
+                                                                <span v-else class="text-muted">-</span>
+                                                            </td>
+                                                            <td>
+                                                                <span v-if="activity.supplier">{{ activity.supplier.name }} {{ activity.supplier.surname }}</span>
+                                                                <span v-else class="text-muted">-</span>
+                                                            </td>
+                                                            <td>€ {{ formatAmount(activity.cost) }}</td>
+                                                            <td>€ {{ formatAmount(activity.cost_per_person) }}</td>
+                                                            <td>
+                                                                <span v-if="activity.payment_type" class="badge" :class="getPaymentTypeBadge(activity.payment_type)">
+                                                                    {{ activity.payment_type }}
+                                                                </span>
+                                                                <span v-else class="text-muted">-</span>
+                                                                <i v-if="activity.should_account" class="ri-calculator-line ms-1 text-success" title="Contabilizzato"></i>
+                                                            </td>
+                                                            <td class="text-center">
+                                                                <button
+                                                                    type="button"
+                                                                    class="btn btn-sm btn-soft-primary me-1"
+                                                                    @click="openActivityModal(activity)"
+                                                                    title="Modifica"
+                                                                >
+                                                                    <i class="ri-edit-line"></i>
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    class="btn btn-sm btn-soft-danger"
+                                                                    @click="removeActivity(activity.id)"
+                                                                    title="Elimina"
+                                                                >
+                                                                    <i class="ri-delete-bin-line"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <!-- Empty State -->
+                                            <div v-else class="alert alert-warning mb-3">
+                                                <i class="ri-alert-line me-1"></i>
+                                                Nessuna esperienza collegata a questo servizio.
+                                            </div>
+
+                                            <!-- Add Activity Button -->
+                                            <div class="text-end mb-3">
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-sm btn-primary"
+                                                    @click="openActivityModal()"
+                                                >
+                                                    <i class="ri-add-line me-1"></i>Aggiungi Esperienza
+                                                </button>
+                                            </div>
+
+                                            <!-- Conferma Prenotazioni Toggle -->
+                                            <BRow>
+                                                <BCol md="12">
+                                                    <div class="form-check form-switch">
+                                                        <input
+                                                            id="activity_confirmation_enabled"
+                                                            v-model="activityConfirmationEnabled"
+                                                            type="checkbox"
+                                                            class="form-check-input"
+                                                            @change="toggleActivityConfirmation"
+                                                        />
+                                                        <label class="form-check-label" for="activity_confirmation_enabled">
+                                                            <strong>Conferma prenotazioni</strong>
+                                                        </label>
+                                                        <small class="d-block text-muted">
+                                                            Quando attivo, crea automaticamente un task di conferma per ogni esperienza
+                                                        </small>
+                                                    </div>
+                                                </BCol>
+                                            </BRow>
+                                        </div>
+                                    </fieldset>
+                                </fieldset>
+
+                                <!-- FIELDSET 8: NOTE -->
+                                <fieldset id="section-note" class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-file-text-line me-2"></i>Note
+                                    </legend>
+                                    <BRow>
+                                        <BCol md="12" class="mb-3">
+                                            <label for="notes" class="form-label">Note</label>
+                                            <textarea
+                                                id="notes"
+                                                v-model="form.notes"
+                                                class="form-control"
+                                                rows="4"
+                                            ></textarea>
+                                        </BCol>
+                                    </BRow>
+                                </fieldset>
+
+                                <!-- FIELDSET: ALLEGATI SERVIZIO -->
+                                <div v-if="isEdit && props.service?.id">
+                                    <ServiceAttachments :service-id="props.service.id" />
+                                </div>
+
+                                <!-- FIELDSET: ECONOMICS -->
+                                <fieldset id="section-prezzi" class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-money-euro-box-line me-2"></i>Economics
+                                    </legend>
+
+                                    <!-- Sub-fieldset: Costi del Servizio -->
+                                    <fieldset class="border rounded p-3 mb-3 bg-light">
+                                        <legend class="fs-6 fw-semibold text-secondary mb-2">
+                                            <i class="ri-money-euro-circle-line me-1"></i>Costi del Servizio
+                                        </legend>
+
+                                        <!-- Commissione -->
+                                        <BRow>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="intermediary_commission" class="form-label">Commissione (&euro;)</label>
+                                                <input
+                                                    id="intermediary_commission"
+                                                    v-model.number="form.intermediary_commission"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    class="form-control form-control-sm"
+                                                    placeholder="0.00"
+                                                />
+                                            </BCol>
+                                        </BRow>
+
+                                        <!-- Spese del Veicolo -->
+                                        <fieldset class="border rounded p-3 mt-2 bg-white">
+                                            <legend class="fs-6 fw-semibold text-secondary mb-2">
+                                                <i class="ri-car-line me-1"></i>Spese del Veicolo
+                                            </legend>
+                                            <BRow>
+                                                <BCol md="3" class="mb-3">
+                                                    <label for="fuel_cost" class="form-label">Costo Carburanti (&euro;)</label>
+                                                    <input
+                                                        id="fuel_cost"
+                                                        v-model.number="form.fuel_cost"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control form-control-sm"
+                                                        placeholder="0.00"
+                                                    />
+                                                </BCol>
+                                                <BCol md="3" class="mb-3">
+                                                    <label for="toll_cost" class="form-label">Costo Pedaggio (&euro;)</label>
+                                                    <input
+                                                        id="toll_cost"
+                                                        v-model.number="form.toll_cost"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control form-control-sm"
+                                                        placeholder="0.00"
+                                                    />
+                                                </BCol>
+                                                <BCol md="3" class="mb-3">
+                                                    <label for="parking_cost" class="form-label">Costo Parcheggio (&euro;)</label>
+                                                    <input
+                                                        id="parking_cost"
+                                                        v-model.number="form.parking_cost"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control form-control-sm"
+                                                        placeholder="0.00"
+                                                    />
+                                                </BCol>
+                                                <BCol md="3" class="mb-3">
+                                                    <label for="other_vehicle_costs" class="form-label">Altri costi veicolo (&euro;)</label>
+                                                    <input
+                                                        id="other_vehicle_costs"
+                                                        v-model.number="form.other_vehicle_costs"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control form-control-sm"
+                                                        placeholder="0.00"
+                                                    />
+                                                </BCol>
+                                            </BRow>
+                                        </fieldset>
+
+                                        <!-- Spese del Driver -->
+                                        <fieldset class="border rounded p-3 mt-2 bg-white">
+                                            <legend class="fs-6 fw-semibold text-secondary mb-2">
+                                                <i class="ri-user-line me-1"></i>Spese del Driver
+                                            </legend>
+                                            <BRow>
+                                                <BCol md="4" class="mb-3">
+                                                    <label for="driver_compensation" class="form-label">Costo Driver (&euro;)</label>
+                                                    <input
+                                                        id="driver_compensation"
+                                                        v-model.number="form.driver_compensation"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control form-control-sm"
+                                                        placeholder="0.00"
+                                                    />
+                                                </BCol>
+                                                <BCol md="4" class="mb-3">
+                                                    <label for="colleague_cost" class="form-label">Costo Fornitore (&euro;)</label>
+                                                    <input
+                                                        id="colleague_cost"
+                                                        v-model.number="form.colleague_cost"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control form-control-sm"
+                                                        placeholder="0.00"
+                                                    />
+                                                </BCol>
+                                            </BRow>
+                                        </fieldset>
+                                    </fieldset>
+
+                                    <!-- Sub-fieldset: Prezzi di Vendita -->
+                                    <fieldset class="border rounded p-3 mb-3 bg-light">
+                                        <legend class="fs-6 fw-semibold text-secondary mb-2">
+                                            <i class="ri-price-tag-3-line me-1"></i>Prezzi di Vendita
+                                        </legend>
+
+                                        <!-- Riga 1: Prezzo base e parametri -->
+                                        <BRow>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="service_price" class="form-label fw-bold text-primary">
+                                                    <i class="ri-money-euro-circle-line me-1"></i>Prezzo Imponibile Totale
+                                                </label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="service_price"
+                                                        v-model.number="form.service_price"
+                                                        type="number"
+                                                        step="0.01"
+                                                        class="form-control border-primary"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            </BCol>
+                                            <BCol md="2" class="mb-3">
+                                                <label for="vat_rate" class="form-label">Aliquota IVA</label>
+                                                <select
+                                                    id="vat_rate"
+                                                    v-model.number="form.vat_rate"
+                                                    class="form-select"
+                                                >
+                                                    <option :value="10">10%</option>
+                                                    <option :value="22">22%</option>
+                                                </select>
+                                            </BCol>
+                                            <BCol md="3" class="mb-3">
+                                                <label for="card_fees_percentage" class="form-label">Card Fees %</label>
+                                                <div class="input-group">
+                                                    <input
+                                                        id="card_fees_percentage"
+                                                        v-model.number="form.card_fees_percentage"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        max="100"
+                                                        class="form-control"
+                                                        placeholder="5"
+                                                    />
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                            </BCol>
+                                            <BCol md="3" class="mb-3">
+                                                <label for="deposit_percentage" class="form-label">Acconto %</label>
+                                                <div class="input-group">
+                                                    <input
+                                                        id="deposit_percentage"
+                                                        v-model.number="form.deposit_percentage"
+                                                        type="number"
+                                                        step="1"
+                                                        min="0"
+                                                        max="100"
+                                                        class="form-control"
+                                                        placeholder="30"
+                                                    />
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                            </BCol>
+                                        </BRow>
+
+                                        <!-- Riga 2: Acconto -->
+                                        <BRow>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="deposit_taxable" class="form-label">Acconto Imponibile €</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="deposit_taxable"
+                                                        v-model.number="form.deposit_taxable"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <small class="text-muted">Imponibile × Acconto% / 100 (arr. 5€)</small>
+                                            </BCol>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="deposit_handling_fees" class="form-label">Acconto Handling Fees €</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="deposit_handling_fees"
+                                                        v-model.number="form.deposit_handling_fees"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <small class="text-muted">Acconto Imponibile × (1 + IVA%) (arr. 5€)</small>
+                                            </BCol>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="deposit_amount" class="form-label">Acconto Totale €</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="deposit_amount"
+                                                        v-model.number="form.deposit_amount"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <small class="text-muted">Con IVA e Card Fees × Acconto% (arr. 5€)</small>
+                                            </BCol>
+                                        </BRow>
+
+                                        <!-- Riga 3: Saldi -->
+                                        <BRow>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="balance_taxable" class="form-label">Saldo Imponibile</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="balance_taxable"
+                                                        v-model.number="form.balance_taxable"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <small class="text-muted">Imponibile - Acconto Imponibile</small>
+                                            </BCol>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="balance_handling_fees" class="form-label">Saldo Handling Fees</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="balance_handling_fees"
+                                                        v-model.number="form.balance_handling_fees"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <small class="text-muted">Con IVA × (100 - Acconto%) (arr. 5€)</small>
+                                            </BCol>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="balance_card_fees" class="form-label">Saldo Card Fees</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">€</span>
+                                                    <input
+                                                        id="balance_card_fees"
+                                                        v-model.number="form.balance_card_fees"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        class="form-control"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <small class="text-muted">Con IVA e Card Fees × (100 - Acconto%) (arr. 5€)</small>
+                                            </BCol>
+                                        </BRow>
+
+                                        <!-- Riga 4: Radio Tipo di Saldo per Contabilizzazione -->
+                                        <BRow class="mb-3">
+                                            <BCol md="12">
+                                                <label class="form-label fw-semibold">Importo Saldo per Contabilizzazione</label>
+                                                <div class="d-flex gap-4">
+                                                    <div class="form-check">
+                                                        <input
+                                                            id="balance_sale_type_taxable"
+                                                            v-model="form.balance_sale_type"
+                                                            type="radio"
+                                                            value="balance_taxable"
+                                                            class="form-check-input"
+                                                        />
+                                                        <label class="form-check-label" for="balance_sale_type_taxable">
+                                                            Saldo Imponibile
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input
+                                                            id="balance_sale_type_handling"
+                                                            v-model="form.balance_sale_type"
+                                                            type="radio"
+                                                            value="balance_handling_fees"
+                                                            class="form-check-input"
+                                                        />
+                                                        <label class="form-check-label" for="balance_sale_type_handling">
+                                                            Saldo Handling Fees
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input
+                                                            id="balance_sale_type_card"
+                                                            v-model="form.balance_sale_type"
+                                                            type="radio"
+                                                            value="balance_card_fees"
+                                                            class="form-check-input"
+                                                        />
+                                                        <label class="form-check-label" for="balance_sale_type_card">
+                                                            Saldo Card Fees
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted">Seleziona quale importo di saldo utilizzare per il movimento contabile di saldo vendita</small>
+                                            </BCol>
+                                        </BRow>
+
+                                        <!-- Bottone Calcola Corrispettivi -->
+                                        <BRow class="mb-3">
+                                            <BCol md="12" class="text-end">
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-soft-success"
+                                                    @click="calculateTotals"
+                                                >
+                                                    <i class="ri-calculator-line me-1"></i>Calcola Corrispettivi di Vendita
+                                                </button>
+                                            </BCol>
+                                        </BRow>
+                                    </fieldset>
+
+                                    <!-- Sub-fieldset: Gestione -->
+                                    <fieldset class="border rounded p-3 mb-3 bg-light">
+                                        <legend class="fs-6 fw-semibold text-secondary mb-2">
+                                            <i class="ri-settings-4-line me-1"></i>Gestione
+                                        </legend>
+                                        <BRow>
+                                            <BCol md="4" class="mb-3">
+                                                <label for="status_id" class="form-label">Stato Servizio *</label>
+                                                <select
+                                                    id="status_id"
+                                                    v-model="form.status_id"
+                                                    class="form-select"
+                                                    required
+                                                >
+                                                    <option value="">Seleziona stato</option>
+                                                    <option v-for="status in serviceStatuses" :key="status.id" :value="status.id">
+                                                        {{ status.name }}
+                                                    </option>
+                                                </select>
+                                            </BCol>
+                                            <BCol md="4" class="mb-3 d-flex align-items-center">
+                                                <div class="form-check form-switch">
+                                                    <input
+                                                        id="accounting_enabled"
+                                                        v-model="accountingEnabled"
+                                                        type="checkbox"
+                                                        class="form-check-input"
+                                                    />
+                                                    <label class="form-check-label" for="accounting_enabled">
+                                                        <strong>Contabilizza il servizio</strong>
+                                                    </label>
+                                                    <small class="d-block text-muted">
+                                                        Quando attivo, crea/aggiorna automaticamente i movimenti contabili di vendita (acconto e saldo) al salvataggio del servizio
+                                                    </small>
+                                                </div>
+                                            </BCol>
+                                            <BCol md="4" class="mb-3 d-flex align-items-center">
+                                                <div class="form-check form-switch">
+                                                    <input
+                                                        id="driver_must_collect"
+                                                        v-model="form.driver_must_collect"
+                                                        type="checkbox"
+                                                        class="form-check-input"
+                                                    />
+                                                    <label class="form-check-label" for="driver_must_collect">
+                                                        <strong>Driver deve incassare</strong>
+                                                    </label>
+                                                    <small class="d-block text-muted">
+                                                        Se attivo, il driver deve incassare il corrispettivo del servizio
+                                                    </small>
+                                                </div>
+                                            </BCol>
+                                        </BRow>
+                                    </fieldset>
+                                </fieldset>
+
+                                <!-- FIELDSET 10: CONTABILITÀ -->
+                                <fieldset id="section-contabilita" class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-file-list-3-line me-2"></i>Contabilità
+                                    </legend>
+
+                                    <!-- Riepilogo Contabile -->
+                                    <div v-if="isEdit && form.accounting_transactions && form.accounting_transactions.length > 0" class="border rounded p-3 mb-3 bg-light">
+                                        <fieldset>
+                                            <legend class="fs-6 fw-semibold text-primary mb-3">
+                                                <i class="ri-pie-chart-line me-2"></i>Riepilogo Contabile
+                                            </legend>
+                                            <BRow>
+                                                <!-- Vendite -->
+                                                <BCol md="4" lg="2" class="mb-3">
+                                                    <div class="card card-animate border border-success">
+                                                        <div class="card-body p-3">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-grow-1 overflow-hidden">
+                                                                    <p class="text-uppercase fw-medium text-muted text-truncate mb-1">Vendite</p>
+                                                                    <h5 class="mb-0 text-success">€ {{ formatAmount(accountingSummary.sales) }}</h5>
+                                                                </div>
+                                                                <div class="flex-shrink-0">
+                                                                    <i class="ri-money-euro-circle-line fs-2 text-success"></i>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </BCol>
+                                                <!-- Acquisti -->
+                                                <BCol md="4" lg="2" class="mb-3">
+                                                    <div class="card card-animate border border-danger">
+                                                        <div class="card-body p-3">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-grow-1 overflow-hidden">
+                                                                    <p class="text-uppercase fw-medium text-muted text-truncate mb-1">Acquisti</p>
+                                                                    <h5 class="mb-0 text-danger">€ {{ formatAmount(accountingSummary.purchases) }}</h5>
+                                                                </div>
+                                                                <div class="flex-shrink-0">
+                                                                    <i class="ri-shopping-cart-line fs-2 text-danger"></i>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </BCol>
+                                                <!-- Intermediazioni -->
+                                                <BCol md="4" lg="2" class="mb-3">
+                                                    <div class="card card-animate border border-warning">
+                                                        <div class="card-body p-3">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-grow-1 overflow-hidden">
+                                                                    <p class="text-uppercase fw-medium text-muted text-truncate mb-1">Intermediazioni</p>
+                                                                    <h5 class="mb-0 text-warning">€ {{ formatAmount(accountingSummary.intermediations) }}</h5>
+                                                                </div>
+                                                                <div class="flex-shrink-0">
+                                                                    <i class="ri-team-line fs-2 text-warning"></i>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </BCol>
+                                                <!-- Resi -->
+                                                <BCol md="4" lg="2" class="mb-3">
+                                                    <div class="card card-animate border border-info">
+                                                        <div class="card-body p-3">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-grow-1 overflow-hidden">
+                                                                    <p class="text-uppercase fw-medium text-muted text-truncate mb-1">Resi</p>
+                                                                    <h5 class="mb-0 text-info">€ {{ formatAmount(accountingSummary.supplierRefunds) }}</h5>
+                                                                </div>
+                                                                <div class="flex-shrink-0">
+                                                                    <i class="ri-refund-line fs-2 text-info"></i>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </BCol>
+                                                <!-- Rimborsi -->
+                                                <BCol md="4" lg="2" class="mb-3">
+                                                    <div class="card card-animate border border-secondary">
+                                                        <div class="card-body p-3">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-grow-1 overflow-hidden">
+                                                                    <p class="text-uppercase fw-medium text-muted text-truncate mb-1">Rimborsi</p>
+                                                                    <h5 class="mb-0 text-secondary">€ {{ formatAmount(accountingSummary.customerRefunds) }}</h5>
+                                                                </div>
+                                                                <div class="flex-shrink-0">
+                                                                    <i class="ri-hand-coin-line fs-2 text-secondary"></i>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </BCol>
+                                                <!-- Risultato Totale (moved to end) -->
+                                                <BCol md="4" lg="2" class="mb-3">
+                                                    <div class="card card-animate border" :class="accountingSummary.total >= 0 ? 'border-success' : 'border-danger'">
+                                                        <div class="card-body p-3">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-grow-1 overflow-hidden">
+                                                                    <p class="text-uppercase fw-medium text-muted text-truncate mb-1">Risultato</p>
+                                                                    <h5 class="mb-0" :class="accountingSummary.total >= 0 ? 'text-success' : 'text-danger'">
+                                                                        € {{ formatAmount(accountingSummary.total) }}
+                                                                    </h5>
+                                                                </div>
+                                                                <div class="flex-shrink-0">
+                                                                    <i :class="['fs-2', accountingSummary.total >= 0 ? 'ri-arrow-up-circle-line text-success' : 'ri-arrow-down-circle-line text-danger']"></i>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </BCol>
+                                            </BRow>
+                                        </fieldset>
+                                    </div>
+
+                                    <!-- Movimenti Contabili -->
+                                    <div class="mt-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="mb-0">Movimenti Contabili</h6>
+                                            <div class="d-flex gap-2">
+                                                <button
+                                                    v-if="isEdit && selectedTransactions.length > 0"
+                                                    type="button"
+                                                    class="btn btn-sm btn-soft-danger"
+                                                    @click="deleteSelectedTransactions"
+                                                >
+                                                    <i class="ri-delete-bin-line me-1"></i>Cancella Selezionati ({{ selectedTransactions.length }})
+                                                </button>
+                                                <button
+                                                    v-if="isEdit"
+                                                    type="button"
+                                                    class="btn btn-sm btn-primary"
+                                                    @click="openTransactionModal()"
+                                                >
+                                                    <i class="ri-add-line me-1"></i>Nuovo Movimento
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="alert alert-info" v-if="!isEdit">
+                                            I movimenti contabili potranno essere aggiunti dopo aver salvato il servizio.
+                                        </div>
+                                        <div v-else-if="form.accounting_transactions && form.accounting_transactions.length === 0" class="alert alert-warning">
+                                            Nessun movimento contabile collegato.
+                                        </div>
+                                        <div v-else-if="form.accounting_transactions" class="table-responsive">
+                                            <table class="table table-hover table-nowrap align-middle mb-0">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th scope="col" style="width: 30px;">
+                                                            <input
+                                                                type="checkbox"
+                                                                class="form-check-input"
+                                                                :checked="isAllTransactionsSelected"
+                                                                @change="toggleSelectAllTransactions"
+                                                                title="Seleziona tutti"
+                                                            />
+                                                        </th>
+                                                        <th>Data</th>
+                                                        <th>Tipo</th>
+                                                        <th>Importo</th>
+                                                        <th>Rata</th>
+                                                        <th>Causali</th>
+                                                        <th>Controparte</th>
+                                                        <th>Documenti</th>
+                                                        <th>Stato</th>
+                                                        <th>Azioni</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="transaction in form.accounting_transactions" :key="transaction.id">
+                                                        <td>
+                                                            <input
+                                                                v-if="!transaction.is_automatic"
+                                                                type="checkbox"
+                                                                class="form-check-input"
+                                                                :value="transaction.id"
+                                                                v-model="selectedTransactions"
+                                                            />
+                                                        </td>
+                                                        <td>{{ formatDate(transaction.transaction_date) }}</td>
+                                                        <td>
+                                                            <span
+                                                                :class="getTransactionTypeBadge(transaction.transaction_type)"
+                                                                :title="getTransactionTypeLabel(transaction.transaction_type)"
+                                                            >
+                                                                {{ getTransactionTypeAbbr(transaction.transaction_type) }}
+                                                            </span>
+                                                            <span v-if="transaction.is_automatic" class="badge bg-info-subtle text-info ms-1" title="Automatico">A</span>
+                                                            <span v-else class="badge bg-warning-subtle text-warning ms-1" title="Manuale">M</span>
+                                                        </td>
+                                                        <td class="fw-medium">
+                                                            € {{ parseFloat(transaction.amount).toFixed(2) }}
+                                                        </td>
+                                                        <td>
+                                                            <span
+                                                                class="badge bg-secondary-subtle text-secondary"
+                                                                :title="getInstallmentLabel(transaction.installment)"
+                                                            >
+                                                                {{ getInstallmentAbbr(transaction.installment) }}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span v-if="transaction.payment_reason || transaction.accounting_entry">
+                                                                <span v-if="transaction.payment_reason">{{ transaction.payment_reason }}</span>
+                                                                <br v-if="transaction.payment_reason && transaction.accounting_entry">
+                                                                <small v-if="transaction.accounting_entry" class="text-muted">
+                                                                    {{ transaction.accounting_entry.abbreviation || transaction.accounting_entry.name }}
+                                                                </small>
+                                                            </span>
+                                                            <span v-else class="text-muted">-</span>
+                                                        </td>
+                                                        <td>
+                                                            <span v-if="transaction.counterpart">
+                                                                {{ transaction.counterpart.name }} {{ transaction.counterpart.surname }}
+                                                                <br>
+                                                                <small class="text-muted">{{ transaction.counterpart.email }}</small>
+                                                            </span>
+                                                            <span v-else class="text-muted">-</span>
+                                                        </td>
+                                                        <td>
+                                                            <div v-if="transaction.document_number || transaction.document_due_date">
+                                                                <span v-if="transaction.document_number">{{ transaction.document_number }}</span>
+                                                                <span v-else class="text-muted">-</span>
+                                                                <br>
+                                                                <small v-if="transaction.document_due_date" :class="getDueDateClass(transaction)">
+                                                                    {{ formatDate(transaction.document_due_date) }}
+                                                                </small>
+                                                                <small v-else class="text-muted">-</small>
+                                                            </div>
+                                                            <span v-else class="text-muted">-</span>
+                                                        </td>
+                                                        <td>
+                                                            <span
+                                                                v-if="editingTransactionStatus !== transaction.id"
+                                                                @click="startEditTransactionStatus(transaction)"
+                                                                :class="getStatusBadge(transaction.status)"
+                                                                class="cursor-pointer"
+                                                                :title="getStatusLabel(transaction.status) + ' - Clicca per modificare'"
+                                                            >
+                                                                {{ getStatusAbbr(transaction.status) }}
+                                                            </span>
+                                                            <div v-else>
+                                                                <select
+                                                                    v-model="editingStatusValue"
+                                                                    class="form-select form-select-sm mb-1"
+                                                                    @keyup.esc="cancelEditTransactionStatus"
+                                                                    :ref="el => { if (el) statusInputRefs[transaction.id] = el }"
+                                                                    style="max-width: 130px;"
+                                                                >
+                                                                    <option
+                                                                        v-for="ts in filteredTransactionStatuses(transaction.transaction_type)"
+                                                                        :key="ts.code"
+                                                                        :value="ts.code"
+                                                                    >{{ ts.name }}</option>
+                                                                </select>
+                                                                <div class="d-flex gap-1">
+                                                                    <button
+                                                                        type="button"
+                                                                        class="btn btn-success btn-sm"
+                                                                        @click="saveTransactionStatus(transaction)"
+                                                                        title="Salva"
+                                                                    >
+                                                                        <i class="ri-check-line"></i> Salva
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="btn btn-secondary btn-sm"
+                                                                        @click="cancelEditTransactionStatus"
+                                                                        title="Annulla"
+                                                                    >
+                                                                        <i class="ri-close-line"></i> Annulla
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <div class="d-flex gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    class="btn btn-sm btn-soft-primary"
+                                                                    @click="openTransactionModal(transaction)"
+                                                                    title="Modifica"
+                                                                >
+                                                                    <i class="ri-edit-line"></i>
+                                                                </button>
+                                                                <button
+                                                                    v-if="!transaction.is_automatic"
+                                                                    type="button"
+                                                                    class="btn btn-sm btn-soft-danger"
+                                                                    @click="removeTransaction(transaction.id)"
+                                                                    title="Elimina"
+                                                                >
+                                                                    <i class="ri-delete-bin-line"></i>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </fieldset>
+
+                                <!-- FIELDSET 11: TASKS -->
+                                <fieldset id="section-tasks" class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-task-line me-2"></i>Task
+                                    </legend>
+                                    <div v-if="isEdit" class="d-flex justify-content-end mb-3">
+                                        <button type="button" @click="openTaskModal()" class="btn btn-primary btn-sm">
+                                            <i class="bx bx-plus me-1"></i>
+                                            Nuovo Task
+                                        </button>
+                                    </div>
+
+                                    <!-- Info message when not in edit mode -->
+                                    <div class="alert alert-info" v-if="!isEdit">
+                                        I task potranno essere aggiunti dopo aver salvato il servizio.
+                                    </div>
+
+                                    <!-- Tasks Table -->
+                                    <div v-else-if="serviceTasks.length > 0" class="table-responsive">
+                                        <table class="table table-hover table-nowrap align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th scope="col">Nome Task</th>
+                                                    <th scope="col">Scadenza</th>
+                                                    <th scope="col">Assegnatario</th>
+                                                    <th scope="col">Stato</th>
+                                                    <th scope="col">Note</th>
+                                                    <th scope="col">Azioni</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="task in sortedServiceTasks" :key="task.id">
+                                                    <td class="fw-medium">{{ task.name }}</td>
+                                                    <td>
+                                                        <span v-if="task.due_date" :class="getTaskDueDateClass(task)">
+                                                            {{ formatDate(task.due_date) }}
+                                                        </span>
+                                                        <span v-else class="text-muted">-</span>
+                                                    </td>
+                                                    <td>
+                                                        <div v-if="task.assigned_users && task.assigned_users.length > 0">
+                                                            <div v-for="(user, index) in task.assigned_users" :key="user.id" class="mb-1">
+                                                                {{ user.name }} {{ user.surname }}
+                                                                <br><small class="text-muted">{{ user.role }}</small>
+                                                            </div>
+                                                        </div>
+                                                        <span v-else class="text-muted">Non assegnato</span>
+                                                    </td>
+                                                    <td>
+                                                        <span :class="getTaskStatusBadgeClass(task.status)">
+                                                            {{ getTaskStatusLabel(task.status) }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <small class="text-muted">{{ task.notes ? (task.notes.substring(0, 50) + (task.notes.length > 50 ? '...' : '')) : '-' }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <button
+                                                            type="button"
+                                                            class="btn btn-sm btn-soft-primary me-2"
+                                                            @click="openTaskModal(task)"
+                                                        >
+                                                            <i class="bx bx-edit"></i>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            class="btn btn-sm btn-soft-danger"
+                                                            @click="deleteTask(task.id)"
+                                                        >
+                                                            <i class="bx bx-trash"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- No Tasks in edit mode -->
+                                    <div v-else class="text-center text-muted py-3">
+                                        <p class="mb-0">Nessun task associato a questo servizio</p>
+                                    </div>
+                                </fieldset>
+
+                                <!-- Audit Section -->
+                                <div v-if="isEdit && props.service" class="row mb-4 pt-3 border-top">
+                                    <div class="col-12">
+                                        <h6 class="text-muted mb-3">Informazioni di Sistema</h6>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-semibold">Creato da</label>
+                                        <p class="text-muted mb-0">
+                                            {{ props.service.creator ? `${props.service.creator.name || ''} ${props.service.creator.surname || ''}`.trim() : '-' }}
+                                            {{ props.service.created_at ? `il ${formatDateTime(props.service.created_at)}` : '' }}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-semibold">Ultimo aggiornamento da</label>
+                                        <p class="text-muted mb-0">
+                                            {{ props.service.updater ? `${props.service.updater.name || ''} ${props.service.updater.surname || ''}`.trim() : '-' }}
+                                            {{ props.service.updated_at ? `il ${formatDateTime(props.service.updated_at)}` : '' }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </BCardBody>
+                        <BCardFooter class="service-form-footer">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <Link :href="route('easyncc.services.index')" class="btn btn-secondary">
+                                    <i class="ri-arrow-left-line me-1"></i>Annulla
+                                </Link>
+                                <div>
+                                    <button type="button" class="btn btn-success me-2" :disabled="submitting" @click="saveAndStay">
+                                        <span v-if="submitting && !exitAfterSave" class="spinner-border spinner-border-sm me-2"></span>
+                                        <i v-else class="ri-save-line me-1"></i>
+                                        Salva
+                                    </button>
+                                    <button type="button" class="btn btn-primary" :disabled="submitting" @click="saveAndExit">
+                                        <span v-if="submitting && exitAfterSave" class="spinner-border spinner-border-sm me-2"></span>
+                                        <i v-else class="ri-save-line me-1"></i>
+                                        Salva ed Esci
+                                    </button>
+                                </div>
+                            </div>
+                        </BCardFooter>
+                    </BCard>
+                </form>
+            </BCol>
+        </BRow>
+
+        <!-- Activity Modal -->
+        <BModal
+            v-model="showActivityModal"
+            :title="activityForm.id ? 'Modifica Esperienza' : 'Nuova Esperienza'"
+            size="lg"
+            hide-footer
+            @hidden="cancelActivityEdit"
+        >
+            <!-- Fieldset 1: Anagrafica -->
+            <fieldset class="border rounded p-3 mb-3">
+                <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                    <i class="ri-file-list-3-line me-1"></i>
+                    Anagrafica
+                </legend>
+                <BRow>
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Fornitore</label>
+                            <Multiselect
+                                v-model="activityForm.supplier_id"
+                                :options="searchActivitySuppliers"
+                                :searchable="true"
+                                :filter-results="false"
+                                :min-chars="0"
+                                :delay="100"
+                                :resolve-on-load="true"
+                                placeholder="Cerca fornitore..."
+                                no-options-text="Nessun fornitore trovato"
+                                no-results-text="Nessun risultato"
+                                :canClear="true"
+                            />
+                        </div>
+                    </BCol>
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Tipologia</label>
+                            <select v-model="activityForm.activity_type_id" class="form-select">
+                                <option value="">Nessuna</option>
+                                <option v-for="type in activityTypes" :key="type.id" :value="type.id">
+                                    {{ type.name }}
+                                </option>
+                            </select>
+                        </div>
+                    </BCol>
+                    <BCol md="12">
+                        <div class="mb-3">
+                            <label class="form-label">Descrizione Esperienza <span class="text-danger">*</span></label>
+                            <input
+                                v-model="activityForm.name"
+                                type="text"
+                                class="form-control"
+                                required
+                            />
+                        </div>
+                    </BCol>
+                </BRow>
+            </fieldset>
+
+            <!-- Fieldset 2: Orario -->
+            <fieldset class="border rounded p-3 mb-3">
+                <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                    <i class="ri-time-line me-1"></i>
+                    Orario
+                </legend>
+                <BRow>
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Data e Ora Inizio</label>
+                            <input
+                                v-model="activityForm.start_time"
+                                type="datetime-local"
+                                class="form-control"
+                                :min="form.pickup_datetime"
+                                :max="form.dropoff_datetime"
+                            />
+                        </div>
+                    </BCol>
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Data e Ora Fine</label>
+                            <input
+                                v-model="activityForm.end_time"
+                                type="datetime-local"
+                                class="form-control"
+                                :min="activityForm.start_time || form.pickup_datetime"
+                                :max="form.dropoff_datetime"
+                            />
+                        </div>
+                    </BCol>
+                </BRow>
+            </fieldset>
+
+            <!-- Fieldset 3: Economics -->
+            <fieldset class="border rounded p-3 mb-3">
+                <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                    <i class="ri-money-euro-circle-line me-1"></i>
+                    Economics
+                </legend>
+                <BRow>
+                    <BCol md="4">
+                        <div class="mb-3">
+                            <label class="form-label">Costo Totale</label>
+                            <div class="input-group">
+                                <span class="input-group-text">€</span>
+                                <input
+                                    v-model="activityForm.cost"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    class="form-control"
+                                />
+                            </div>
+                        </div>
+                    </BCol>
+                    <BCol md="4">
+                        <div class="mb-3">
+                            <label class="form-label">Costo per Persona</label>
+                            <div class="input-group">
+                                <span class="input-group-text">€</span>
+                                <input
+                                    v-model="activityForm.cost_per_person"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    class="form-control"
+                                />
+                            </div>
+                        </div>
+                    </BCol>
+                    <BCol md="4">
+                        <div class="mb-3">
+                            <label class="form-label">Pagamento</label>
+                            <select v-model="activityForm.payment_type" class="form-select">
+                                <option value="">Seleziona</option>
+                                <option value="INCLUSO">Incluso</option>
+                                <option value="CLIENTE">Cliente</option>
+                                <option value="AGENZIA">Agenzia</option>
+                                <option value="NESSUNO">Nessuno</option>
+                            </select>
+                        </div>
+                    </BCol>
+                    <BCol md="6">
+                        <div class="mb-3 d-flex align-items-center" style="margin-top: 2rem;">
+                            <div class="form-check form-switch">
+                                <input
+                                    id="should_account"
+                                    v-model="activityForm.should_account"
+                                    type="checkbox"
+                                    class="form-check-input"
+                                />
+                                <label class="form-check-label" for="should_account">Contabilizza</label>
+                            </div>
+                        </div>
+                    </BCol>
+                </BRow>
+            </fieldset>
+
+            <!-- Fieldset 4: Note -->
+            <fieldset class="border rounded p-3 mb-3">
+                <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                    <i class="ri-file-text-line me-1"></i>
+                    Note
+                </legend>
+                <BRow>
+                    <BCol md="12">
+                        <div class="mb-3">
+                            <label class="form-label">Note</label>
+                            <textarea
+                                v-model="activityForm.notes"
+                                class="form-control"
+                                rows="3"
+                            ></textarea>
+                        </div>
+                    </BCol>
+                </BRow>
+            </fieldset>
+
+            <!-- Action Buttons -->
+            <div class="text-end">
+                <button
+                    type="button"
+                    class="btn btn-secondary me-2"
+                    @click="closeActivityModal"
+                >
+                    <i class="ri-close-line me-1"></i>Annulla
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-primary"
+                    @click="saveActivity"
+                    :disabled="!activityForm.name"
+                >
+                    <i :class="activityForm.id ? 'ri-save-line' : 'ri-add-line'" class="me-1"></i>
+                    {{ activityForm.id ? 'Aggiorna Esperienza' : 'Aggiungi Esperienza' }}
+                </button>
+            </div>
+        </BModal>
+
+        <!-- Transaction Modal -->
+        <BModal
+            v-model="showTransactionModal"
+            :title="transactionForm.id ? 'Modifica Movimento Contabile' : 'Nuovo Movimento Contabile'"
+            size="lg"
+            hide-footer
+            @hidden="cancelTransactionEdit"
+        >
+            <!-- Fieldset 1: Dati Principali -->
+            <fieldset class="border rounded p-3 mb-3">
+                <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                    <i class="ri-file-list-3-line me-1"></i>
+                    Dati Principali
+                </legend>
+                <BRow>
+                    <!-- Transaction Type -->
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Tipo Movimento <span class="text-danger">*</span></label>
+                            <select v-model="transactionForm.transaction_type" class="form-select" @change="onTransactionTypeChange" required :disabled="transactionForm.is_automatic">
+                                <option value="">Seleziona tipo</option>
+                                <option value="purchase">Acquisto (Costi da Fornitore)</option>
+                                <option value="sale">Vendita (Ricavi da Committente)</option>
+                                <option value="intermediation">Intermediazione (Commissioni)</option>
+                            </select>
+                            <small v-if="transactionForm.is_automatic" class="text-muted">Campo gestito automaticamente</small>
+                        </div>
+                    </BCol>
+
+                    <!-- Transaction Date -->
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Data Movimento <span class="text-danger">*</span></label>
+                            <input
+                                v-model="transactionForm.transaction_date"
+                                type="date"
+                                class="form-control"
+                                required
+                                :disabled="transactionForm.is_automatic"
+                            />
+                            <small v-if="transactionForm.is_automatic" class="text-muted">Campo gestito automaticamente</small>
+                        </div>
+                    </BCol>
+
+                    <!-- Amount -->
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Importo <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">€</span>
+                                <input
+                                    v-model="transactionForm.amount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    class="form-control"
+                                    required
+                                    :disabled="transactionForm.is_automatic"
+                                />
+                            </div>
+                            <small v-if="transactionForm.is_automatic" class="text-muted">Campo gestito automaticamente</small>
+                        </div>
+                    </BCol>
+
+                    <!-- Payment Reason (Causale) -->
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Causale Movimento</label>
+                            <input
+                                v-model="transactionForm.payment_reason"
+                                type="text"
+                                class="form-control"
+                                placeholder="Es. Pagamento servizio, Acconto, Saldo finale..."
+                            />
+                        </div>
+                    </BCol>
+
+                    <!-- Installment -->
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Rata <span class="text-danger">*</span></label>
+                            <select v-model="transactionForm.installment" class="form-select" required>
+                                <option value="">Seleziona rata</option>
+                                <option value="deposit">Acconto</option>
+                                <option value="balance">Saldo</option>
+                                <option value="supplier_refund">Reso Fornitore</option>
+                                <option value="customer_refund">Rimborso Cliente</option>
+                            </select>
+                        </div>
+                    </BCol>
+
+                    <!-- Status -->
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Stato <span class="text-danger">*</span></label>
+                            <select v-model="transactionForm.status" class="form-select" required>
+                                <option value="">Seleziona stato</option>
+                                <!-- Purchase and Intermediation are DARE (costs/expenses) - use to_pay/paid -->
+                                <option
+                                    v-for="ts in filteredTransactionStatuses(transactionForm.transaction_type)"
+                                    :key="ts.code"
+                                    :value="ts.code"
+                                >{{ ts.name }}</option>
+                            </select>
+                        </div>
+                    </BCol>
+                </BRow>
+            </fieldset>
+
+            <!-- Fieldset 2: Riferimenti -->
+            <fieldset class="border rounded p-3 mb-3">
+                <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                    <i class="ri-links-line me-1"></i>
+                    Riferimenti
+                </legend>
+                <BRow>
+                    <!-- Accounting Entry -->
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Causale Contabile</label>
+                            <select v-model="transactionForm.accounting_entry_id" class="form-select" :disabled="transactionForm.is_automatic">
+                                <option value="">Nessuna</option>
+                                <option v-for="entry in accountingEntries" :key="entry.id" :value="entry.id">
+                                    {{ entry.name }} ({{ entry.abbreviation }})
+                                </option>
+                            </select>
+                            <small v-if="transactionForm.is_automatic" class="text-muted">Campo gestito automaticamente</small>
+                        </div>
+                    </BCol>
+
+                    <!-- Counterpart -->
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Controparte</label>
+                            <select v-model="transactionForm.counterpart_id" class="form-select" :disabled="transactionForm.is_automatic">
+                                <option value="">Nessuna</option>
+                                <option v-for="user in filteredCounterparts" :key="user.id" :value="user.id">
+                                    {{ user.name }} {{ user.surname }} - {{ user.email }}
+                                </option>
+                            </select>
+                            <small v-if="transactionForm.is_automatic" class="text-muted d-block mt-1">Campo gestito automaticamente</small>
+                            <small v-else class="text-muted d-block mt-1">
+                                <span v-if="transactionForm.transaction_type === 'purchase'">Seleziona un Fornitore</span>
+                                <span v-else-if="transactionForm.transaction_type === 'sale'">Seleziona un Committente</span>
+                                <span v-else-if="transactionForm.transaction_type === 'intermediation'">Seleziona un Intermediario</span>
+                            </small>
+                        </div>
+                    </BCol>
+                </BRow>
+            </fieldset>
+
+            <!-- Fieldset 3: Documenti e Pagamenti -->
+            <fieldset class="border rounded p-3 mb-3">
+                <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                    <i class="ri-file-text-line me-1"></i>
+                    Documenti e Pagamenti
+                </legend>
+                <BRow>
+                    <!-- Document Number -->
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Numero Documento</label>
+                            <input
+                                v-model="transactionForm.document_number"
+                                type="text"
+                                class="form-control"
+                                placeholder="Es: FT-2024-001"
+                            />
+                        </div>
+                    </BCol>
+
+                    <!-- Document Due Date -->
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Scadenza Documento</label>
+                            <input
+                                v-model="transactionForm.document_due_date"
+                                type="date"
+                                class="form-control"
+                            />
+                        </div>
+                    </BCol>
+
+                    <!-- Payment Date -->
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Data Pagamento</label>
+                            <input
+                                v-model="transactionForm.payment_date"
+                                type="date"
+                                class="form-control"
+                            />
+                        </div>
+                    </BCol>
+
+                    <!-- Payment Type -->
+                    <BCol md="6">
+                        <div class="mb-3">
+                            <label class="form-label">Modalità Pagamento</label>
+                            <select v-model="transactionForm.payment_type" class="form-select">
+                                <option value="">Nessuna</option>
+                                <option v-for="type in paymentTypes" :key="type.id" :value="type.name">
+                                    {{ type.name }}
+                                </option>
+                            </select>
+                        </div>
+                    </BCol>
+
+                    <!-- IBAN -->
+                    <BCol md="12">
+                        <div class="mb-3">
+                            <label class="form-label">IBAN</label>
+                            <input
+                                v-model="transactionForm.iban"
+                                type="text"
+                                class="form-control"
+                                placeholder="IT60X0542811101000000123456"
+                            />
+                        </div>
+                    </BCol>
+                </BRow>
+            </fieldset>
+
+            <!-- Fieldset 4: Note -->
+            <fieldset class="border rounded p-3 mb-3">
+                <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                    <i class="ri-sticky-note-line me-1"></i>
+                    Note
+                </legend>
+                <BRow>
+                    <BCol md="12">
+                        <div class="mb-3">
+                            <label class="form-label">Note</label>
+                            <textarea
+                                v-model="transactionForm.notes"
+                                class="form-control"
+                                rows="4"
+                                placeholder="Note aggiuntive..."
+                            ></textarea>
+                        </div>
+                    </BCol>
+                </BRow>
+            </fieldset>
+
+            <!-- Form Actions -->
+            <div class="d-flex justify-content-end gap-2">
+                <button
+                    type="button"
+                    class="btn btn-soft-secondary"
+                    @click="closeTransactionModal"
+                >
+                    <i class="ri-close-line me-1"></i>
+                    Annulla
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-primary"
+                    @click="saveTransaction"
+                    :disabled="!transactionForm.transaction_date || !transactionForm.amount || !transactionForm.transaction_type || !transactionForm.installment || !transactionForm.status"
+                >
+                    <i :class="transactionForm.id ? 'ri-save-line' : 'ri-add-line'" class="me-1"></i>
+                    {{ transactionForm.id ? 'Aggiorna' : 'Crea' }} Movimento
+                </button>
+            </div>
+        </BModal>
+
+        <!-- Task Modal -->
+        <BModal
+            v-model="showTaskModal"
+            :title="taskForm.id ? 'Modifica Task' : 'Nuovo Task'"
+            size="lg"
+            hide-footer
+            @hidden="cancelTaskEdit"
+        >
+            <form @submit.prevent="saveTask">
+                <!-- Task Fields -->
+                <fieldset class="border rounded p-3 mb-3">
+                    <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                        <i class="ri-file-list-3-line me-1"></i>
+                        Anagrafica
+                    </legend>
+                    <BRow>
+                        <!-- Name -->
+                        <BCol md="12">
+                            <div class="mb-3">
+                                <label class="form-label">Nome Task <span class="text-danger">*</span></label>
+                                <input
+                                    v-model="taskForm.name"
+                                    type="text"
+                                    class="form-control"
+                                    required
+                                />
+                            </div>
+                        </BCol>
+
+                        <!-- Due Date -->
+                        <BCol md="6">
+                            <div class="mb-3">
+                                <label class="form-label">Scadenza</label>
+                                <input
+                                    v-model="taskForm.due_date"
+                                    type="date"
+                                    class="form-control"
+                                />
+                            </div>
+                        </BCol>
+
+                        <!-- Assigned To (Multi-Select) -->
+                        <BCol md="6">
+                            <div class="mb-3">
+                                <label class="form-label">Assegnatari</label>
+                                <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                    <div v-for="user in taskAssignableUsers" :key="user.id" class="form-check">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            :value="user.id"
+                                            v-model="taskForm.assigned_users"
+                                            :id="`task-assignee-${user.id}`"
+                                        />
+                                        <label class="form-check-label" :for="`task-assignee-${user.id}`">
+                                            {{ user.name }} {{ user.surname }} ({{ user.role }})
+                                        </label>
+                                    </div>
+                                    <div v-if="taskAssignableUsers.length === 0" class="text-muted small">
+                                        Nessun utente disponibile
+                                    </div>
+                                </div>
+                            </div>
+                        </BCol>
+
+                        <!-- Status -->
+                        <BCol md="12">
+                            <div class="mb-3">
+                                <label class="form-label">Stato <span class="text-danger">*</span></label>
+                                <select v-model="taskForm.status" class="form-select" required>
+                                    <option value="to_complete">Da Completare</option>
+                                    <option value="completed">Completato</option>
+                                    <option value="cancelled">Annullato</option>
+                                </select>
+                            </div>
+                        </BCol>
+                    </BRow>
+                </fieldset>
+
+                <!-- Note -->
+                <fieldset class="border rounded p-3 mb-3">
+                    <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                        <i class="ri-file-text-line me-1"></i>
+                        Note
+                    </legend>
+                    <BRow>
+                        <BCol md="12">
+                            <div class="mb-3">
+                                <label class="form-label">Note</label>
+                                <textarea
+                                    v-model="taskForm.notes"
+                                    class="form-control"
+                                    rows="4"
+                                ></textarea>
+                            </div>
+                        </BCol>
+                    </BRow>
+                </fieldset>
+
+                <!-- Error Messages -->
+                <div v-if="taskErrors.length > 0" class="alert alert-danger">
+                    <ul class="mb-0">
+                        <li v-for="(error, index) in taskErrors" :key="index">{{ error }}</li>
+                    </ul>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-soft-secondary" @click="cancelTaskEdit">
+                        Annulla
+                    </button>
+                    <button type="submit" class="btn btn-primary" :disabled="taskSaving">
+                        <span v-if="taskSaving" class="spinner-border spinner-border-sm me-2"></span>
+                        <i v-else :class="taskForm.id ? 'ri-save-line' : 'ri-add-line'" class="me-1"></i>
+                        {{ taskForm.id ? 'Aggiorna' : 'Crea' }}
+                    </button>
+                </div>
+            </form>
+        </BModal>
+
+        <!-- Modal: Conferma Sovrapposizioni -->
+        <BModal
+            v-model="showOverlapModal"
+            title="Sovrapposizioni Rilevate"
+            size="lg"
+            hide-footer
+            no-close-on-backdrop
+        >
+            <div class="alert alert-warning mb-3">
+                <i class="ri-alert-line me-2"></i>
+                Sono state rilevate sovrapposizioni temporali per questo servizio. Confermare per procedere con il salvataggio.
+            </div>
+
+            <!-- Current service info -->
+            <div class="card bg-light mb-3">
+                <div class="card-body py-2">
+                    <h6 class="card-title mb-2">Servizio corrente</h6>
+                    <div class="d-flex flex-wrap gap-3">
+                        <div v-if="currentServiceVehicle">
+                            <i class="ri-car-line me-1 text-primary"></i>
+                            <strong>{{ currentServiceVehicle }}</strong>
+                        </div>
+                        <div v-if="currentServiceDrivers">
+                            <i class="ri-user-line me-1 text-success"></i>
+                            <strong>{{ currentServiceDrivers }}</strong>
+                        </div>
+                        <div>
+                            <i class="ri-time-line me-1 text-info"></i>
+                            <small>{{ formatDateTime(form.vehicle_departure_datetime) }} - {{ formatDateTime(form.vehicle_return_datetime) }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sovrapposizioni con servizi -->
+            <div v-if="serviceOverlaps.length > 0">
+                <h6 class="mb-2">Servizi in sovrapposizione:</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Servizio</th>
+                                <th>Tipo Sovrapposizione</th>
+                                <th>Risorsa Sovrapposta</th>
+                                <th>Periodo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(overlap, index) in serviceOverlaps" :key="'svc-' + index">
+                                <td>
+                                    <strong>{{ overlap.overlapping_service_reference || '#' + overlap.overlapping_service_id }}</strong>
+                                </td>
+                                <td>
+                                    <span v-if="overlap.overlap_type === 'vehicle'" class="badge bg-info">Veicolo</span>
+                                    <span v-else-if="overlap.overlap_type === 'driver'" class="badge bg-warning">Autista</span>
+                                    <span v-else-if="overlap.overlap_type === 'both'" class="badge bg-danger">Veicolo + Autista</span>
+                                </td>
+                                <td>
+                                    <div v-if="overlap.vehicle_plate" class="text-info mb-1">
+                                        <i class="ri-car-line me-1"></i>
+                                        <strong>{{ overlap.vehicle_plate }}</strong>
+                                        <small class="text-muted ms-1">{{ overlap.vehicle_brand }} {{ overlap.vehicle_model }}</small>
+                                    </div>
+                                    <div v-if="overlap.driver_name" class="text-warning">
+                                        <i class="ri-user-line me-1"></i>
+                                        <strong>{{ overlap.driver_name }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <small>
+                                        {{ formatDateTime(overlap.service_departure) }} -
+                                        {{ formatDateTime(overlap.service_return) }}
+                                    </small>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Conflitti con indisponibilità -->
+            <div v-if="unavailabilityConflicts.length > 0">
+                <h6 class="mb-2 text-danger">
+                    <i class="ri-error-warning-line me-1"></i>Conflitti con periodi di indisponibilità:
+                </h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Risorsa</th>
+                                <th>Motivo</th>
+                                <th>Periodo Indisponibilità</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(conflict, index) in unavailabilityConflicts" :key="'unavail-' + index" class="table-danger">
+                                <td>
+                                    <span v-if="conflict.overlap_type === 'vehicle_unavailability'" class="badge bg-secondary">
+                                        <i class="ri-car-line me-1"></i>Veicolo
+                                    </span>
+                                    <span v-else-if="conflict.overlap_type === 'driver_unavailability'" class="badge bg-danger">
+                                        <i class="ri-user-line me-1"></i>Autista
+                                    </span>
+                                </td>
+                                <td>
+                                    <div v-if="conflict.vehicle_plate">
+                                        <strong>{{ conflict.vehicle_plate }}</strong>
+                                        <small class="text-muted ms-1">{{ conflict.vehicle_brand }} {{ conflict.vehicle_model }}</small>
+                                    </div>
+                                    <div v-if="conflict.driver_name">
+                                        <strong>{{ conflict.driver_name }}</strong>
+                                    </div>
+                                </td>
+                                <td>{{ conflict.unavailability_reason }}</td>
+                                <td>
+                                    <small>
+                                        {{ conflict.unavailability_start }} - {{ conflict.unavailability_end }}
+                                    </small>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-soft-secondary" @click="cancelOverlapConfirmation">
+                    Annulla
+                </button>
+                <button type="button" class="btn btn-warning" @click="confirmOverlapsAndSave">
+                    <i class="ri-check-line me-1"></i>
+                    Conferma e Salva
+                </button>
+            </div>
+        </BModal>
+
+        <!-- Modal: Nuovo Committente -->
+        <BModal
+            v-model="showNewCommittenteModal"
+            title="Nuovo Committente"
+            size="lg"
+            hide-footer
+            @hidden="resetCommittenteForm"
+        >
+            <form @submit.prevent="saveNewCommittente">
+                <BRow>
+                    <!-- Cognome (o Nome Azienda) -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_committente_surname" class="form-label">Cognome (o Nome Azienda) *</label>
+                        <input
+                            id="new_committente_surname"
+                            v-model="newCommittenteForm.surname"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newCommittenteErrors.surname }"
+                            placeholder="Cognome o Nome Azienda"
+                            required
+                        />
+                        <small v-if="newCommittenteErrors.surname" class="text-danger d-block mt-1">
+                            {{ newCommittenteErrors.surname[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Nome -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_committente_name" class="form-label">Nome</label>
+                        <input
+                            id="new_committente_name"
+                            v-model="newCommittenteForm.name"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newCommittenteErrors.name }"
+                            placeholder="Nome"
+                        />
+                        <small v-if="newCommittenteErrors.name" class="text-danger d-block mt-1">
+                            {{ newCommittenteErrors.name[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Telefono -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_committente_phone" class="form-label">Telefono</label>
+                        <input
+                            id="new_committente_phone"
+                            v-model="newCommittenteForm.phone"
+                            type="tel"
+                            class="form-control"
+                            :class="{ 'is-invalid': newCommittenteErrors.phone }"
+                            placeholder="+39 123 4567890"
+                        />
+                        <small v-if="newCommittenteErrors.phone" class="text-danger d-block mt-1">
+                            {{ newCommittenteErrors.phone[0] }}
+                        </small>
+                    </BCol>
+                </BRow>
+
+                <!-- Dati di sistema (collapsible) -->
+                <div class="border-top pt-3 mt-3">
+                    <div
+                        class="d-flex align-items-center justify-content-between mb-3"
+                        style="cursor: pointer;"
+                        @click="showSystemDataSection = !showSystemDataSection"
+                    >
+                        <h6 class="text-muted mb-0">
+                            <i class="ri-settings-3-line me-2"></i>Dati di sistema
+                        </h6>
+                        <i :class="showSystemDataSection ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'" class="text-muted"></i>
+                    </div>
+
+                    <div v-show="showSystemDataSection">
+                        <BRow>
+                            <!-- Username -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_committente_username" class="form-label">Username *</label>
+                                <input
+                                    id="new_committente_username"
+                                    v-model="newCommittenteForm.username"
+                                    type="text"
+                                    class="form-control"
+                                    :class="{ 'is-invalid': newCommittenteErrors.username }"
+                                    placeholder="username"
+                                    required
+                                    readonly
+                                />
+                                <small class="text-muted d-block mt-1">Generato automaticamente</small>
+                                <small v-if="newCommittenteErrors.username" class="text-danger d-block mt-1">
+                                    {{ newCommittenteErrors.username[0] }}
+                                </small>
+                            </BCol>
+
+                            <!-- Email -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_committente_email" class="form-label">Email *</label>
+                                <input
+                                    id="new_committente_email"
+                                    v-model="newCommittenteForm.email"
+                                    type="email"
+                                    class="form-control"
+                                    :class="{ 'is-invalid': newCommittenteErrors.email }"
+                                    placeholder="email@example.com"
+                                    required
+                                    readonly
+                                />
+                                <small class="text-muted d-block mt-1">Generato automaticamente</small>
+                                <small v-if="newCommittenteErrors.email" class="text-danger d-block mt-1">
+                                    {{ newCommittenteErrors.email[0] }}
+                                </small>
+                            </BCol>
+
+                            <!-- Password -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_committente_password" class="form-label">Password *</label>
+                                <div class="input-group">
+                                    <input
+                                        id="new_committente_password"
+                                        v-model="newCommittenteForm.password"
+                                        :type="showNewCommittentePassword ? 'text' : 'password'"
+                                        class="form-control"
+                                        :class="{ 'is-invalid': newCommittenteErrors.password }"
+                                        placeholder="Inserisci una password"
+                                        required
+                                        readonly
+                                    />
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary"
+                                        @click="showNewCommittentePassword = !showNewCommittentePassword"
+                                    >
+                                        <i :class="showNewCommittentePassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-1">Password di default</small>
+                                <small v-if="newCommittenteErrors.password" class="text-danger d-block mt-1">
+                                    {{ newCommittenteErrors.password[0] }}
+                                </small>
+                            </BCol>
+
+                            <!-- Password Confirmation -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_committente_password_confirmation" class="form-label">Conferma Password *</label>
+                                <div class="input-group">
+                                    <input
+                                        id="new_committente_password_confirmation"
+                                        v-model="newCommittenteForm.password_confirmation"
+                                        :type="showNewCommittentePasswordConfirmation ? 'text' : 'password'"
+                                        class="form-control"
+                                        :class="{ 'is-invalid': newCommittenteErrors.password_confirmation }"
+                                        placeholder="Conferma la password"
+                                        required
+                                        readonly
+                                    />
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary"
+                                        @click="showNewCommittentePasswordConfirmation = !showNewCommittentePasswordConfirmation"
+                                    >
+                                        <i :class="showNewCommittentePasswordConfirmation ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                                    </button>
+                                </div>
+                                <small v-if="newCommittenteErrors.password_confirmation" class="text-danger d-block mt-1">
+                                    {{ newCommittenteErrors.password_confirmation[0] }}
+                                </small>
+                            </BCol>
+                        </BRow>
+                    </div>
+                </div>
+
+                <!-- Info Message -->
+                <div class="alert alert-info mb-3 mt-3">
+                    <i class="ri-information-line me-2"></i>
+                    Sarà creato un utente committente non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-soft-secondary" @click="showNewCommittenteModal = false">
+                        Annulla
+                    </button>
+                    <button type="submit" class="btn btn-primary" :disabled="savingNewCommittente">
+                        <span v-if="savingNewCommittente" class="spinner-border spinner-border-sm me-2"></span>
+                        <i v-else class="ri-add-line me-1"></i>
+                        Crea Committente
+                    </button>
+                </div>
+            </form>
+        </BModal>
+
+        <!-- Modal: Nuovo Intermediario -->
+        <BModal
+            v-model="showNewIntermediarioModal"
+            title="Nuovo Intermediario"
+            size="lg"
+            hide-footer
+            @hidden="resetIntermediarioForm"
+        >
+            <form @submit.prevent="saveNewIntermediario">
+                <BRow>
+                    <!-- Cognome (o Nome Azienda) -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_intermediario_surname" class="form-label">Cognome (o Nome Azienda) *</label>
+                        <input
+                            id="new_intermediario_surname"
+                            v-model="newIntermediarioForm.surname"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newIntermediarioErrors.surname }"
+                            placeholder="Cognome o Nome Azienda"
+                            required
+                        />
+                        <small v-if="newIntermediarioErrors.surname" class="text-danger d-block mt-1">
+                            {{ newIntermediarioErrors.surname[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Nome -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_intermediario_name" class="form-label">Nome</label>
+                        <input
+                            id="new_intermediario_name"
+                            v-model="newIntermediarioForm.name"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newIntermediarioErrors.name }"
+                            placeholder="Nome"
+                        />
+                        <small v-if="newIntermediarioErrors.name" class="text-danger d-block mt-1">
+                            {{ newIntermediarioErrors.name[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Telefono -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_intermediario_phone" class="form-label">Telefono</label>
+                        <input
+                            id="new_intermediario_phone"
+                            v-model="newIntermediarioForm.phone"
+                            type="tel"
+                            class="form-control"
+                            :class="{ 'is-invalid': newIntermediarioErrors.phone }"
+                            placeholder="+39 123 4567890"
+                        />
+                        <small v-if="newIntermediarioErrors.phone" class="text-danger d-block mt-1">
+                            {{ newIntermediarioErrors.phone[0] }}
+                        </small>
+                    </BCol>
+                </BRow>
+
+                <!-- Dati di sistema (collapsible) -->
+                <div class="border-top pt-3 mt-3">
+                    <div
+                        class="d-flex align-items-center justify-content-between mb-3"
+                        style="cursor: pointer;"
+                        @click="showIntermediarioSystemDataSection = !showIntermediarioSystemDataSection"
+                    >
+                        <h6 class="text-muted mb-0">
+                            <i class="ri-settings-3-line me-2"></i>Dati di sistema
+                        </h6>
+                        <i :class="showIntermediarioSystemDataSection ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'" class="text-muted"></i>
+                    </div>
+
+                    <div v-show="showIntermediarioSystemDataSection">
+                        <BRow>
+                            <!-- Username -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_intermediario_username" class="form-label">Username *</label>
+                                <input
+                                    id="new_intermediario_username"
+                                    v-model="newIntermediarioForm.username"
+                                    type="text"
+                                    class="form-control"
+                                    :class="{ 'is-invalid': newIntermediarioErrors.username }"
+                                    placeholder="username"
+                                    required
+                                    readonly
+                                />
+                                <small class="text-muted d-block mt-1">Generato automaticamente</small>
+                                <small v-if="newIntermediarioErrors.username" class="text-danger d-block mt-1">
+                                    {{ newIntermediarioErrors.username[0] }}
+                                </small>
+                            </BCol>
+
+                            <!-- Email -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_intermediario_email" class="form-label">Email *</label>
+                                <input
+                                    id="new_intermediario_email"
+                                    v-model="newIntermediarioForm.email"
+                                    type="email"
+                                    class="form-control"
+                                    :class="{ 'is-invalid': newIntermediarioErrors.email }"
+                                    placeholder="email@example.com"
+                                    required
+                                    readonly
+                                />
+                                <small class="text-muted d-block mt-1">Generato automaticamente</small>
+                                <small v-if="newIntermediarioErrors.email" class="text-danger d-block mt-1">
+                                    {{ newIntermediarioErrors.email[0] }}
+                                </small>
+                            </BCol>
+
+                            <!-- Password -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_intermediario_password" class="form-label">Password *</label>
+                                <div class="input-group">
+                                    <input
+                                        id="new_intermediario_password"
+                                        v-model="newIntermediarioForm.password"
+                                        :type="showNewIntermediarioPassword ? 'text' : 'password'"
+                                        class="form-control"
+                                        :class="{ 'is-invalid': newIntermediarioErrors.password }"
+                                        placeholder="Inserisci una password"
+                                        required
+                                        readonly
+                                    />
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary"
+                                        @click="showNewIntermediarioPassword = !showNewIntermediarioPassword"
+                                    >
+                                        <i :class="showNewIntermediarioPassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-1">Password di default</small>
+                                <small v-if="newIntermediarioErrors.password" class="text-danger d-block mt-1">
+                                    {{ newIntermediarioErrors.password[0] }}
+                                </small>
+                            </BCol>
+
+                            <!-- Password Confirmation -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_intermediario_password_confirmation" class="form-label">Conferma Password *</label>
+                                <div class="input-group">
+                                    <input
+                                        id="new_intermediario_password_confirmation"
+                                        v-model="newIntermediarioForm.password_confirmation"
+                                        :type="showNewIntermediarioPasswordConfirmation ? 'text' : 'password'"
+                                        class="form-control"
+                                        :class="{ 'is-invalid': newIntermediarioErrors.password_confirmation }"
+                                        placeholder="Conferma la password"
+                                        required
+                                        readonly
+                                    />
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary"
+                                        @click="showNewIntermediarioPasswordConfirmation = !showNewIntermediarioPasswordConfirmation"
+                                    >
+                                        <i :class="showNewIntermediarioPasswordConfirmation ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                                    </button>
+                                </div>
+                                <small v-if="newIntermediarioErrors.password_confirmation" class="text-danger d-block mt-1">
+                                    {{ newIntermediarioErrors.password_confirmation[0] }}
+                                </small>
+                            </BCol>
+                        </BRow>
+                    </div>
+                </div>
+
+                <!-- Info Message -->
+                <div class="alert alert-info mb-3 mt-3">
+                    <i class="ri-information-line me-2"></i>
+                    Sarà creato un utente intermediario non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-soft-secondary" @click="showNewIntermediarioModal = false">
+                        Annulla
+                    </button>
+                    <button type="submit" class="btn btn-primary" :disabled="savingNewIntermediario">
+                        <span v-if="savingNewIntermediario" class="spinner-border spinner-border-sm me-2"></span>
+                        <i v-else class="ri-add-line me-1"></i>
+                        Crea Intermediario
+                    </button>
+                </div>
+            </form>
+        </BModal>
+
+        <!-- Modal: Nuovo Fornitore -->
+        <BModal
+            v-model="showNewFornitoreModal"
+            title="Nuovo Fornitore"
+            size="lg"
+            hide-footer
+            @hidden="resetFornitoreForm"
+        >
+            <form @submit.prevent="saveNewFornitore">
+                <BRow>
+                    <!-- Cognome (o Nome Azienda) -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_fornitore_surname" class="form-label">Cognome (o Nome Azienda) *</label>
+                        <input
+                            id="new_fornitore_surname"
+                            v-model="newFornitoreForm.surname"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newFornitoreErrors.surname }"
+                            placeholder="Cognome o Nome Azienda"
+                            required
+                        />
+                        <small v-if="newFornitoreErrors.surname" class="text-danger d-block mt-1">
+                            {{ newFornitoreErrors.surname[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Nome -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_fornitore_name" class="form-label">Nome</label>
+                        <input
+                            id="new_fornitore_name"
+                            v-model="newFornitoreForm.name"
+                            type="text"
+                            class="form-control"
+                            :class="{ 'is-invalid': newFornitoreErrors.name }"
+                            placeholder="Nome"
+                        />
+                        <small v-if="newFornitoreErrors.name" class="text-danger d-block mt-1">
+                            {{ newFornitoreErrors.name[0] }}
+                        </small>
+                    </BCol>
+
+                    <!-- Telefono -->
+                    <BCol md="6" class="mb-3">
+                        <label for="new_fornitore_phone" class="form-label">Telefono</label>
+                        <input
+                            id="new_fornitore_phone"
+                            v-model="newFornitoreForm.phone"
+                            type="tel"
+                            class="form-control"
+                            :class="{ 'is-invalid': newFornitoreErrors.phone }"
+                            placeholder="+39 123 4567890"
+                        />
+                        <small v-if="newFornitoreErrors.phone" class="text-danger d-block mt-1">
+                            {{ newFornitoreErrors.phone[0] }}
+                        </small>
+                    </BCol>
+                </BRow>
+
+                <!-- Dati di sistema (collapsible) -->
+                <div class="border-top pt-3 mt-3">
+                    <div
+                        class="d-flex align-items-center justify-content-between mb-3"
+                        style="cursor: pointer;"
+                        @click="showFornitoreSystemDataSection = !showFornitoreSystemDataSection"
+                    >
+                        <h6 class="text-muted mb-0">
+                            <i class="ri-settings-3-line me-2"></i>Dati di sistema
+                        </h6>
+                        <i :class="showFornitoreSystemDataSection ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'" class="text-muted"></i>
+                    </div>
+
+                    <div v-show="showFornitoreSystemDataSection">
+                        <BRow>
+                            <!-- Username -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_fornitore_username" class="form-label">Username *</label>
+                                <input
+                                    id="new_fornitore_username"
+                                    v-model="newFornitoreForm.username"
+                                    type="text"
+                                    class="form-control"
+                                    :class="{ 'is-invalid': newFornitoreErrors.username }"
+                                    placeholder="username"
+                                    required
+                                    readonly
+                                />
+                                <small class="text-muted d-block mt-1">Generato automaticamente</small>
+                                <small v-if="newFornitoreErrors.username" class="text-danger d-block mt-1">
+                                    {{ newFornitoreErrors.username[0] }}
+                                </small>
+                            </BCol>
+
+                            <!-- Email -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_fornitore_email" class="form-label">Email *</label>
+                                <input
+                                    id="new_fornitore_email"
+                                    v-model="newFornitoreForm.email"
+                                    type="email"
+                                    class="form-control"
+                                    :class="{ 'is-invalid': newFornitoreErrors.email }"
+                                    placeholder="email@example.com"
+                                    required
+                                    readonly
+                                />
+                                <small class="text-muted d-block mt-1">Generato automaticamente</small>
+                                <small v-if="newFornitoreErrors.email" class="text-danger d-block mt-1">
+                                    {{ newFornitoreErrors.email[0] }}
+                                </small>
+                            </BCol>
+
+                            <!-- Password -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_fornitore_password" class="form-label">Password *</label>
+                                <div class="input-group">
+                                    <input
+                                        id="new_fornitore_password"
+                                        v-model="newFornitoreForm.password"
+                                        :type="showNewFornitorePassword ? 'text' : 'password'"
+                                        class="form-control"
+                                        :class="{ 'is-invalid': newFornitoreErrors.password }"
+                                        placeholder="Inserisci una password"
+                                        required
+                                        readonly
+                                    />
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary"
+                                        @click="showNewFornitorePassword = !showNewFornitorePassword"
+                                    >
+                                        <i :class="showNewFornitorePassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-1">Password di default</small>
+                                <small v-if="newFornitoreErrors.password" class="text-danger d-block mt-1">
+                                    {{ newFornitoreErrors.password[0] }}
+                                </small>
+                            </BCol>
+
+                            <!-- Password Confirmation -->
+                            <BCol md="6" class="mb-3">
+                                <label for="new_fornitore_password_confirmation" class="form-label">Conferma Password *</label>
+                                <div class="input-group">
+                                    <input
+                                        id="new_fornitore_password_confirmation"
+                                        v-model="newFornitoreForm.password_confirmation"
+                                        :type="showNewFornitorePasswordConfirmation ? 'text' : 'password'"
+                                        class="form-control"
+                                        :class="{ 'is-invalid': newFornitoreErrors.password_confirmation }"
+                                        placeholder="Conferma la password"
+                                        required
+                                        readonly
+                                    />
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary"
+                                        @click="showNewFornitorePasswordConfirmation = !showNewFornitorePasswordConfirmation"
+                                    >
+                                        <i :class="showNewFornitorePasswordConfirmation ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                                    </button>
+                                </div>
+                                <small v-if="newFornitoreErrors.password_confirmation" class="text-danger d-block mt-1">
+                                    {{ newFornitoreErrors.password_confirmation[0] }}
+                                </small>
+                            </BCol>
+                        </BRow>
+                    </div>
+                </div>
+
+                <!-- Info Message -->
+                <div class="alert alert-info mb-3 mt-3">
+                    <i class="ri-information-line me-2"></i>
+                    Sarà creato un utente fornitore non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-soft-secondary" @click="showNewFornitoreModal = false">
+                        Annulla
+                    </button>
+                    <button type="submit" class="btn btn-primary" :disabled="savingNewFornitore">
+                        <span v-if="savingNewFornitore" class="spinner-border spinner-border-sm me-2"></span>
+                        <i v-else class="ri-add-line me-1"></i>
+                        Crea Fornitore
+                    </button>
+                </div>
+            </form>
+        </BModal>
+    </Layout>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, nextTick } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import Layout from '@/Layouts/vertical.vue';
+import PageHeader from '@/Components/page-header.vue';
+import Multiselect from '@vueform/multiselect';
+import '@vueform/multiselect/themes/default.css';
+import axios from 'axios';
+import moment from 'moment';
+import Swal from 'sweetalert2';
+import ServiceAttachments from '@/Components/ProfileFields/ServiceAttachments.vue';
+import { driverLabel } from '@/composables/useDriverLabel.js';
+
+const props = defineProps({
+    service: {
+        type: Object,
+        default: null
+    }
+});
+
+const isEdit = computed(() => !!props.service);
+const loading = ref(false);
+const submitting = ref(false);
+const exitAfterSave = ref(true); // Default: Salva ed Esci
+const pendingExitAfterSave = ref(true); // Store exit preference when overlaps are detected
+const showActivityModal = ref(false);
+const showTransactionModal = ref(false);
+const showTaskModal = ref(false);
+const showOverlapModal = ref(false);
+const detectedOverlaps = ref([]);
+
+// Computed: split detected overlaps into service overlaps and unavailability conflicts
+const serviceOverlaps = computed(() => {
+    return detectedOverlaps.value.filter(o => !['driver_unavailability', 'vehicle_unavailability'].includes(o.overlap_type));
+});
+const unavailabilityConflicts = computed(() => {
+    return detectedOverlaps.value.filter(o => ['driver_unavailability', 'vehicle_unavailability'].includes(o.overlap_type));
+});
+
+const showNewCommittenteModal = ref(false);
+const savingNewCommittente = ref(false);
+const showNewCommittentePassword = ref(false);
+const showNewCommittentePasswordConfirmation = ref(false);
+const showNewIntermediarioModal = ref(false);
+const savingNewIntermediario = ref(false);
+const showNewIntermediarioPassword = ref(false);
+const showNewIntermediarioPasswordConfirmation = ref(false);
+const showNewFornitoreModal = ref(false);
+const savingNewFornitore = ref(false);
+const showNewFornitorePassword = ref(false);
+const showNewFornitorePasswordConfirmation = ref(false);
+
+// Current user and companies
+const currentUser = ref(null);
+const companies = ref([]);
+
+// Lists
+const committentiKey = ref(0);
+const intermediariKey = ref(0);
+const fornitoriKey = ref(0);
+const committenti = ref([]);
+const committentiLoaded = ref(false);
+const committentiLoading = ref(false);
+const intermediari = ref([]);
+const intermediariLoaded = ref(false);
+const intermediariLoading = ref(false);
+const fornitori = ref([]);
+const fornitoriLoaded = ref(false);
+const fornitoriLoading = ref(false);
+const vehicles = ref([]);
+const drivers = ref([]);
+const dressCodes = ref([]);
+const serviceStatuses = ref([]);
+const serviceTypes = ref([]);
+const activityTypes = ref([]);
+
+// Countries list with flags for nationality selector
+const countries = ref([
+    { code: 'IT', name: 'Italia', flag: '🇮🇹' },
+    { code: 'US', name: 'Stati Uniti', flag: '🇺🇸' },
+    { code: 'GB', name: 'Regno Unito', flag: '🇬🇧' },
+    { code: 'DE', name: 'Germania', flag: '🇩🇪' },
+    { code: 'FR', name: 'Francia', flag: '🇫🇷' },
+    { code: 'ES', name: 'Spagna', flag: '🇪🇸' },
+    { code: 'PT', name: 'Portogallo', flag: '🇵🇹' },
+    { code: 'NL', name: 'Paesi Bassi', flag: '🇳🇱' },
+    { code: 'BE', name: 'Belgio', flag: '🇧🇪' },
+    { code: 'CH', name: 'Svizzera', flag: '🇨🇭' },
+    { code: 'AT', name: 'Austria', flag: '🇦🇹' },
+    { code: 'PL', name: 'Polonia', flag: '🇵🇱' },
+    { code: 'SE', name: 'Svezia', flag: '🇸🇪' },
+    { code: 'NO', name: 'Norvegia', flag: '🇳🇴' },
+    { code: 'DK', name: 'Danimarca', flag: '🇩🇰' },
+    { code: 'FI', name: 'Finlandia', flag: '🇫🇮' },
+    { code: 'IE', name: 'Irlanda', flag: '🇮🇪' },
+    { code: 'GR', name: 'Grecia', flag: '🇬🇷' },
+    { code: 'CZ', name: 'Repubblica Ceca', flag: '🇨🇿' },
+    { code: 'HU', name: 'Ungheria', flag: '🇭🇺' },
+    { code: 'RO', name: 'Romania', flag: '🇷🇴' },
+    { code: 'BG', name: 'Bulgaria', flag: '🇧🇬' },
+    { code: 'HR', name: 'Croazia', flag: '🇭🇷' },
+    { code: 'SK', name: 'Slovacchia', flag: '🇸🇰' },
+    { code: 'SI', name: 'Slovenia', flag: '🇸🇮' },
+    { code: 'LT', name: 'Lituania', flag: '🇱🇹' },
+    { code: 'LV', name: 'Lettonia', flag: '🇱🇻' },
+    { code: 'EE', name: 'Estonia', flag: '🇪🇪' },
+    { code: 'JP', name: 'Giappone', flag: '🇯🇵' },
+    { code: 'CN', name: 'Cina', flag: '🇨🇳' },
+    { code: 'KR', name: 'Corea del Sud', flag: '🇰🇷' },
+    { code: 'IN', name: 'India', flag: '🇮🇳' },
+    { code: 'BR', name: 'Brasile', flag: '🇧🇷' },
+    { code: 'AR', name: 'Argentina', flag: '🇦🇷' },
+    { code: 'MX', name: 'Messico', flag: '🇲🇽' },
+    { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+    { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+    { code: 'NZ', name: 'Nuova Zelanda', flag: '🇳🇿' },
+    { code: 'ZA', name: 'Sudafrica', flag: '🇿🇦' },
+    { code: 'RU', name: 'Russia', flag: '🇷🇺' },
+    { code: 'TR', name: 'Turchia', flag: '🇹🇷' },
+    { code: 'SA', name: 'Arabia Saudita', flag: '🇸🇦' },
+    { code: 'AE', name: 'Emirati Arabi Uniti', flag: '🇦🇪' },
+    { code: 'IL', name: 'Israele', flag: '🇮🇱' },
+    { code: 'EG', name: 'Egitto', flag: '🇪🇬' },
+    { code: 'MA', name: 'Marocco', flag: '🇲🇦' },
+    { code: 'NG', name: 'Nigeria', flag: '🇳🇬' },
+    { code: 'KE', name: 'Kenya', flag: '🇰🇪' },
+    { code: 'TH', name: 'Tailandia', flag: '🇹🇭' },
+    { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
+    { code: 'MY', name: 'Malesia', flag: '🇲🇾' },
+    { code: 'ID', name: 'Indonesia', flag: '🇮🇩' },
+    { code: 'PH', name: 'Filippine', flag: '🇵🇭' },
+    { code: 'VN', name: 'Vietnam', flag: '🇻🇳' },
+]);
+
+// Tasks
+const serviceTasks = ref([]);
+const taskAssignableUsers = ref([]);
+const taskSaving = ref(false);
+const taskErrors = ref([]);
+const activityConfirmationEnabled = ref(false);
+const accountingEnabled = ref(false);
+
+// Combined list for counterparts in transactions
+const allCounterparts = computed(() => {
+    return [...committenti.value, ...intermediari.value, ...fornitori.value];
+});
+
+const isSuperAdmin = computed(() => {
+    return currentUser.value?.role === 'super-admin';
+});
+
+// Computed properties for driver selection
+const selectedDrivers = computed(() => {
+    return drivers.value.filter(driver => form.value.driver_ids.includes(driver.id));
+});
+
+const availableDrivers = computed(() => {
+    return drivers.value.filter(driver => !form.value.driver_ids.includes(driver.id));
+});
+
+// Computed for overlap modal - current service info
+const currentServiceVehicle = computed(() => {
+    if (!form.value.vehicle_id) return null;
+    const vehicle = vehicles.value.find(v => v.id === form.value.vehicle_id);
+    if (!vehicle) return null;
+    return `${vehicle.license_plate} - ${vehicle.brand} ${vehicle.model}`;
+});
+
+const currentServiceDrivers = computed(() => {
+    if (!form.value.driver_ids || form.value.driver_ids.length === 0) return null;
+    const driverNames = form.value.driver_ids.map(id => {
+        const driver = drivers.value.find(d => d.id === id);
+        return driver ? driverLabel(driver) : null;
+    }).filter(Boolean);
+    return driverNames.join(', ');
+});
+
+// Methods for driver management
+const addDriver = (event) => {
+    const driverId = parseInt(event.target.value);
+    if (driverId && !form.value.driver_ids.includes(driverId)) {
+        form.value.driver_ids.push(driverId);
+    }
+    // Reset select
+    event.target.value = '';
+};
+
+const addDriverFromMultiselect = (driverId) => {
+    if (driverId && !form.value.driver_ids.includes(driverId)) {
+        form.value.driver_ids.push(driverId);
+    }
+};
+
+const removeDriver = (driverId) => {
+    const index = form.value.driver_ids.indexOf(driverId);
+    if (index > -1) {
+        form.value.driver_ids.splice(index, 1);
+    }
+};
+
+// Form
+const form = ref({
+    company_id: '',
+    reference_number: '',
+    service_type: '',
+    passenger_count: 1,
+    contact_name: '',
+    contact_phone: '',
+    passengers: [{
+        surname: '',
+        name: '',
+        phone: '',
+        email: '',
+        nationality: '',
+        origin: '',
+        carrier_reference: ''
+    }],
+    client_id: '',
+    intermediary_id: '',
+    supplier_id: '',
+    vehicle_id: '',
+    vehicle_not_replaceable: false,
+    driver_ids: [],
+    external_driver_name: '',
+    external_driver_phone: '',
+    driver_not_replaceable: false,
+    dress_code_id: '',
+    large_luggage: 0,
+    medium_luggage: 0,
+    small_luggage: 0,
+    baby_seat_infant: 0,
+    baby_seat_standard: 0,
+    baby_seat_booster: 0,
+    pickup_datetime: '',
+    pickup_location: '',
+    pickup_address: '',
+    pickup_latitude: '',
+    pickup_longitude: '',
+    vehicle_departure_datetime: '',
+    dropoff_datetime: '',
+    dropoff_location: '',
+    dropoff_address: '',
+    dropoff_latitude: '',
+    dropoff_longitude: '',
+    vehicle_return_datetime: '',
+    activities: [],
+    status_id: '',
+    driver_must_collect: false,
+    service_price: null,
+    vat_rate: 10,
+    card_fees_percentage: 5,
+    deposit_percentage: 30,
+    deposit_taxable: null,
+    deposit_handling_fees: null,
+    deposit_amount: null,
+    balance_taxable: null,
+    balance_handling_fees: null,
+    balance_card_fees: null,
+    balance_sale_type: 'balance_taxable',
+    intermediary_commission: null,
+    driver_compensation: null,
+    colleague_cost: null,
+    fuel_cost: null,
+    toll_cost: null,
+    parking_cost: null,
+    other_vehicle_costs: null,
+    accounting_transactions: [],
+    notes: ''
+});
+
+// Activity Form
+const activityForm = ref({
+    id: null,
+    name: '',
+    activity_type_id: '',
+    supplier_id: '',
+    start_time: '',
+    end_time: '',
+    cost: 0,
+    payment_type: '',
+    should_account: false,
+    description: ''
+});
+
+// Transaction Form
+const transactionForm = ref({
+    id: null,
+    transaction_date: '',
+    amount: 0,
+    transaction_type: '',
+    installment: '',
+    accounting_entry_id: '',
+    counterpart_id: '',
+    document_number: '',
+    document_due_date: '',
+    payment_date: '',
+    payment_type: '',
+    payment_reason: '',
+    iban: '',
+    status: '',
+    notes: '',
+    is_automatic: false,
+});
+
+// Selection and inline editing
+const selectedTransactions = ref([]);
+const editingTransactionStatus = ref(null);
+const editingStatusValue = ref('');
+const statusInputRefs = ref({});
+
+// Additional lists for transaction modal
+const accountingEntries = ref([]);
+const paymentTypes = ref([]);
+const transactionStatuses = ref([]);
+const settings = ref(null);
+
+// Task Form
+const taskForm = ref({
+    id: null,
+    name: '',
+    service_id: '',
+    due_date: '',
+    assigned_users: [],
+    status: 'to_complete',
+    notes: ''
+});
+
+// New Committente Form
+const newCommittenteForm = ref({
+    username: '',
+    email: '',
+    surname: '',
+    name: '',
+    password: '',
+    password_confirmation: '',
+    phone: '',
+    role: 'collaboratore',
+    is_active: false,
+    company_id: null,
+    is_committente: true,
+    is_fornitore: false,
+    is_intermediario: false
+});
+
+const newCommittenteErrors = ref({});
+
+// New Intermediario Form
+const newIntermediarioForm = ref({
+    username: '',
+    email: '',
+    surname: '',
+    name: '',
+    password: '',
+    password_confirmation: '',
+    phone: '',
+    role: 'collaboratore',
+    is_active: false,
+    company_id: null,
+    is_committente: false,
+    is_fornitore: false,
+    is_intermediario: true
+});
+
+const newIntermediarioErrors = ref({});
+const showIntermediarioSystemDataSection = ref(false);
+
+// New Fornitore Form
+const newFornitoreForm = ref({
+    username: '',
+    email: '',
+    surname: '',
+    name: '',
+    password: '',
+    password_confirmation: '',
+    phone: '',
+    role: 'collaboratore',
+    is_active: false,
+    company_id: null,
+    is_committente: false,
+    is_fornitore: true,
+    is_intermediario: false
+});
+
+const newFornitoreErrors = ref({});
+const showFornitoreSystemDataSection = ref(false);
+
+// Computed
+const selectedClientContact = computed(() => {
+    if (!form.value.client_id) return '';
+    const client = committenti.value.find(c => c.id === form.value.client_id);
+    return client ? `${client.email || ''} ${client.phone || ''}`.trim() : '';
+});
+
+// Check if at least one passenger has some data filled in
+const hasPassengerData = computed(() => {
+    if (!form.value.passengers || form.value.passengers.length === 0) return false;
+    const firstPassenger = form.value.passengers[0];
+    return !!(firstPassenger.surname || firstPassenger.name || firstPassenger.phone || firstPassenger.email);
+});
+
+// Creating committente from passenger state
+const creatingCommittenteFromPassenger = ref(false);
+
+const selectedIntermediaryContact = computed(() => {
+    if (!form.value.intermediary_id) return '';
+    const intermediary = intermediari.value.find(i => i.id === form.value.intermediary_id);
+    return intermediary ? `${intermediary.email || ''} ${intermediary.phone || ''}`.trim() : '';
+});
+
+const selectedSupplierContact = computed(() => {
+    if (!form.value.supplier_id) return '';
+    const supplier = fornitori.value.find(s => s.id === form.value.supplier_id);
+    return supplier ? `${supplier.email || ''} ${supplier.phone || ''}`.trim() : '';
+});
+
+const accountingSummary = computed(() => {
+    if (!form.value.accounting_transactions || form.value.accounting_transactions.length === 0) {
+        return { total: 0, sales: 0, purchases: 0, intermediations: 0, supplierRefunds: 0, customerRefunds: 0 };
+    }
+
+    let sales = 0, purchases = 0, intermediations = 0, supplierRefunds = 0, customerRefunds = 0;
+
+    form.value.accounting_transactions.forEach(t => {
+        const amount = parseFloat(t.amount);
+        if (t.transaction_type === 'sale') {
+            if (t.installment === 'customer_refund') {
+                customerRefunds += amount;
+            } else {
+                sales += amount;
+            }
+        } else if (t.transaction_type === 'purchase') {
+            if (t.installment === 'supplier_refund') {
+                supplierRefunds += amount;
+            } else {
+                purchases += amount;
+            }
+        } else if (t.transaction_type === 'intermediation') {
+            intermediations += amount;
+        }
+    });
+
+    const total = sales + supplierRefunds - purchases - intermediations - customerRefunds;
+    return { total, sales, purchases, intermediations, supplierRefunds, customerRefunds };
+});
+
+const isAllTransactionsSelected = computed(() => {
+    return form.value.accounting_transactions && form.value.accounting_transactions.length > 0 &&
+           selectedTransactions.value.length === form.value.accounting_transactions.length;
+});
+
+const filteredCounterparts = computed(() => {
+    if (!transactionForm.value.transaction_type) {
+        return allCounterparts.value;
+    }
+
+    const typeMap = {
+        purchase: 'fornitore',
+        sale: 'committente',
+        intermediation: 'intermediario',
+    };
+
+    const targetType = typeMap[transactionForm.value.transaction_type];
+
+    // Filter based on user type flags
+    if (targetType === 'fornitore') {
+        return fornitori.value;
+    } else if (targetType === 'committente') {
+        return committenti.value;
+    } else if (targetType === 'intermediario') {
+        return intermediari.value;
+    }
+
+    return allCounterparts.value;
+});
+
+// Check if Contabilizza button should be enabled
+const canContabilizza = computed(() => {
+    // Button is enabled only if deposit_amount OR balance_taxable have non-zero/non-null values
+    const hasDeposit = form.value.deposit_amount && form.value.deposit_amount > 0;
+    const hasBalance = form.value.balance_taxable && form.value.balance_taxable > 0;
+    return hasDeposit || hasBalance;
+});
+
+// Methods
+const loadCurrentUser = async () => {
+    try {
+        const response = await axios.get('/api/user');
+        currentUser.value = response.data;
+
+        // Se non è super-admin, imposta company_id dal proprio utente
+        if (!isSuperAdmin.value && !form.value.company_id) {
+            form.value.company_id = currentUser.value.company_id;
+        }
+    } catch (error) {
+        console.error('Error loading current user:', error);
+    }
+};
+
+const loadCompanies = async () => {
+    if (!isSuperAdmin.value) return;
+
+    try {
+        const response = await axios.get('/api/companies');
+        companies.value = response.data.data || [];
+    } catch (error) {
+        console.error('Error loading companies:', error);
+    }
+};
+
+const loadCounterparts = async () => {
+    if (!form.value.company_id) return;
+
+    try {
+        const response = await axios.get('/api/users', {
+            params: {
+                role: 'collaboratore',
+                per_page: 1000,
+                company_id: isSuperAdmin.value ? form.value.company_id : undefined
+            }
+        });
+        const users = response.data.data || [];
+
+        // Filter by type
+        committenti.value = users.filter(u => u.client_profile?.is_committente);
+        intermediari.value = users.filter(u => u.is_intermediario);
+        fornitori.value = users.filter(u => u.client_profile?.is_fornitore);
+        committentiLoaded.value = true;
+    } catch (error) {
+        console.error('Error loading counterparts:', error);
+    }
+};
+
+// Injected options (used after creation to make them visible in async Multiselect)
+const injectedCommittenteOption = ref(null);
+const injectedIntermediarioOption = ref(null);
+const injectedFornitoreOption = ref(null);
+
+// Async search function for committenti
+const searchCommittenti = async (query) => {
+    if (!form.value.company_id) return [];
+
+    committentiLoading.value = true;
+    try {
+        const params = {
+            is_committente: 1,
+            per_page: 30,
+            company_id: isSuperAdmin.value ? form.value.company_id : undefined
+        };
+
+        // Add search parameter if query has 2+ characters
+        if (query && query.length >= 2) {
+            params.search = query;
+        }
+
+        const response = await axios.get('/api/users', { params });
+        const users = response.data.data || [];
+
+        // Map to options format
+        let options = users.map(c => ({
+            value: c.id,
+            label: `${c.surname || ''} ${c.name || ''}`.trim() || c.email
+        }));
+
+        // If editing and current client is not in results, add it
+        if (isEdit.value && props.service?.client && form.value.client_id) {
+            const currentId = form.value.client_id;
+            const exists = options.some(o => o.value === currentId);
+            if (!exists) {
+                const c = props.service.client;
+                options.unshift({
+                    value: c.id,
+                    label: `${c.surname || ''} ${c.name || ''}`.trim() || c.email
+                });
+            }
+        }
+
+        // Include injected option (from create committente from passenger)
+        if (injectedCommittenteOption.value) {
+            const exists = options.some(o => o.value === injectedCommittenteOption.value.value);
+            if (!exists) {
+                options.unshift(injectedCommittenteOption.value);
+            }
+        }
+
+        return options;
+    } catch (error) {
+        console.error('Error searching committenti:', error);
+        return [];
+    } finally {
+        committentiLoading.value = false;
+    }
+};
+
+// Load initial committenti when dropdown opens (for pre-populated list)
+const loadCommittentiLazy = async () => {
+    if (committentiLoaded.value || committentiLoading.value) return;
+    if (!form.value.company_id) return;
+
+    const options = await searchCommittenti('');
+    committenti.value = options;
+    committentiLoaded.value = true;
+};
+
+// Options for committenti Multiselect (used for initial load and selected value display)
+const committentiOptions = computed(() => {
+    return committenti.value;
+});
+
+// Async search function for intermediari
+const searchIntermediari = async (query) => {
+    if (!form.value.company_id) return [];
+
+    intermediariLoading.value = true;
+    try {
+        const params = {
+            is_intermediario: 1,
+            per_page: 30,
+            company_id: isSuperAdmin.value ? form.value.company_id : undefined
+        };
+
+        // Add search parameter if query has 2+ characters
+        if (query && query.length >= 2) {
+            params.search = query;
+        }
+
+        const response = await axios.get('/api/users', { params });
+        const users = response.data.data || [];
+
+        // Map to options format
+        let options = users.map(i => ({
+            value: i.id,
+            label: `${i.surname || ''} ${i.name || ''}`.trim() || i.email
+        }));
+
+        // If editing and current intermediary is not in results, add it
+        if (isEdit.value && props.service?.intermediary && form.value.intermediary_id) {
+            const currentId = form.value.intermediary_id;
+            const exists = options.some(o => o.value === currentId);
+            if (!exists) {
+                const i = props.service.intermediary;
+                options.unshift({
+                    value: i.id,
+                    label: `${i.surname || ''} ${i.name || ''}`.trim() || i.email
+                });
+            }
+        }
+
+        // Include injected option
+        if (injectedIntermediarioOption.value) {
+            const exists = options.some(o => o.value === injectedIntermediarioOption.value.value);
+            if (!exists) {
+                options.unshift(injectedIntermediarioOption.value);
+            }
+        }
+
+        return options;
+    } catch (error) {
+        console.error('Error searching intermediari:', error);
+        return [];
+    } finally {
+        intermediariLoading.value = false;
+    }
+};
+
+// Load initial intermediari when dropdown opens
+const loadIntermediariLazy = async () => {
+    if (intermediariLoaded.value || intermediariLoading.value) return;
+    if (!form.value.company_id) return;
+
+    const options = await searchIntermediari('');
+    intermediari.value = options;
+    intermediariLoaded.value = true;
+};
+
+// Options for intermediari Multiselect
+const intermediariOptions = computed(() => {
+    return intermediari.value;
+});
+
+// Async search function for fornitori
+const searchFornitori = async (query) => {
+    if (!form.value.company_id) return [];
+
+    fornitoriLoading.value = true;
+    try {
+        const params = {
+            is_fornitore: 1,
+            per_page: 30,
+            company_id: isSuperAdmin.value ? form.value.company_id : undefined
+        };
+
+        // Add search parameter if query has 2+ characters
+        if (query && query.length >= 2) {
+            params.search = query;
+        }
+
+        const response = await axios.get('/api/users', { params });
+        const users = response.data.data || [];
+
+        // Map to options format
+        let options = users.map(f => ({
+            value: f.id,
+            label: `${f.surname || ''} ${f.name || ''}`.trim() || f.email
+        }));
+
+        // If current supplier is not in results, add it
+        if (form.value.supplier_id) {
+            const currentId = form.value.supplier_id;
+            const exists = options.some(o => o.value === currentId);
+            if (!exists) {
+                // In edit mode, use service supplier data
+                if (isEdit.value && props.service?.supplier) {
+                    const s = props.service.supplier;
+                    options.unshift({
+                        value: s.id,
+                        label: `${s.surname || ''} ${s.name || ''}`.trim() || s.email
+                    });
+                }
+                // In new mode, use default supplier from settings
+                else if (!isEdit.value && settings.value?.default_supplier && settings.value.default_supplier.id === currentId) {
+                    const s = settings.value.default_supplier;
+                    options.unshift({
+                        value: s.id,
+                        label: `${s.surname || ''} ${s.name || ''}`.trim() || s.email
+                    });
+                }
+            }
+        }
+
+        // Include injected option
+        if (injectedFornitoreOption.value) {
+            const exists = options.some(o => o.value === injectedFornitoreOption.value.value);
+            if (!exists) {
+                options.unshift(injectedFornitoreOption.value);
+            }
+        }
+
+        return options;
+    } catch (error) {
+        console.error('Error searching fornitori:', error);
+        return [];
+    } finally {
+        fornitoriLoading.value = false;
+    }
+};
+
+// Load initial fornitori when dropdown opens
+const loadFornitoriLazy = async () => {
+    if (fornitoriLoaded.value || fornitoriLoading.value) return;
+    if (!form.value.company_id) return;
+
+    const options = await searchFornitori('');
+    fornitori.value = options;
+    fornitoriLoaded.value = true;
+};
+
+// Cached supplier search for activity modal (light mode, single API call)
+const activitySuppliersCache = ref([]);
+let activitySuppliersCacheLoaded = false;
+
+const searchActivitySuppliers = async (query) => {
+    // Load once from light endpoint
+    if (!activitySuppliersCacheLoaded) {
+        try {
+            const params = {
+                light: true,
+                is_fornitore: 1,
+                per_page: 200,
+                company_id: isSuperAdmin.value ? form.value.company_id : undefined
+            };
+            const response = await axios.get('/api/users', { params });
+            activitySuppliersCache.value = (response.data.data || []).map(f => ({
+                value: f.id,
+                label: `${f.surname || ''} ${f.name || ''}`.trim() || f.email
+            }));
+            activitySuppliersCacheLoaded = true;
+        } catch (error) {
+            console.error('Error loading activity suppliers:', error);
+            return [];
+        }
+    }
+
+    // Filter client-side
+    if (!query) return activitySuppliersCache.value;
+    const needle = query.toLowerCase();
+    return activitySuppliersCache.value.filter(s => s.label.toLowerCase().includes(needle));
+};
+
+// Options for fornitori Multiselect
+const fornitoriOptions = computed(() => {
+    return fornitori.value;
+});
+
+const vehiclesLoading = ref(false);
+
+const searchVehicles = async (query) => {
+    if (!form.value.company_id) return [];
+
+    vehiclesLoading.value = true;
+    try {
+        const params = {
+            per_page: 30,
+            company_id: isSuperAdmin.value ? form.value.company_id : undefined
+        };
+        if (query && query.length >= 2) {
+            params.search = query;
+        }
+
+        const response = await axios.get('/api/vehicles', { params });
+        const vehicleList = response.data.data || [];
+        // Update vehicles ref for computed properties (currentServiceVehicle, etc.)
+        vehicles.value = vehicleList;
+        return vehicleList.map(v => ({
+            value: v.id,
+            label: `${v.license_plate} - ${v.brand} ${v.model}`,
+            vehicle: v
+        }));
+    } catch (error) {
+        console.error('Error loading vehicles:', error);
+        return [];
+    } finally {
+        vehiclesLoading.value = false;
+    }
+};
+
+const driversLoading = ref(false);
+
+const searchDrivers = async (query) => {
+    if (!form.value.company_id) return [];
+
+    driversLoading.value = true;
+    try {
+        const params = {
+            role: 'driver',
+            per_page: 30,
+            company_id: isSuperAdmin.value ? form.value.company_id : undefined
+        };
+        if (query && query.length >= 2) {
+            params.search = query;
+        }
+
+        const response = await axios.get('/api/users', { params });
+        const driverList = response.data.data || [];
+        // Merge into drivers ref (avoid duplicates)
+        driverList.forEach(d => {
+            if (!drivers.value.find(existing => existing.id === d.id)) {
+                drivers.value.push(d);
+            }
+        });
+        // Filter out already selected drivers
+        return driverList
+            .filter(d => !form.value.driver_ids.includes(d.id))
+            .map(d => ({
+                value: d.id,
+                label: `${d.name} ${d.surname}${d.driver_profile?.allow_overlapping ? ' (Sovrapponibile)' : ''}`,
+                driver: d
+            }));
+    } catch (error) {
+        console.error('Error loading drivers:', error);
+        return [];
+    } finally {
+        driversLoading.value = false;
+    }
+};
+
+const loadDressCodes = async () => {
+    if (!form.value.company_id) return;
+
+    try {
+        const response = await axios.get('/api/dictionaries/dress-codes', {
+            params: {
+                company_id: isSuperAdmin.value ? form.value.company_id : undefined
+            }
+        });
+        dressCodes.value = response.data.data || [];
+    } catch (error) {
+        console.error('Error loading dress codes:', error);
+    }
+};
+
+const loadServiceStatuses = async () => {
+    if (!form.value.company_id) return;
+
+    try {
+        const response = await axios.get('/api/dictionaries/service-statuses', {
+            params: {
+                company_id: isSuperAdmin.value ? form.value.company_id : undefined
+            }
+        });
+        serviceStatuses.value = response.data.data || [];
+    } catch (error) {
+        console.error('Error loading service statuses:', error);
+    }
+};
+
+const loadServiceTypes = async () => {
+    if (!form.value.company_id) return;
+
+    try {
+        const response = await axios.get('/api/dictionaries/service-types', {
+            params: {
+                company_id: isSuperAdmin.value ? form.value.company_id : undefined
+            }
+        });
+        serviceTypes.value = response.data.data || [];
+    } catch (error) {
+        console.error('Error loading service types:', error);
+    }
+};
+
+const loadAccountingEntries = async () => {
+    if (!form.value.company_id) return;
+
+    try {
+        const response = await axios.get('/api/dictionaries/accounting-entries', {
+            params: {
+                company_id: isSuperAdmin.value ? form.value.company_id : undefined
+            }
+        });
+        accountingEntries.value = response.data.data || [];
+    } catch (error) {
+        console.error('Error loading accounting entries:', error);
+    }
+};
+
+const SETTINGS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+const loadSettings = async () => {
+    if (!form.value.company_id) return;
+
+    try {
+        // Check sessionStorage cache first
+        const cacheKey = `easyncc_settings_${form.value.company_id}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Date.now() - parsed._cachedAt < SETTINGS_CACHE_TTL) {
+                settings.value = parsed.data;
+                applySettingsDefaults();
+                return;
+            }
+        }
+
+        const params = isSuperAdmin.value ? { company_id: form.value.company_id } : {};
+        const response = await axios.get('/api/settings', { params });
+        settings.value = response.data.data;
+
+        // Cache in sessionStorage
+        sessionStorage.setItem(cacheKey, JSON.stringify({
+            data: response.data.data,
+            _cachedAt: Date.now()
+        }));
+
+        applySettingsDefaults();
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+};
+
+const applySettingsDefaults = () => {
+    // Imposta i valori di default solo se stiamo creando un nuovo servizio (non in edit mode)
+    if (!isEdit.value && settings.value) {
+        if (settings.value.deposit_percentage !== null && settings.value.deposit_percentage !== undefined) {
+            form.value.deposit_percentage = settings.value.deposit_percentage;
+        }
+        if (settings.value.card_fees_percentage !== null && settings.value.card_fees_percentage !== undefined) {
+            form.value.card_fees_percentage = settings.value.card_fees_percentage;
+        }
+        // Imposta il fornitore di default
+        if (settings.value.default_supplier_id !== null && settings.value.default_supplier_id !== undefined) {
+            form.value.supplier_id = settings.value.default_supplier_id;
+            // Pre-popola le opzioni fornitori con il fornitore di default per il resolve-on-load del Multiselect
+            if (settings.value.default_supplier) {
+                const s = settings.value.default_supplier;
+                fornitori.value = [{
+                    value: s.id,
+                    label: `${s.surname || ''} ${s.name || ''}`.trim() || s.email
+                }];
+            }
+            // Aggiorna il referente fornitore dopo aver impostato il fornitore
+            onSupplierChange();
+        }
+    }
+};
+
+const loadFormData = async () => {
+    if (!form.value.company_id) return;
+
+    try {
+        const params = isSuperAdmin.value ? { company_id: form.value.company_id } : {};
+        const response = await axios.get('/api/services/form-data', { params });
+        const data = response.data.data;
+
+        dressCodes.value = data.dress_codes || [];
+        serviceStatuses.value = data.service_statuses || [];
+        serviceTypes.value = data.service_types || [];
+        activityTypes.value = data.activity_types || [];
+        accountingEntries.value = data.accounting_entries || [];
+        paymentTypes.value = data.payment_types || [];
+        transactionStatuses.value = data.transaction_statuses || [];
+        settings.value = data.settings || null;
+
+        // Cache settings in sessionStorage
+        if (settings.value) {
+            const cacheKey = `easyncc_settings_${form.value.company_id}`;
+            sessionStorage.setItem(cacheKey, JSON.stringify({
+                data: settings.value,
+                _cachedAt: Date.now()
+            }));
+        }
+
+        applySettingsDefaults();
+    } catch (error) {
+        console.error('Error loading form data:', error);
+    }
+};
+
+const onCompanyChange = async () => {
+    // Reset form fields che dipendono dall'azienda
+    form.value.client_id = '';
+    form.value.intermediary_id = '';
+    form.value.supplier_id = '';
+    form.value.vehicle_id = '';
+    form.value.driver_ids = [];
+    form.value.dress_code_id = '';
+    form.value.status_id = '';
+    form.value.service_type = '';
+
+    // Reset task assignable users
+    taskAssignableUsers.value = [];
+
+    // Reset lazy-loaded data (will reload via Multiselect async search)
+    vehicles.value = [];
+    drivers.value = [];
+    committenti.value = [];
+    intermediari.value = [];
+    fornitori.value = [];
+    committentiLoaded.value = false;
+    intermediariLoaded.value = false;
+    fornitoriLoaded.value = false;
+
+    // Ricarica dati dipendenti dall'azienda (dizionari + settings)
+    await Promise.all([
+        loadFormData(),
+        loadTaskAssignableUsers()
+    ]);
+};
+
+const loadPaymentTypes = async () => {
+    if (!form.value.company_id) return;
+
+    try {
+        const response = await axios.get('/api/dictionaries/payment-types', {
+            params: {
+                company_id: isSuperAdmin.value ? form.value.company_id : undefined
+            }
+        });
+        paymentTypes.value = response.data.data || [];
+    } catch (error) {
+        console.error('Error loading payment types:', error);
+    }
+};
+
+const addPassenger = () => {
+    form.value.passengers.push({
+        surname: '',
+        name: '',
+        phone: '',
+        email: '',
+        nationality: '',
+        origin: '',
+        carrier_reference: ''
+    });
+};
+
+const removePassenger = (index) => {
+    form.value.passengers.splice(index, 1);
+};
+
+const removeActivity = async (activityId) => {
+    if (!confirm('Sei sicuro di voler rimuovere questa esperienza?')) {
+        return;
+    }
+
+    try {
+        // Delete from backend if it has an ID
+        if (activityId) {
+            await axios.delete(`/api/activities/${activityId}`);
+        }
+        // Remove from local array
+        form.value.activities = form.value.activities.filter(a => a.id !== activityId);
+        alert('Esperienza rimossa con successo');
+    } catch (error) {
+        console.error('Error removing activity:', error);
+        alert('Errore durante la rimozione dell\'esperienza');
+    }
+};
+
+// Arrotonda ai 5€ superiori
+const roundUpTo5 = (value) => {
+    return Math.ceil(value / 5) * 5;
+};
+
+// Calcola Corrispettivi di Vendita
+const calculateTotals = () => {
+    // Validazione campi richiesti
+    if (!form.value.service_price || form.value.service_price <= 0) {
+        alert('Inserisci un Prezzo Imponibile Totale valido');
+        return;
+    }
+
+    if (!form.value.vat_rate) {
+        alert('Seleziona l\'Aliquota IVA');
+        return;
+    }
+
+    if (!form.value.card_fees_percentage && form.value.card_fees_percentage !== 0) {
+        alert('Inserisci il Card Fees %');
+        return;
+    }
+
+    if (!form.value.deposit_percentage && form.value.deposit_percentage !== 0) {
+        alert('Inserisci l\'Acconto %');
+        return;
+    }
+
+    const imponibile = parseFloat(form.value.service_price);
+    const vatRate = parseFloat(form.value.vat_rate);
+    const cardFeesPerc = parseFloat(form.value.card_fees_percentage);
+    const depositPerc = parseFloat(form.value.deposit_percentage);
+
+    // Calcolo del prezzo con IVA
+    const prezzoConIva = imponibile * (100 + vatRate) / 100;
+
+    // Calcolo del prezzo con IVA e Card Fees
+    const prezzoConIvaECardFees = prezzoConIva * (100 + cardFeesPerc) / 100;
+
+    // 1. Acconto Imponibile = Imponibile × Acconto% / 100 (arrotondato ai 5€ superiori)
+    form.value.deposit_taxable = roundUpTo5(imponibile * depositPerc / 100);
+
+    // 1b. Acconto Handling Fees = Acconto Imponibile × (1 + Aliquota IVA / 100) arrotondato ai 5€ superiori
+    form.value.deposit_handling_fees = roundUpTo5(form.value.deposit_taxable * (1 + vatRate / 100));
+
+    // 2. Acconto Totale € = (Imponibile × (100 + IVA%) / 100) × (100 + Card Fees%) / 100 × (Acconto% / 100) (arrotondato ai 5€ superiori)
+    form.value.deposit_amount = roundUpTo5(prezzoConIvaECardFees * (depositPerc / 100));
+
+    // 3. Saldo Imponibile = Imponibile - Acconto Imponibile
+    form.value.balance_taxable = parseFloat((imponibile - form.value.deposit_taxable).toFixed(2));
+
+    // 4. Saldo Handling Fees = (Imponibile × (100 + IVA%) / 100) × (100 - Acconto%) / 100 (arrotondato ai 5€ superiori)
+    form.value.balance_handling_fees = roundUpTo5(prezzoConIva * (100 - depositPerc) / 100);
+
+    // 5. Saldo Card Fees = (Imponibile × (100 + IVA%) / 100) × (100 + Card Fees%) / 100 × (100 - Acconto%) / 100 (arrotondato ai 5€ superiori)
+    form.value.balance_card_fees = roundUpTo5(prezzoConIvaECardFees * (100 - depositPerc) / 100);
+};
+
+const contabilizza = async () => {
+    if (!props.service || !props.service.id) {
+        alert('Salva il servizio prima di contabilizzare');
+        return;
+    }
+
+    if (!form.value.client_id) {
+        alert('Seleziona un committente prima di contabilizzare');
+        return;
+    }
+
+    if (!settings.value) {
+        alert('Impossibile recuperare le impostazioni aziendali');
+        return;
+    }
+
+    try {
+        const today = moment().format('YYYY-MM-DD');
+        const clientId = form.value.client_id;
+
+        // A & B: Handle Acconto (deposit)
+        if (form.value.deposit_amount && form.value.deposit_amount > 0) {
+            // Check if acconto transaction exists
+            const existingAcconto = form.value.accounting_transactions.find(
+                t => t.transaction_type === 'sale' && t.installment === 'deposit'
+            );
+
+            const accontoPayload = {
+                service_id: props.service.id,
+                transaction_date: today,
+                amount: form.value.deposit_amount,
+                transaction_type: 'sale',
+                installment: 'deposit',
+                accounting_entry_id: settings.value.deposit_accounting_entry_id,
+                counterpart_id: clientId,
+                document_number: null,
+                document_due_date: null,
+                payment_date: null,
+                payment_type: 'carta_di_credito',
+                payment_reason: settings.value.deposit_reason,
+                iban: null,
+                status: 'to_collect',
+                notes: null
+            };
+
+            if (existingAcconto) {
+                // Update existing acconto
+                const response = await axios.put(`/api/accounting-transactions/${existingAcconto.id}`, accontoPayload);
+                const index = form.value.accounting_transactions.findIndex(t => t.id === existingAcconto.id);
+                if (index !== -1) {
+                    form.value.accounting_transactions[index] = response.data.data;
+                }
+            } else {
+                // Create new acconto
+                const response = await axios.post('/api/accounting-transactions', accontoPayload);
+                form.value.accounting_transactions.push(response.data.data);
+            }
+        }
+
+        // C & D: Handle Saldo (balance)
+        if (form.value.balance_taxable && form.value.balance_taxable > 0) {
+            // Check if saldo transaction exists
+            const existingSaldo = form.value.accounting_transactions.find(
+                t => t.transaction_type === 'sale' && t.installment === 'balance'
+            );
+
+            const saldoPayload = {
+                service_id: props.service.id,
+                transaction_date: today,
+                amount: form.value.balance_taxable,
+                transaction_type: 'sale',
+                installment: 'balance',
+                accounting_entry_id: settings.value.balance_accounting_entry_id,
+                counterpart_id: clientId,
+                document_number: null,
+                document_due_date: null,
+                payment_date: null,
+                payment_type: 'contanti',
+                payment_reason: settings.value.balance_reason,
+                iban: null,
+                status: 'to_collect',
+                notes: null
+            };
+
+            if (existingSaldo) {
+                // Update existing saldo
+                const response = await axios.put(`/api/accounting-transactions/${existingSaldo.id}`, saldoPayload);
+                const index = form.value.accounting_transactions.findIndex(t => t.id === existingSaldo.id);
+                if (index !== -1) {
+                    form.value.accounting_transactions[index] = response.data.data;
+                }
+            } else {
+                // Create new saldo
+                const response = await axios.post('/api/accounting-transactions', saldoPayload);
+                form.value.accounting_transactions.push(response.data.data);
+            }
+        }
+
+        alert('Contabilizzazione completata con successo');
+    } catch (error) {
+        console.error('Error during contabilizza:', error);
+        alert('Errore durante la contabilizzazione');
+    }
+};
+
+const openActivityModal = (activity = null) => {
+    if (activity) {
+        // Edit mode
+        activityForm.value = {
+            id: activity.id,
+            name: activity.name,
+            activity_type_id: activity.activity_type_id || '',
+            supplier_id: activity.supplier_id || '',
+            start_time: activity.start_time ? moment.utc(activity.start_time).format('YYYY-MM-DDTHH:mm') : '',
+            end_time: activity.end_time ? moment.utc(activity.end_time).format('YYYY-MM-DDTHH:mm') : '',
+            cost: activity.cost || 0,
+            cost_per_person: activity.cost_per_person || 0,
+            payment_type: activity.payment_type || '',
+            should_account: activity.should_account || false,
+            notes: activity.notes || ''
+        };
+    } else {
+        // Create mode - reset form with default dates from service
+        activityForm.value = {
+            id: null,
+            name: '',
+            activity_type_id: '',
+            supplier_id: '',
+            start_time: '',
+            end_time: '',
+            cost: 0,
+            cost_per_person: 0,
+            payment_type: '',
+            should_account: false,
+            notes: ''
+        };
+    }
+    showActivityModal.value = true;
+};
+
+const closeActivityModal = () => {
+    showActivityModal.value = false;
+};
+
+const cancelActivityEdit = () => {
+    activityForm.value = {
+        id: null,
+        name: '',
+        activity_type_id: '',
+        supplier_id: '',
+        start_time: '',
+        end_time: '',
+        cost: 0,
+        cost_per_person: 0,
+        payment_type: '',
+        notes: ''
+    };
+    showActivityModal.value = false;
+};
+
+const saveActivity = async () => {
+    if (!activityForm.value.name) {
+        alert('Inserisci il nome dell\'esperienza');
+        return;
+    }
+
+    try {
+        const payload = {
+            company_id: form.value.company_id,
+            service_id: props.service.id,
+            name: activityForm.value.name,
+            activity_type_id: activityForm.value.activity_type_id || null,
+            supplier_id: activityForm.value.supplier_id || null,
+            start_time: activityForm.value.start_time || null,
+            end_time: activityForm.value.end_time || null,
+            cost: activityForm.value.cost || 0,
+            cost_per_person: activityForm.value.cost_per_person || 0,
+            payment_type: activityForm.value.payment_type || null,
+            should_account: activityForm.value.should_account || false,
+            notes: activityForm.value.notes || null
+        };
+
+        let response;
+        if (activityForm.value.id) {
+            // Update existing activity
+            response = await axios.put(`/api/activities/${activityForm.value.id}`, payload);
+            // Update in local array
+            const index = form.value.activities.findIndex(a => a.id === activityForm.value.id);
+            if (index !== -1) {
+                form.value.activities[index] = response.data.data;
+            }
+        } else {
+            // Create new activity
+            response = await axios.post('/api/activities', payload);
+            // Add to local array
+            form.value.activities.push(response.data.data);
+        }
+
+        alert(activityForm.value.id ? 'Esperienza aggiornata con successo' : 'Esperienza aggiunta con successo');
+        closeActivityModal();
+        cancelActivityEdit();
+    } catch (error) {
+        console.error('Error saving activity:', error);
+        alert('Errore durante il salvataggio dell\'esperienza');
+    }
+};
+
+const loadActivityTypes = async () => {
+    if (!form.value.company_id) return;
+
+    try {
+        const response = await axios.get('/api/dictionaries/activity-types', {
+            params: {
+                company_id: isSuperAdmin.value ? form.value.company_id : undefined
+            }
+        });
+        activityTypes.value = response.data.data || [];
+    } catch (error) {
+        console.error('Error loading activity types:', error);
+    }
+};
+
+// Transaction functions
+const openTransactionModal = (transaction = null) => {
+    if (transaction) {
+        // Edit mode
+        transactionForm.value = {
+            id: transaction.id,
+            transaction_date: transaction.transaction_date ? moment.utc(transaction.transaction_date).format('YYYY-MM-DD') : '',
+            amount: transaction.amount || 0,
+            transaction_type: transaction.transaction_type || '',
+            installment: transaction.installment || '',
+            accounting_entry_id: transaction.accounting_entry_id || '',
+            counterpart_id: transaction.counterpart_id || '',
+            document_number: transaction.document_number || '',
+            document_due_date: transaction.document_due_date ? moment.utc(transaction.document_due_date).format('YYYY-MM-DD') : '',
+            payment_date: transaction.payment_date ? moment.utc(transaction.payment_date).format('YYYY-MM-DD') : '',
+            payment_type: transaction.payment_type || '',
+            payment_reason: transaction.payment_reason || '',
+            iban: transaction.iban || '',
+            status: transaction.status || '',
+            notes: transaction.notes || '',
+            is_automatic: transaction.is_automatic || false,
+        };
+    } else {
+        // Create mode - always manual
+        transactionForm.value = {
+            id: null,
+            transaction_date: moment().format('YYYY-MM-DD'),
+            amount: 0,
+            transaction_type: '',
+            installment: '',
+            accounting_entry_id: '',
+            counterpart_id: '',
+            document_number: '',
+            document_due_date: '',
+            payment_date: '',
+            payment_type: '',
+            payment_reason: '',
+            iban: '',
+            status: '',
+            notes: '',
+            is_automatic: false,
+        };
+    }
+    showTransactionModal.value = true;
+};
+
+const closeTransactionModal = () => {
+    showTransactionModal.value = false;
+};
+
+const cancelTransactionEdit = () => {
+    transactionForm.value = {
+        id: null,
+        transaction_date: '',
+        amount: 0,
+        transaction_type: '',
+        installment: '',
+        accounting_entry_id: '',
+        counterpart_id: '',
+        document_number: '',
+        document_due_date: '',
+        payment_date: '',
+        payment_type: '',
+        payment_reason: '',
+        iban: '',
+        status: '',
+        notes: '',
+        is_automatic: false,
+    };
+    showTransactionModal.value = false;
+};
+
+const onTransactionTypeChange = () => {
+    // Reset counterpart when transaction type changes
+    transactionForm.value.counterpart_id = '';
+    // Reset status when transaction type changes
+    transactionForm.value.status = '';
+};
+
+const saveTransaction = async () => {
+    if (!transactionForm.value.transaction_date || !transactionForm.value.amount || !transactionForm.value.transaction_type || !transactionForm.value.installment || !transactionForm.value.status) {
+        alert('Compila tutti i campi obbligatori');
+        return;
+    }
+
+    try {
+        const payload = {
+            service_id: props.service.id,
+            transaction_date: transactionForm.value.transaction_date,
+            amount: transactionForm.value.amount,
+            transaction_type: transactionForm.value.transaction_type,
+            installment: transactionForm.value.installment,
+            accounting_entry_id: transactionForm.value.accounting_entry_id || null,
+            counterpart_id: transactionForm.value.counterpart_id || null,
+            document_number: transactionForm.value.document_number || null,
+            document_due_date: transactionForm.value.document_due_date || null,
+            payment_date: transactionForm.value.payment_date || null,
+            payment_type: transactionForm.value.payment_type || null,
+            payment_reason: transactionForm.value.payment_reason || null,
+            iban: transactionForm.value.iban || null,
+            status: transactionForm.value.status,
+            notes: transactionForm.value.notes || null,
+            is_automatic: transactionForm.value.is_automatic,
+        };
+
+        let response;
+        if (transactionForm.value.id) {
+            // Update existing transaction
+            response = await axios.put(`/api/accounting-transactions/${transactionForm.value.id}`, payload);
+            // Update in local array
+            const index = form.value.accounting_transactions.findIndex(t => t.id === transactionForm.value.id);
+            if (index !== -1) {
+                form.value.accounting_transactions[index] = response.data.data;
+            }
+        } else {
+            // Create new transaction
+            response = await axios.post('/api/accounting-transactions', payload);
+            // Add to local array
+            form.value.accounting_transactions.push(response.data.data);
+        }
+
+        alert(transactionForm.value.id ? 'Movimento aggiornato con successo' : 'Movimento aggiunto con successo');
+        closeTransactionModal();
+        cancelTransactionEdit();
+    } catch (error) {
+        console.error('Error saving transaction:', error);
+        alert('Errore durante il salvataggio del movimento');
+    }
+};
+
+const removeTransaction = async (transactionId) => {
+    if (!confirm('Sei sicuro di voler rimuovere questo movimento contabile?')) {
+        return;
+    }
+
+    try {
+        // Delete from backend if it has an ID
+        if (transactionId) {
+            await axios.delete(`/api/accounting-transactions/${transactionId}`);
+        }
+        // Remove from local array
+        form.value.accounting_transactions = form.value.accounting_transactions.filter(t => t.id !== transactionId);
+        alert('Movimento rimosso con successo');
+    } catch (error) {
+        console.error('Error removing transaction:', error);
+        alert('Errore durante la rimozione del movimento');
+    }
+};
+
+// Selection functions
+const toggleSelectAllTransactions = () => {
+    if (isAllTransactionsSelected.value) {
+        selectedTransactions.value = [];
+    } else {
+        selectedTransactions.value = form.value.accounting_transactions.map(t => t.id);
+    }
+};
+
+const deleteSelectedTransactions = async () => {
+    if (selectedTransactions.value.length === 0) return;
+
+    const count = selectedTransactions.value.length;
+    if (confirm(`Sei sicuro di voler eliminare ${count} movimenti selezionati?`)) {
+        try {
+            // Delete all selected transactions
+            await Promise.all(
+                selectedTransactions.value.map(id =>
+                    axios.delete(`/api/accounting-transactions/${id}`)
+                )
+            );
+
+            // Remove from local array
+            form.value.accounting_transactions = form.value.accounting_transactions.filter(
+                t => !selectedTransactions.value.includes(t.id)
+            );
+
+            selectedTransactions.value = [];
+            alert(`${count} movimenti eliminati con successo`);
+        } catch (error) {
+            console.error('Error deleting transactions:', error);
+            alert('Errore durante l\'eliminazione dei movimenti selezionati');
+        }
+    }
+};
+
+// Inline status editing functions
+const startEditTransactionStatus = (transaction) => {
+    editingTransactionStatus.value = transaction.id;
+    editingStatusValue.value = transaction.status;
+    // Focus select in next tick using dynamic ref
+    nextTick(() => {
+        const select = statusInputRefs.value[transaction.id];
+        if (select) {
+            select.focus();
+        }
+    });
+};
+
+const saveTransactionStatus = async (transaction) => {
+    if (!editingStatusValue.value) {
+        alert('Seleziona uno stato valido');
+        return;
+    }
+
+    try {
+        const payload = {
+            service_id: props.service.id,
+            transaction_date: transaction.transaction_date,
+            amount: transaction.amount,
+            transaction_type: transaction.transaction_type,
+            installment: transaction.installment,
+            accounting_entry_id: transaction.accounting_entry_id || null,
+            counterpart_id: transaction.counterpart_id || null,
+            document_number: transaction.document_number || null,
+            document_due_date: transaction.document_due_date || null,
+            payment_date: transaction.payment_date || null,
+            payment_type: transaction.payment_type || null,
+            payment_reason: transaction.payment_reason || null,
+            iban: transaction.iban || null,
+            status: editingStatusValue.value,
+            notes: transaction.notes || null
+        };
+
+        const response = await axios.put(`/api/accounting-transactions/${transaction.id}`, payload);
+
+        // Update in local array
+        const index = form.value.accounting_transactions.findIndex(t => t.id === transaction.id);
+        if (index !== -1) {
+            form.value.accounting_transactions[index] = response.data.data;
+        }
+
+        editingTransactionStatus.value = null;
+        editingStatusValue.value = '';
+    } catch (error) {
+        console.error('Error updating transaction status:', error);
+        alert('Errore durante l\'aggiornamento dello stato');
+    }
+};
+
+const cancelEditTransactionStatus = () => {
+    editingTransactionStatus.value = null;
+    editingStatusValue.value = '';
+};
+
+const getInstallmentLabel = (installment) => {
+    const labels = {
+        deposit: 'Acconto',
+        balance: 'Saldo',
+        supplier_refund: 'Reso Fornitore',
+        customer_refund: 'Rimborso Cliente'
+    };
+    return labels[installment] || installment;
+};
+
+const formatDateTime = (datetime) => {
+    return datetime ? moment.utc(datetime).format('DD/MM/YYYY HH:mm') : '-';
+};
+
+const getPaymentTypeBadge = (type) => {
+    const classes = {
+        'INCLUSO': 'bg-success-subtle text-success',
+        'CLIENTE': 'bg-primary-subtle text-primary',
+        'AGENZIA': 'bg-warning-subtle text-warning',
+        'NESSUNO': 'bg-secondary-subtle text-secondary'
+    };
+    return classes[type] || 'bg-secondary-subtle text-secondary';
+};
+
+const onClientChange = () => {
+    // Auto-fill based on client selection if needed
+};
+
+const onIntermediaryChange = () => {
+    // Auto-fill based on intermediary selection if needed
+};
+
+const onSupplierChange = () => {
+    // Auto-fill based on supplier selection if needed
+};
+
+const formatDate = (date) => {
+    return date ? moment.utc(date).format('DD/MM/YYYY') : '-';
+};
+
+const formatAmount = (amount) => {
+    return new Intl.NumberFormat('it-IT', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(Math.abs(amount || 0));
+};
+
+const getActivityTypeName = (activityTypeId) => {
+    if (!activityTypeId) return null;
+    const activityType = activityTypes.value.find(t => t.id === activityTypeId);
+    return activityType ? activityType.name : null;
+};
+
+const getTransactionTypeLabel = (type) => {
+    const labels = { purchase: 'Acquisto', sale: 'Vendita', intermediation: 'Intermediazione' };
+    return labels[type] || type;
+};
+
+const getTransactionTypeBadge = (type) => {
+    const classes = {
+        purchase: 'badge bg-danger-subtle text-danger',
+        sale: 'badge bg-success-subtle text-success',
+        intermediation: 'badge bg-warning-subtle text-warning'
+    };
+    return classes[type] || 'badge bg-secondary-subtle text-secondary';
+};
+
+const getStatusLabel = (status) => {
+    const found = transactionStatuses.value.find(s => s.code === status);
+    return found ? found.name : status;
+};
+
+const getStatusBadge = (status) => {
+    const found = transactionStatuses.value.find(s => s.code === status);
+    if (found && found.color) {
+        return `badge bg-${found.color}-subtle text-${found.color}`;
+    }
+    return 'badge bg-secondary-subtle text-secondary';
+};
+
+const getTransactionTypeAbbr = (type) => {
+    const abbrs = {
+        purchase: 'ACQ',
+        sale: 'VEN',
+        intermediation: 'INT'
+    };
+    return abbrs[type] || type;
+};
+
+const getInstallmentAbbr = (installment) => {
+    const abbrs = {
+        deposit: 'ACC',
+        balance: 'SAL',
+        supplier_refund: 'RES',
+        customer_refund: 'RIM'
+    };
+    return abbrs[installment] || installment;
+};
+
+const getStatusAbbr = (status) => {
+    const found = transactionStatuses.value.find(s => s.code === status);
+    return found ? (found.abbreviation || found.name) : status;
+};
+
+const isStatusFinal = (statusCode) => {
+    const found = transactionStatuses.value.find(s => s.code === statusCode);
+    return found ? found.is_final : false;
+};
+
+const filteredTransactionStatuses = (transactionType) => {
+    if (!transactionType) return transactionStatuses.value;
+    const typeGroup = transactionType === 'sale' ? 'sale' : 'purchase';
+    return transactionStatuses.value.filter(s =>
+        s.transaction_type_group === typeGroup || s.transaction_type_group === 'both'
+    );
+};
+
+const getDueDateClass = (transaction) => {
+    if (!transaction.document_due_date) return 'text-muted';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(transaction.document_due_date);
+    dueDate.setHours(0, 0, 0, 0);
+
+    // Check if status is final (e.g. paid, collected)
+    if (isStatusFinal(transaction.status)) {
+        return 'text-success';
+    }
+
+    // Check if overdue
+    if (dueDate < today) {
+        return 'text-danger fw-bold';
+    }
+
+    // Check if due soon (within 7 days)
+    const daysDiff = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+    if (daysDiff <= 7) {
+        return 'text-warning fw-bold';
+    }
+
+    return 'text-muted';
+};
+
+// Tasks Functions
+const sortedServiceTasks = computed(() => {
+    if (!serviceTasks.value || !serviceTasks.value.length) return [];
+
+    return [...serviceTasks.value].sort((a, b) => {
+        // Sort by due_date ascending (tasks with no date go to end)
+        if (!a.due_date && !b.due_date) return 0;
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(a.due_date) - new Date(b.due_date);
+    });
+});
+
+const getTaskDueDateClass = (task) => {
+    if (!task.due_date) return '';
+    if (task.status === 'completed' || task.status === 'cancelled') return '';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(task.due_date);
+    dueDate.setHours(0, 0, 0, 0);
+
+    if (dueDate < today) {
+        return 'text-danger fw-bold';
+    }
+    const daysDiff = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+    if (daysDiff <= 3) {
+        return 'text-warning fw-bold';
+    }
+    return '';
+};
+
+const getTaskStatusBadgeClass = (status) => {
+    const classes = {
+        'to_complete': 'badge bg-warning-subtle text-warning',
+        'completed': 'badge bg-success-subtle text-success',
+        'cancelled': 'badge bg-secondary-subtle text-secondary'
+    };
+    return classes[status] || 'badge bg-secondary';
+};
+
+const getTaskStatusLabel = (status) => {
+    const labels = {
+        'to_complete': 'Da Completare',
+        'completed': 'Completato',
+        'cancelled': 'Annullato'
+    };
+    return labels[status] || status;
+};
+
+const loadTaskAssignableUsers = async () => {
+    if (!form.value.company_id) return;
+
+    try {
+        // Load users with roles that can be assigned tasks
+        const roles = ['admin', 'operator', 'driver', 'contabilita'];
+        const allUsers = [];
+
+        for (const role of roles) {
+            const response = await axios.get('/api/users', {
+                params: {
+                    role: role,
+                    per_page: 100,
+                    company_id: isSuperAdmin.value ? form.value.company_id : undefined
+                }
+            });
+            if (response.data.data) {
+                allUsers.push(...response.data.data);
+            }
+        }
+
+        // Remove duplicates by id
+        const uniqueUsers = allUsers.filter((user, index, self) =>
+            index === self.findIndex((u) => u.id === user.id)
+        );
+
+        taskAssignableUsers.value = uniqueUsers;
+    } catch (error) {
+        console.error('Error loading task assignable users:', error);
+    }
+};
+
+const openTaskModal = async (task = null) => {
+    // Load assignable users if not already loaded
+    if (taskAssignableUsers.value.length === 0) {
+        await loadTaskAssignableUsers();
+    }
+
+    if (task) {
+        // Edit mode
+        taskForm.value = {
+            id: task.id,
+            name: task.name,
+            service_id: task.service_id || '',
+            due_date: task.due_date ? moment.utc(task.due_date).format('YYYY-MM-DD') : '',
+            assigned_users: task.assigned_users ? task.assigned_users.map(u => u.id) : [],
+            status: task.status || 'to_complete',
+            notes: task.notes || ''
+        };
+    } else {
+        // Create mode - pre-fill service_id
+        taskForm.value = {
+            id: null,
+            name: '',
+            service_id: isEdit.value && props.service ? props.service.id : '',
+            due_date: '',
+            assigned_users: [],
+            status: 'to_complete',
+            notes: ''
+        };
+    }
+
+    taskErrors.value = [];
+    showTaskModal.value = true;
+};
+
+const saveTask = async () => {
+    taskSaving.value = true;
+    taskErrors.value = [];
+
+    try {
+        const data = {
+            name: taskForm.value.name,
+            service_id: taskForm.value.service_id || null,
+            due_date: taskForm.value.due_date || null,
+            assigned_users: taskForm.value.assigned_users.length > 0 ? taskForm.value.assigned_users : [],
+            status: taskForm.value.status,
+            notes: taskForm.value.notes || null
+        };
+
+        if (taskForm.value.id) {
+            // Update
+            await axios.put(`/api/tasks/${taskForm.value.id}`, data);
+        } else {
+            // Create
+            await axios.post('/api/tasks', data);
+        }
+
+        // Reload tasks
+        await reloadServiceTasks();
+
+        // Close modal
+        showTaskModal.value = false;
+    } catch (error) {
+        console.error('Error saving task:', error);
+        if (error.response && error.response.status === 422) {
+            const validationErrors = error.response.data.errors;
+            taskErrors.value = Object.values(validationErrors).flat();
+        } else {
+            taskErrors.value = ['Si è verificato un errore durante il salvataggio'];
+        }
+    } finally {
+        taskSaving.value = false;
+    }
+};
+
+const cancelTaskEdit = () => {
+    showTaskModal.value = false;
+    taskForm.value = {
+        id: null,
+        name: '',
+        service_id: '',
+        due_date: '',
+        assigned_to: '',
+        status: 'to_complete',
+        notes: ''
+    };
+    taskErrors.value = [];
+};
+
+const reloadServiceTasks = async () => {
+    if (isEdit.value && props.service) {
+        try {
+            const response = await axios.get(`/api/services/${props.service.id}`);
+            serviceTasks.value = response.data.tasks || [];
+        } catch (error) {
+            console.error('Error reloading tasks:', error);
+        }
+    }
+};
+
+const deleteTask = async (taskId) => {
+    if (!confirm('Sei sicuro di voler eliminare questo task?')) {
+        return;
+    }
+
+    try {
+        await axios.delete(`/api/tasks/${taskId}`);
+        // Reload tasks
+        await reloadServiceTasks();
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        alert('Errore durante l\'eliminazione del task');
+    }
+};
+
+// New Committente Management
+const showSystemDataSection = ref(false);
+
+const generateCommittenteCredentials = () => {
+    const timestamp = Date.now();
+    const username = `NCC-USR-${timestamp}`;
+    const email = `${username}@nccgest.it`;
+    const password = 'NCC-PWD-123!!';
+    return { username, email, password };
+};
+
+const openNewCommittenteModal = () => {
+    resetCommittenteForm();
+    newCommittenteForm.value.company_id = form.value.company_id;
+
+    // Auto-generate credentials
+    const credentials = generateCommittenteCredentials();
+    newCommittenteForm.value.username = credentials.username;
+    newCommittenteForm.value.email = credentials.email;
+    newCommittenteForm.value.password = credentials.password;
+    newCommittenteForm.value.password_confirmation = credentials.password;
+
+    showNewCommittenteModal.value = true;
+};
+
+const resetCommittenteForm = () => {
+    const credentials = generateCommittenteCredentials();
+    newCommittenteForm.value = {
+        username: credentials.username,
+        email: credentials.email,
+        surname: '',
+        name: '',
+        password: credentials.password,
+        password_confirmation: credentials.password,
+        phone: '',
+        role: 'collaboratore',
+        is_active: false,
+        company_id: null,
+        is_committente: true,
+        is_fornitore: false,
+        is_intermediario: false
+    };
+    newCommittenteErrors.value = {};
+    showNewCommittentePassword.value = false;
+    showNewCommittentePasswordConfirmation.value = false;
+    showSystemDataSection.value = false;
+};
+
+const saveNewCommittente = async () => {
+    savingNewCommittente.value = true;
+    newCommittenteErrors.value = {};
+
+    try {
+        const data = {
+            username: newCommittenteForm.value.username,
+            email: newCommittenteForm.value.email,
+            surname: newCommittenteForm.value.surname,
+            name: newCommittenteForm.value.name || null,
+            password: newCommittenteForm.value.password,
+            password_confirmation: newCommittenteForm.value.password_confirmation,
+            phone: newCommittenteForm.value.phone || null,
+            role: 'collaboratore',
+            is_active: false,
+            is_intermediario: false,
+            company_id: newCommittenteForm.value.company_id,
+            profile: {
+                is_committente: true,
+                is_fornitore: false
+            }
+        };
+
+        const response = await axios.post('/api/users', data);
+        const newUser = response.data;
+        const newLabel = `${newUser.surname || ''} ${newUser.name || ''}`.trim() || newUser.email;
+
+        // Select the newly created committente in Multiselect
+        selectCommittenteInMultiselect(newUser.id, newLabel);
+
+        // Close modal
+        showNewCommittenteModal.value = false;
+
+        // Show success message
+        alert('Committente creato con successo!');
+    } catch (error) {
+        console.error('Error creating committente:', error);
+
+        if (error.response && error.response.status === 422) {
+            // Validation errors
+            newCommittenteErrors.value = error.response.data.errors || {};
+        } else {
+            alert('Errore durante la creazione del committente. Riprova.');
+        }
+    } finally {
+        savingNewCommittente.value = false;
+    }
+};
+
+// Helper to select a committente in the async Multiselect
+const selectCommittenteInMultiselect = (id, label) => {
+    // Inject option so searchCommittenti includes it on next resolve
+    injectedCommittenteOption.value = { value: id, label: label };
+    // Set value
+    form.value.client_id = id;
+    // Force Multiselect to recreate — resolve-on-load will find the injected option
+    committentiKey.value++;
+};
+
+// Create Committente from Passenger data
+const createCommittenteFromPassenger = async () => {
+    if (!hasPassengerData.value) {
+        alert('Inserisci almeno un passeggero con alcuni dati prima di creare un committente.');
+        return;
+    }
+
+    // Prevent multiple concurrent clicks
+    if (creatingCommittenteFromPassenger.value) return;
+    creatingCommittenteFromPassenger.value = true;
+
+    try {
+        const firstPassenger = form.value.passengers[0];
+        const surname = (firstPassenger.surname || '').trim();
+        const name = (firstPassenger.name || '').trim();
+
+        // Check for exact duplicates by name+surname (dedicated API call, no side effects on Multiselect)
+        if (surname) {
+            try {
+                const params = {
+                    is_committente: 1,
+                    per_page: 50,
+                    search: surname,
+                    company_id: isSuperAdmin.value ? form.value.company_id : undefined
+                };
+                const dupResponse = await axios.get('/api/users', { params });
+                const dupUsers = dupResponse.data.data || [];
+
+                // Filter for exact match on surname + name
+                const exactMatches = dupUsers.filter(u => {
+                    const uSurname = (u.surname || '').trim().toLowerCase();
+                    const uName = (u.name || '').trim().toLowerCase();
+                    const matchSurname = uSurname === surname.toLowerCase();
+                    const matchName = !name || uName === name.toLowerCase();
+                    return matchSurname && matchName;
+                });
+
+                if (exactMatches.length > 0) {
+                    const names = exactMatches.map(c => `  - ${c.surname || ''} ${c.name || ''}`.trim()).join('\n');
+                    const useExisting = confirm(
+                        `Esiste già un committente con lo stesso nome:\n${names}\n\nVuoi selezionarlo invece di crearne uno nuovo?`
+                    );
+                    if (useExisting) {
+                        const match = exactMatches[0];
+                        const matchLabel = `${match.surname || ''} ${match.name || ''}`.trim() || match.email;
+                        selectCommittenteInMultiselect(match.id, matchLabel);
+                    }
+                    // In both cases (OK or Annulla) stop here — no new user created
+                    return;
+                }
+            } catch (dupError) {
+                console.error('Error checking duplicate committenti:', dupError);
+            }
+        }
+
+        const timestamp = Date.now();
+        const username = `NCC-USR-${timestamp}`;
+        const email = firstPassenger.email || `${username}@nccgest.it`;
+        const password = 'NCC-PWD-123!!';
+
+        const data = {
+            username: username,
+            email: email,
+            surname: surname || 'Da completare',
+            name: name || null,
+            password: password,
+            password_confirmation: password,
+            phone: firstPassenger.phone || null,
+            role: 'collaboratore',
+            is_active: false,
+            is_intermediario: false,
+            company_id: form.value.company_id,
+            profile: {
+                is_committente: true,
+                is_fornitore: false
+            }
+        };
+
+        const response = await axios.post('/api/users', data);
+        const newUser = response.data;
+        const newLabel = `${newUser.surname || ''} ${newUser.name || ''}`.trim() || newUser.email;
+
+        selectCommittenteInMultiselect(newUser.id, newLabel);
+
+        alert('Committente creato con successo dai dati del passeggero!');
+    } catch (error) {
+        console.error('Error creating committente from passenger:', error);
+
+        if (error.response && error.response.status === 422) {
+            const errors = error.response.data.errors || {};
+            const errorMessages = Object.values(errors).flat().join('\n');
+            alert('Errore di validazione:\n' + errorMessages);
+        } else {
+            alert('Errore durante la creazione del committente. Riprova.');
+        }
+    } finally {
+        creatingCommittenteFromPassenger.value = false;
+    }
+};
+
+// New Intermediario Management
+const generateIntermediarioCredentials = () => {
+    const timestamp = Date.now();
+    const username = `NCC-USR-${timestamp}`;
+    const email = `${username}@nccgest.it`;
+    const password = 'NCC-PWD-123!!';
+    return { username, email, password };
+};
+
+const openNewIntermediarioModal = () => {
+    resetIntermediarioForm();
+    newIntermediarioForm.value.company_id = form.value.company_id;
+
+    // Auto-generate credentials
+    const credentials = generateIntermediarioCredentials();
+    newIntermediarioForm.value.username = credentials.username;
+    newIntermediarioForm.value.email = credentials.email;
+    newIntermediarioForm.value.password = credentials.password;
+    newIntermediarioForm.value.password_confirmation = credentials.password;
+
+    showNewIntermediarioModal.value = true;
+};
+
+const resetIntermediarioForm = () => {
+    const credentials = generateIntermediarioCredentials();
+    newIntermediarioForm.value = {
+        username: credentials.username,
+        email: credentials.email,
+        surname: '',
+        name: '',
+        password: credentials.password,
+        password_confirmation: credentials.password,
+        phone: '',
+        role: 'collaboratore',
+        is_active: false,
+        company_id: null,
+        is_committente: false,
+        is_fornitore: false,
+        is_intermediario: true
+    };
+    newIntermediarioErrors.value = {};
+    showNewIntermediarioPassword.value = false;
+    showNewIntermediarioPasswordConfirmation.value = false;
+    showIntermediarioSystemDataSection.value = false;
+};
+
+const saveNewIntermediario = async () => {
+    savingNewIntermediario.value = true;
+    newIntermediarioErrors.value = {};
+
+    try {
+        const data = {
+            username: newIntermediarioForm.value.username,
+            email: newIntermediarioForm.value.email,
+            surname: newIntermediarioForm.value.surname,
+            name: newIntermediarioForm.value.name || null,
+            password: newIntermediarioForm.value.password,
+            password_confirmation: newIntermediarioForm.value.password_confirmation,
+            phone: newIntermediarioForm.value.phone || null,
+            role: 'collaboratore',
+            is_active: false,
+            is_intermediario: true,
+            company_id: newIntermediarioForm.value.company_id,
+            profile: {
+                is_committente: false,
+                is_fornitore: false
+            }
+        };
+
+        const response = await axios.post('/api/users', data);
+        const newUser = response.data;
+        const newLabel = `${newUser.surname || ''} ${newUser.name || ''}`.trim() || newUser.email;
+
+        // Inject option, set value, recreate Multiselect
+        injectedIntermediarioOption.value = { value: newUser.id, label: newLabel };
+        form.value.intermediary_id = newUser.id;
+        intermediariKey.value++;
+
+        // Close modal
+        showNewIntermediarioModal.value = false;
+
+        // Show success message
+        alert('Intermediario creato con successo!');
+    } catch (error) {
+        console.error('Error creating intermediario:', error);
+
+        if (error.response && error.response.status === 422) {
+            // Validation errors
+            newIntermediarioErrors.value = error.response.data.errors || {};
+        } else {
+            alert('Errore durante la creazione dell\'intermediario. Riprova.');
+        }
+    } finally {
+        savingNewIntermediario.value = false;
+    }
+};
+
+// New Fornitore Management
+const generateFornitoreCredentials = () => {
+    const timestamp = Date.now();
+    const username = `NCC-USR-${timestamp}`;
+    const email = `${username}@nccgest.it`;
+    const password = 'NCC-PWD-123!!';
+    return { username, email, password };
+};
+
+const openNewFornitoreModal = () => {
+    resetFornitoreForm();
+    newFornitoreForm.value.company_id = form.value.company_id;
+
+    // Auto-generate credentials
+    const credentials = generateFornitoreCredentials();
+    newFornitoreForm.value.username = credentials.username;
+    newFornitoreForm.value.email = credentials.email;
+    newFornitoreForm.value.password = credentials.password;
+    newFornitoreForm.value.password_confirmation = credentials.password;
+
+    showNewFornitoreModal.value = true;
+};
+
+const resetFornitoreForm = () => {
+    const credentials = generateFornitoreCredentials();
+    newFornitoreForm.value = {
+        username: credentials.username,
+        email: credentials.email,
+        surname: '',
+        name: '',
+        password: credentials.password,
+        password_confirmation: credentials.password,
+        phone: '',
+        role: 'collaboratore',
+        is_active: false,
+        company_id: null,
+        is_committente: false,
+        is_fornitore: true,
+        is_intermediario: false
+    };
+    newFornitoreErrors.value = {};
+    showNewFornitorePassword.value = false;
+    showNewFornitorePasswordConfirmation.value = false;
+    showFornitoreSystemDataSection.value = false;
+};
+
+const saveNewFornitore = async () => {
+    savingNewFornitore.value = true;
+    newFornitoreErrors.value = {};
+
+    try {
+        const data = {
+            username: newFornitoreForm.value.username,
+            email: newFornitoreForm.value.email,
+            surname: newFornitoreForm.value.surname,
+            name: newFornitoreForm.value.name || null,
+            password: newFornitoreForm.value.password,
+            password_confirmation: newFornitoreForm.value.password_confirmation,
+            phone: newFornitoreForm.value.phone || null,
+            role: 'collaboratore',
+            is_active: false,
+            is_intermediario: false,
+            company_id: newFornitoreForm.value.company_id,
+            profile: {
+                is_committente: false,
+                is_fornitore: true
+            }
+        };
+
+        const response = await axios.post('/api/users', data);
+        const newUser = response.data;
+        const newLabel = `${newUser.surname || ''} ${newUser.name || ''}`.trim() || newUser.email;
+
+        // Inject option, set value, recreate Multiselect
+        injectedFornitoreOption.value = { value: newUser.id, label: newLabel };
+        form.value.supplier_id = newUser.id;
+        fornitoriKey.value++;
+
+        // Close modal
+        showNewFornitoreModal.value = false;
+
+        // Show success message
+        alert('Fornitore creato con successo!');
+    } catch (error) {
+        console.error('Error creating fornitore:', error);
+
+        if (error.response && error.response.status === 422) {
+            // Validation errors
+            newFornitoreErrors.value = error.response.data.errors || {};
+        } else {
+            alert('Errore durante la creazione del fornitore. Riprova.');
+        }
+    } finally {
+        savingNewFornitore.value = false;
+    }
+};
+
+// Activity Confirmation Tasks Management
+// Toggle only changes the state, actual creation/deletion happens on save
+const toggleActivityConfirmation = () => {
+    // Nothing happens here - changes will be applied on save
+};
+
+const createActivityConfirmationTasks = async () => {
+    // Validate settings
+    if (!settings.value || !settings.value.activity_confirmation_text || !settings.value.activity_confirmation_role) {
+        console.warn('Activity confirmation settings not configured');
+        return false;
+    }
+
+    // Validate activities exist
+    if (!form.value.activities || form.value.activities.length === 0) {
+        console.warn('No activities to create confirmation tasks for');
+        return false;
+    }
+
+    try {
+        // Get users with the specified role for this company
+        const response = await axios.get('/api/users', {
+            params: {
+                role: settings.value.activity_confirmation_role,
+                company_id: form.value.company_id,
+                per_page: 100
+            }
+        });
+
+        const assignableUsers = response.data.data || [];
+        if (assignableUsers.length === 0) {
+            console.warn(`No users with role "${settings.value.activity_confirmation_role}" found`);
+            return false;
+        }
+
+        const userIds = assignableUsers.map(u => u.id);
+
+        // Calculate due date (day before pickup)
+        const pickupDate = moment(form.value.pickup_datetime);
+        const dueDate = pickupDate.subtract(1, 'days').format('YYYY-MM-DD');
+
+        // Create a task for each activity
+        for (const activity of form.value.activities) {
+            // Get supplier name
+            const supplier = activity.supplier
+                ? `${activity.supplier.name} ${activity.supplier.surname || ''}`.trim()
+                : 'Fornitore non specificato';
+
+            // Get service reference
+            const serviceRef = form.value.reference_number || `Servizio #${props.service.id}`;
+
+            // Replace placeholders in confirmation text
+            let taskName = settings.value.activity_confirmation_text
+                .replace('{$fornitore$}', supplier)
+                .replace('{$servizio$}', serviceRef);
+
+            // Create task
+            await axios.post('/api/tasks', {
+                company_id: form.value.company_id,
+                name: taskName,
+                service_id: props.service.id,
+                due_date: dueDate,
+                assigned_users: userIds,
+                status: 'to_complete',
+                notes: `Task di conferma automatico per l'esperienza: ${activity.name}`
+            });
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error creating activity confirmation tasks:', error);
+        return false;
+    }
+};
+
+const removeActivityConfirmationTasks = async () => {
+    try {
+        // Find all tasks that are activity confirmation tasks
+        // They contain the note "Task di conferma automatico per l'esperienza:"
+        const confirmationTasks = serviceTasks.value.filter(task =>
+            task.notes && task.notes.includes('Task di conferma automatico per l\'esperienza:')
+        );
+
+        if (confirmationTasks.length === 0) {
+            console.warn('No confirmation tasks to remove');
+            return false;
+        }
+
+        // Delete all confirmation tasks in parallel
+        await Promise.all(confirmationTasks.map(task => axios.delete(`/api/tasks/${task.id}`)));
+
+        return true;
+    } catch (error) {
+        console.error('Error removing activity confirmation tasks:', error);
+        return false;
+    }
+};
+
+// Process accounting transactions via single batch API call
+const processAccountingTransactions = async (overrideServiceId = null) => {
+    if (!form.value.client_id) {
+        console.warn('No client selected for accounting');
+        return false;
+    }
+
+    if (!settings.value) {
+        console.warn('Settings not available for accounting');
+        return false;
+    }
+
+    try {
+        const pickupDate = form.value.pickup_datetime
+            ? moment(form.value.pickup_datetime).format('YYYY-MM-DD')
+            : moment().format('YYYY-MM-DD');
+        const clientId = form.value.client_id;
+        const serviceId = overrideServiceId || props.service.id;
+        const handlingFeesEntryId = settings.value.handling_fees_accounting_entry_id;
+        const cardFeesEntryId = settings.value.card_fees_accounting_entry_id;
+
+        const operations = [];
+
+        // === ACCONTO VENDITA (deposit - card fees) ===
+        if (form.value.deposit_amount && form.value.deposit_amount > 0) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'sale', installment: 'deposit', accounting_entry_id: settings.value.deposit_accounting_entry_id },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.deposit_amount,
+                    transaction_type: 'sale', installment: 'deposit',
+                    accounting_entry_id: settings.value.deposit_accounting_entry_id,
+                    counterpart_id: clientId, payment_type: 'carta_di_credito',
+                    payment_reason: settings.value.deposit_reason, status: 'to_collect',
+                }
+            });
+        }
+
+        // === ACCONTO HANDLING FEES ===
+        const accontoHandlingAmount = (form.value.deposit_handling_fees || 0) - (form.value.deposit_taxable || 0);
+        if (accontoHandlingAmount > 0 && handlingFeesEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'deposit', accounting_entry_id: handlingFeesEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: parseFloat(accontoHandlingAmount.toFixed(2)),
+                    transaction_type: 'purchase', installment: 'deposit',
+                    accounting_entry_id: handlingFeesEntryId,
+                    counterpart_id: clientId, payment_type: 'carta_di_credito',
+                    payment_reason: settings.value.handling_fees_reason, status: 'to_pay',
+                }
+            });
+        } else if (handlingFeesEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'deposit', accounting_entry_id: handlingFeesEntryId },
+                data: {}
+            });
+        }
+
+        // === ACCONTO CARD FEES ===
+        const accontoCardAmount = (form.value.deposit_amount || 0) - (form.value.deposit_handling_fees || 0);
+        if (accontoCardAmount > 0 && cardFeesEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'deposit', accounting_entry_id: cardFeesEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: parseFloat(accontoCardAmount.toFixed(2)),
+                    transaction_type: 'purchase', installment: 'deposit',
+                    accounting_entry_id: cardFeesEntryId,
+                    counterpart_id: clientId, payment_type: 'carta_di_credito',
+                    payment_reason: settings.value.card_fees_reason, status: 'to_pay',
+                }
+            });
+        } else if (cardFeesEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'deposit', accounting_entry_id: cardFeesEntryId },
+                data: {}
+            });
+        }
+
+        // === SALDO VENDITA ===
+        let balanceAmount;
+        switch (form.value.balance_sale_type) {
+            case 'balance_handling_fees': balanceAmount = form.value.balance_handling_fees; break;
+            case 'balance_card_fees': balanceAmount = form.value.balance_card_fees; break;
+            default: balanceAmount = form.value.balance_taxable;
+        }
+        if (balanceAmount && balanceAmount > 0) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'sale', installment: 'balance', accounting_entry_id: settings.value.balance_accounting_entry_id },
+                data: {
+                    transaction_date: pickupDate, amount: balanceAmount,
+                    transaction_type: 'sale', installment: 'balance',
+                    accounting_entry_id: settings.value.balance_accounting_entry_id,
+                    counterpart_id: clientId, payment_type: 'contanti',
+                    payment_reason: settings.value.balance_reason, status: 'to_collect',
+                }
+            });
+        }
+
+        // === SALDO HANDLING FEES ===
+        const saldoHandlingAmount = (form.value.balance_handling_fees || 0) - (form.value.balance_taxable || 0);
+        if ((form.value.balance_sale_type === 'balance_handling_fees' || form.value.balance_sale_type === 'balance_card_fees')
+            && saldoHandlingAmount > 0 && handlingFeesEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: handlingFeesEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: parseFloat(saldoHandlingAmount.toFixed(2)),
+                    transaction_type: 'purchase', installment: 'balance',
+                    accounting_entry_id: handlingFeesEntryId,
+                    counterpart_id: clientId, payment_type: 'contanti',
+                    payment_reason: settings.value.handling_fees_reason, status: 'to_pay',
+                }
+            });
+        } else if (handlingFeesEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: handlingFeesEntryId },
+                data: {}
+            });
+        }
+
+        // === SALDO CARD FEES ===
+        const saldoCardAmount = (form.value.balance_card_fees || 0) - (form.value.balance_handling_fees || 0);
+        if (form.value.balance_sale_type === 'balance_card_fees'
+            && saldoCardAmount > 0 && cardFeesEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: cardFeesEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: parseFloat(saldoCardAmount.toFixed(2)),
+                    transaction_type: 'purchase', installment: 'balance',
+                    accounting_entry_id: cardFeesEntryId,
+                    counterpart_id: clientId, payment_type: 'contanti',
+                    payment_reason: settings.value.card_fees_reason, status: 'to_pay',
+                }
+            });
+        } else if (cardFeesEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: cardFeesEntryId },
+                data: {}
+            });
+        }
+
+        // === INTERMEDIAZIONE ===
+        if (form.value.intermediary_commission && form.value.intermediary_commission > 0 && form.value.intermediary_id) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'intermediation', installment: 'balance', accounting_entry_id: settings.value.commission_accounting_entry_id },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.intermediary_commission,
+                    transaction_type: 'intermediation', installment: 'balance',
+                    accounting_entry_id: settings.value.commission_accounting_entry_id,
+                    counterpart_id: form.value.intermediary_id,
+                    payment_reason: settings.value.commission_reason, status: 'to_pay',
+                }
+            });
+        } else {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'intermediation', installment: 'balance', accounting_entry_id: settings.value.commission_accounting_entry_id },
+                data: {}
+            });
+        }
+
+        // === CARBURANTE ===
+        if (form.value.fuel_cost && form.value.fuel_cost > 0 && form.value.supplier_id) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: settings.value.fuel_accounting_entry_id },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.fuel_cost,
+                    transaction_type: 'purchase', installment: 'balance',
+                    accounting_entry_id: settings.value.fuel_accounting_entry_id,
+                    counterpart_id: form.value.supplier_id,
+                    payment_reason: settings.value.fuel_reason, status: 'to_pay',
+                }
+            });
+        } else {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: settings.value.fuel_accounting_entry_id },
+                data: {}
+            });
+        }
+
+        // === COSTO DRIVER ===
+        const driverCostEntryId = settings.value.driver_cost_accounting_entry_id;
+        const firstDriverId = form.value.driver_ids && form.value.driver_ids.length > 0 ? form.value.driver_ids[0] : null;
+        if (form.value.driver_compensation && form.value.driver_compensation > 0 && firstDriverId && driverCostEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: driverCostEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.driver_compensation,
+                    transaction_type: 'purchase', installment: 'balance',
+                    accounting_entry_id: driverCostEntryId,
+                    counterpart_id: firstDriverId,
+                    payment_reason: settings.value.driver_cost_reason, status: 'to_pay',
+                }
+            });
+        } else if (driverCostEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: driverCostEntryId },
+                data: {}
+            });
+        }
+
+        // === COSTO COLLEGA ===
+        const colleagueCostEntryId = settings.value.colleague_cost_accounting_entry_id;
+        if (form.value.colleague_cost && form.value.colleague_cost > 0 && form.value.supplier_id && colleagueCostEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: colleagueCostEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.colleague_cost,
+                    transaction_type: 'purchase', installment: 'balance',
+                    accounting_entry_id: colleagueCostEntryId,
+                    counterpart_id: form.value.supplier_id,
+                    payment_reason: settings.value.colleague_cost_reason, status: 'to_pay',
+                }
+            });
+        } else if (colleagueCostEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: colleagueCostEntryId },
+                data: {}
+            });
+        }
+
+        // === PEDAGGI ===
+        const tollEntryId = settings.value.toll_accounting_entry_id;
+        if (form.value.toll_cost && form.value.toll_cost > 0 && form.value.supplier_id && tollEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: tollEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.toll_cost,
+                    transaction_type: 'purchase', installment: 'balance',
+                    accounting_entry_id: tollEntryId,
+                    counterpart_id: form.value.supplier_id,
+                    payment_reason: settings.value.toll_reason, status: 'to_pay',
+                }
+            });
+        } else if (tollEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: tollEntryId },
+                data: {}
+            });
+        }
+
+        // === PARCHEGGI ===
+        const parkingEntryId = settings.value.parking_accounting_entry_id;
+        if (form.value.parking_cost && form.value.parking_cost > 0 && form.value.supplier_id && parkingEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: parkingEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.parking_cost,
+                    transaction_type: 'purchase', installment: 'balance',
+                    accounting_entry_id: parkingEntryId,
+                    counterpart_id: form.value.supplier_id,
+                    payment_reason: settings.value.parking_reason, status: 'to_pay',
+                }
+            });
+        } else if (parkingEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: parkingEntryId },
+                data: {}
+            });
+        }
+
+        // === ALTRI COSTI VEICOLO ===
+        const otherVehicleEntryId = settings.value.other_vehicle_accounting_entry_id;
+        if (form.value.other_vehicle_costs && form.value.other_vehicle_costs > 0 && form.value.supplier_id && otherVehicleEntryId) {
+            operations.push({
+                action: 'upsert',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: otherVehicleEntryId },
+                data: {
+                    transaction_date: pickupDate, amount: form.value.other_vehicle_costs,
+                    transaction_type: 'purchase', installment: 'balance',
+                    accounting_entry_id: otherVehicleEntryId,
+                    counterpart_id: form.value.supplier_id,
+                    payment_reason: settings.value.other_vehicle_reason, status: 'to_pay',
+                }
+            });
+        } else if (otherVehicleEntryId) {
+            operations.push({
+                action: 'delete',
+                find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: otherVehicleEntryId },
+                data: {}
+            });
+        }
+
+        // === COSTO ESPERIENZE (somma attivita con should_account) ===
+        const experienceEntryId = settings.value.experience_accounting_entry_id;
+        if (experienceEntryId) {
+            const accountableActivities = (form.value.activities || []).filter(a => a.should_account && parseFloat(a.cost) > 0);
+            const totalExperienceCost = accountableActivities.reduce((sum, a) => sum + parseFloat(a.cost || 0), 0);
+            // Use the supplier of the first accountable activity as counterpart
+            const experienceSupplierId = accountableActivities.length > 0 ? accountableActivities[0].supplier_id : null;
+
+            if (totalExperienceCost > 0) {
+                operations.push({
+                    action: 'upsert',
+                    find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: experienceEntryId },
+                    data: {
+                        transaction_date: pickupDate, amount: Math.round(totalExperienceCost * 100) / 100,
+                        transaction_type: 'purchase', installment: 'balance',
+                        accounting_entry_id: experienceEntryId,
+                        counterpart_id: experienceSupplierId,
+                        payment_reason: settings.value.experience_reason, status: 'to_pay',
+                    }
+                });
+            } else {
+                operations.push({
+                    action: 'delete',
+                    find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: experienceEntryId },
+                    data: {}
+                });
+            }
+        }
+
+        // Single batch API call
+        const response = await axios.post('/api/accounting-transactions/batch', {
+            service_id: serviceId,
+            operations: operations
+        });
+
+        // Update local transactions with server response
+        if (response.data && response.data.data) {
+            form.value.accounting_transactions = response.data.data;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error processing accounting transactions:', error);
+        return false;
+    }
+};
+
+// Remove only automatic accounting transactions (is_automatic === true)
+const removeAccountingTransactions = async () => {
+    try {
+        const transactionsToRemove = form.value.accounting_transactions.filter(
+            t => t.is_automatic === true
+        );
+
+        if (transactionsToRemove.length === 0) {
+            console.warn('No automatic accounting transactions to remove');
+            return false;
+        }
+
+        for (const transaction of transactionsToRemove) {
+            await axios.delete(`/api/accounting-transactions/${transaction.id}`);
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error removing accounting transactions:', error);
+        return false;
+    }
+};
+
+// Function to handle "Salva" button (save and stay)
+const saveAndStay = async () => {
+    exitAfterSave.value = false;
+    await submitForm();
+};
+
+// Function to handle "Salva ed Esci" button (save and exit)
+const saveAndExit = async () => {
+    exitAfterSave.value = true;
+    await submitForm();
+};
+
+const submitForm = async (confirmOverlaps = false) => {
+    // Check if status is changing to "assegnato" - warn about Telegram notification
+    if (isEdit.value && form.value.status_id && props.service.status_id !== form.value.status_id) {
+        const newStatus = serviceStatuses.value.find(s => s.id === form.value.status_id);
+        const newStatusName = newStatus?.name?.toLowerCase() || '';
+        if (newStatusName.includes('assegnato')) {
+            const result = await Swal.fire({
+                title: 'Notifica al Driver',
+                html: 'Cambiando lo stato in <strong>"Assegnato"</strong> verrà inviato un messaggio Telegram al driver per richiedere la conferma del servizio.<br><br>Vuoi procedere?',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sì, procedi',
+                cancelButtonText: 'Annulla',
+            });
+            if (!result.isConfirmed) {
+                return;
+            }
+        }
+    }
+
+    submitting.value = true;
+    try {
+        const payload = { ...form.value };
+
+        // Convert empty strings to null for nullable foreign keys
+        if (payload.supplier_id === '') payload.supplier_id = null;
+        if (payload.intermediary_id === '') payload.intermediary_id = null;
+        if (payload.dress_code_id === '') payload.dress_code_id = null;
+
+        // Add confirm_overlaps flag if user confirmed
+        if (confirmOverlaps) {
+            payload.confirm_overlaps = true;
+        }
+
+        const url = isEdit.value ? `/api/services/${props.service.id}` : '/api/services';
+        const method = isEdit.value ? 'put' : 'post';
+
+        const response = await axios[method](url, payload);
+        const savedServiceId = response.data.data?.id || props.service?.id;
+
+        // Handle post-save operations in parallel
+        const postSavePromises = [];
+
+        if (isEdit.value && props.service) {
+            // Activity confirmation tasks (edit mode only)
+            const hasConfirmationTasks = serviceTasks.value.some(task =>
+                task.notes && task.notes.includes('Task di conferma automatico per l\'esperienza:')
+            );
+
+            if (activityConfirmationEnabled.value && !hasConfirmationTasks) {
+                postSavePromises.push(createActivityConfirmationTasks());
+            } else if (!activityConfirmationEnabled.value && hasConfirmationTasks) {
+                postSavePromises.push(removeActivityConfirmationTasks());
+            }
+        }
+
+        // Accounting transactions (both new and edit mode)
+        if (savedServiceId) {
+            const hasAccountingTransactions = form.value.accounting_transactions.some(
+                t => (t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance'))
+                    || t.transaction_type === 'intermediation'
+                    || t.transaction_type === 'purchase'
+            );
+
+            if (accountingEnabled.value) {
+                postSavePromises.push(processAccountingTransactions(savedServiceId));
+            } else if (!accountingEnabled.value && hasAccountingTransactions) {
+                postSavePromises.push(removeAccountingTransactions());
+            }
+        }
+
+        // Execute all post-save operations in parallel
+        if (postSavePromises.length > 0) {
+            await Promise.all(postSavePromises);
+        }
+
+        // Decide where to go based on exitAfterSave flag
+        if (exitAfterSave.value) {
+            // Salva ed Esci: go to services list
+            router.visit(route('easyncc.services.index'));
+        } else {
+            // Salva: reload current page
+            if (isEdit.value) {
+                router.visit(route('easyncc.services.edit', savedServiceId));
+            } else {
+                // If creating new service, redirect to edit page
+                router.visit(route('easyncc.services.edit', savedServiceId));
+            }
+        }
+    } catch (error) {
+        // Check for overlap confirmation request first (422 with requires_confirmation)
+        if (error.response && error.response.status === 422) {
+            if (error.response.data.requires_confirmation && error.response.data.overlaps) {
+                // This is an overlap confirmation request, show modal
+                // Store the current exitAfterSave preference before it gets reset
+                pendingExitAfterSave.value = exitAfterSave.value;
+                detectedOverlaps.value = error.response.data.overlaps;
+                showOverlapModal.value = true;
+                return; // Don't show error, just show the modal
+            }
+
+            // Regular validation error
+            console.error('Validation failed:', error.response.data);
+
+            // Show specific validation errors
+            if (error.response.data.errors) {
+                const errorMessages = Object.entries(error.response.data.errors)
+                    .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+                    .join('\n');
+                alert('Errori di validazione:\n\n' + errorMessages);
+            } else if (error.response.data.message) {
+                alert(error.response.data.message);
+            } else {
+                alert('Errore durante il salvataggio del servizio (422 - Validation Error)');
+            }
+        } else {
+            console.error('Error submitting form:', error);
+            alert('Errore durante il salvataggio del servizio');
+        }
+    } finally {
+        submitting.value = false;
+        exitAfterSave.value = true; // Reset to default for next save
+    }
+};
+
+// Confirm overlaps and proceed with save
+const confirmOverlapsAndSave = async () => {
+    showOverlapModal.value = false;
+    // Restore the exit preference from when overlaps were detected
+    exitAfterSave.value = pendingExitAfterSave.value;
+    await submitForm(true);
+};
+
+// Cancel overlap confirmation
+const cancelOverlapConfirmation = () => {
+    showOverlapModal.value = false;
+    detectedOverlaps.value = [];
+    pendingExitAfterSave.value = true; // Reset pending preference
+};
+
+onMounted(async () => {
+    loading.value = true;
+
+    // Load current user first
+    await loadCurrentUser();
+
+    // Load companies if super-admin
+    if (isSuperAdmin.value) {
+        await loadCompanies();
+    }
+
+    // Set company_id BEFORE loading dictionaries
+    if (isEdit.value && props.service) {
+        // If editing, use the service's company_id
+        form.value.company_id = props.service.company_id;
+    } else if (!isSuperAdmin.value && currentUser.value) {
+        // If creating and not super-admin, use current user's company_id
+        form.value.company_id = currentUser.value.company_id;
+    }
+
+    // Load all dictionary data + settings in a single API call
+    // Vehicles and drivers are lazy-loaded via Multiselect async search
+    // Committenti/intermediari/fornitori are lazy-loaded when dropdown opens
+    await loadFormData();
+
+    // Pre-populate counterparts if editing
+    if (isEdit.value && props.service?.client) {
+        committenti.value = [props.service.client];
+    }
+    if (isEdit.value && props.service?.intermediary) {
+        intermediari.value = [props.service.intermediary];
+    }
+    if (isEdit.value && props.service?.supplier) {
+        fornitori.value = [props.service.supplier];
+    }
+    // Pre-populate vehicle in vehicles array for computed properties
+    if (isEdit.value && props.service?.vehicle) {
+        vehicles.value = [props.service.vehicle];
+    }
+    // Pre-populate drivers in drivers array for computed properties
+    if (isEdit.value && props.service?.drivers) {
+        drivers.value = [...props.service.drivers];
+    }
+
+    if (isEdit.value && props.service) {
+        // Populate form with service data
+        Object.keys(form.value).forEach(key => {
+            if (props.service[key] !== undefined) {
+                // Format datetime fields for datetime-local input
+                if (key.includes('datetime') && props.service[key]) {
+                    form.value[key] = moment.utc(props.service[key]).format('YYYY-MM-DDTHH:mm');
+                } else if (key === 'vat_rate' || key === 'card_fees_percentage' || key === 'deposit_percentage') {
+                    // Convert decimal values to numbers for proper select binding
+                    form.value[key] = parseFloat(props.service[key]) || 0;
+                } else {
+                    form.value[key] = props.service[key];
+                }
+            }
+        });
+
+        // Load related data
+        if (props.service.passengers && props.service.passengers.length > 0) {
+            form.value.passengers = props.service.passengers;
+        } else {
+            // Ensure passengers is always an array with at least one item
+            form.value.passengers = [{
+                surname: '',
+                name: '',
+                phone: '',
+                email: '',
+                nationality: '',
+                origin: '',
+                carrier_reference: ''
+            }];
+        }
+        if (props.service.activities) {
+            form.value.activities = props.service.activities;
+        }
+        if (props.service.accounting_transactions) {
+            form.value.accounting_transactions = props.service.accounting_transactions;
+        }
+        if (props.service.drivers) {
+            form.value.driver_ids = props.service.drivers.map(d => d.id);
+
+            // Merge soft-deleted drivers into the dropdown list so they still appear as selected
+            props.service.drivers.forEach(d => {
+                if (d.deleted_at && !drivers.value.find(existing => existing.id === d.id)) {
+                    drivers.value.push(d);
+                }
+            });
+        }
+
+        // Merge soft-deleted vehicle into the dropdown list so it still appears as selected
+        if (props.service.vehicle && props.service.vehicle.deleted_at) {
+            if (!vehicles.value.find(v => v.id === props.service.vehicle.id)) {
+                vehicles.value.push(props.service.vehicle);
+            }
+        }
+        if (props.service.tasks) {
+            serviceTasks.value = props.service.tasks;
+
+            // Initialize activityConfirmationEnabled based on existing confirmation tasks
+            const hasConfirmationTasks = serviceTasks.value.some(task =>
+                task.notes && task.notes.includes('Task di conferma automatico per l\'esperienza:')
+            );
+            activityConfirmationEnabled.value = hasConfirmationTasks;
+        }
+
+        // Initialize accountingEnabled based on existing sale or intermediation transactions
+        if (props.service.accounting_transactions) {
+            const hasAccountingTransactions = props.service.accounting_transactions.some(
+                t => (t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance'))
+                    || t.transaction_type === 'intermediation'
+            );
+            accountingEnabled.value = hasAccountingTransactions;
+        }
+
+        // Set default values if not present
+        if (!form.value.vat_rate) {
+            form.value.vat_rate = 10;
+        }
+        if (!form.value.card_fees_percentage) {
+            form.value.card_fees_percentage = 5;
+        }
+        if (!form.value.deposit_percentage) {
+            form.value.deposit_percentage = 30;
+        }
+        if (!form.value.balance_sale_type) {
+            form.value.balance_sale_type = 'balance_taxable';
+        }
+    } else {
+        // Set defaults for new service
+        form.value.vat_rate = 10;
+        form.value.card_fees_percentage = 5;
+        form.value.deposit_percentage = 30;
+
+        // Generate automatic reference number: SRV-AAAAMMDDhhmmss
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        form.value.reference_number = `SRV-${year}${month}${day}${hours}${minutes}${seconds}`;
+
+        // Pre-fill date from query parameter (e.g., from calendar right-click)
+        const urlParams = new URLSearchParams(window.location.search);
+        const dateParam = urlParams.get('date');
+        if (dateParam) {
+            const dateWithTime = `${dateParam}T09:00`;
+            form.value.pickup_datetime = dateWithTime;
+            form.value.vehicle_departure_datetime = dateWithTime;
+            form.value.dropoff_datetime = dateWithTime;
+            form.value.vehicle_return_datetime = dateWithTime;
+        }
+    }
+
+    loading.value = false;
+});
+</script>
+
+<style scoped>
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Service Form Card - Fixed Footer Layout */
+.service-form-card {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 180px); /* Adjust based on header/page padding */
+}
+
+.service-form-body {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 1rem;
+}
+
+.service-form-footer {
+    position: sticky;
+    bottom: 0;
+    background-color: #fff;
+    border-top: 2px solid #dee2e6;
+    z-index: 10;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Smooth scroll behavior for anchor links */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Fieldset scroll padding for better anchor positioning */
+fieldset[id^="section-"] {
+    scroll-margin-top: 20px;
+}
+</style>

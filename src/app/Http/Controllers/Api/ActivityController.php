@@ -99,11 +99,12 @@ class ActivityController extends Controller
             'activity_type_id' => 'nullable|exists:activity_types,id',
             'name' => 'required|string|max:255',
             'supplier_id' => 'nullable|exists:users,id',
-            'start_time' => 'required|date',
-            'end_time' => 'required|date|after:start_time',
+            'start_time' => 'nullable|date',
+            'end_time' => 'nullable|date',
             'cost' => 'nullable|numeric|min:0',
             'cost_per_person' => 'nullable|numeric|min:0',
             'payment_type' => 'nullable|in:INCLUSO,CLIENTE,AGENZIA,NESSUNO',
+            'should_account' => 'nullable|boolean',
             'notes' => 'nullable|string',
         ]);
 
@@ -112,6 +113,13 @@ class ActivityController extends Controller
             $validated['company_id'] = $request->company_id;
         } else {
             $validated['company_id'] = $request->user()->company_id;
+        }
+
+        // Auto-assign sort_order: append at end of service's activities
+        if (!empty($validated['service_id'])) {
+            $maxSortOrder = Activity::where('service_id', $validated['service_id'])
+                ->max('sort_order') ?? 0;
+            $validated['sort_order'] = $maxSortOrder + 1;
         }
 
         $activity = Activity::create($validated);
@@ -144,11 +152,12 @@ class ActivityController extends Controller
             'activity_type_id' => 'sometimes|nullable|exists:activity_types,id',
             'name' => 'sometimes|required|string|max:255',
             'supplier_id' => 'sometimes|nullable|exists:users,id',
-            'start_time' => 'sometimes|required|date',
-            'end_time' => 'sometimes|required|date|after:start_time',
+            'start_time' => 'sometimes|nullable|date',
+            'end_time' => 'sometimes|nullable|date',
             'cost' => 'sometimes|nullable|numeric|min:0',
             'cost_per_person' => 'sometimes|nullable|numeric|min:0',
             'payment_type' => 'sometimes|nullable|in:INCLUSO,CLIENTE,AGENZIA,NESSUNO',
+            'should_account' => 'nullable|boolean',
             'notes' => 'nullable|string',
         ]);
 
@@ -158,6 +167,33 @@ class ActivityController extends Controller
             'success' => true,
             'message' => 'Activity updated successfully',
             'data' => $activity->load(['activityType', 'supplier', 'service', 'company']),
+        ]);
+    }
+
+    /**
+     * Reorder activities for a service.
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'activities' => 'required|array',
+            'activities.*.id' => 'required|integer|exists:activities,id',
+            'activities.*.sort_order' => 'required|integer|min:0',
+        ]);
+
+        $companyId = $request->user()->isSuperAdmin() && $request->filled('company_id')
+            ? $request->company_id
+            : $request->user()->company_id;
+
+        foreach ($validated['activities'] as $item) {
+            Activity::where('id', $item['id'])
+                ->where('company_id', $companyId)
+                ->update(['sort_order' => $item['sort_order']]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Activities reordered successfully',
         ]);
     }
 

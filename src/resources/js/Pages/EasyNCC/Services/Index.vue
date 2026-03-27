@@ -62,7 +62,7 @@
                                 <label class="form-label">Tipo Servizio</label>
                                 <select v-model="filters.service_type_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
                                     <option value="">Tutti i tipi</option>
-                                    <option v-for="type in serviceTypes" :key="type.id" :value="type.id">
+                                    <option v-for="type in serviceTypes" :key="type.id" :value="type.name">
                                         {{ type.name }}
                                     </option>
                                 </select>
@@ -93,7 +93,7 @@
                                 <select v-model="filters.driver_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
                                     <option value="">Tutti gli autisti</option>
                                     <option v-for="driver in drivers" :key="driver.id" :value="driver.id">
-                                        {{ driver.name }} {{ driver.surname }}
+                                        {{ driverLabel(driver) }}
                                     </option>
                                 </select>
                             </BCol>
@@ -146,6 +146,13 @@
 
                         <!-- Preset Filter Buttons -->
                         <div class="d-flex gap-2 mb-3 align-items-center">
+                            <button type="button" class="btn btn-sm btn-soft-primary px-2" @click="shiftDates(-1)" title="Giorno precedente">
+                                <i class="ri-arrow-left-s-line"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-soft-primary px-2" @click="shiftDates(1)" title="Giorno successivo">
+                                <i class="ri-arrow-right-s-line"></i>
+                            </button>
+                            <span class="text-muted mx-1">|</span>
                             <button
                                 type="button"
                                 class="btn btn-sm"
@@ -200,18 +207,8 @@
                         </div>
 
                         <!-- Bulk Actions Area (Collapsible) -->
-                        <div v-show="!isDriver && selectedServices.length > 0" class="border rounded p-3 mb-3 bg-warning bg-opacity-10">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <span class="badge bg-primary me-2">{{ selectedServices.length }} servizi selezionati</span>
-                                </div>
-                                <div class="d-flex gap-2">
-                                    <button class="btn btn-sm btn-danger" @click="deleteSelected">
-                                        <i class="ri-delete-bin-line me-1"></i>Elimina Selezionati
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Placeholder spacer when bottom bar is visible (prevents content from being hidden behind fixed bar) -->
+                        <div v-if="!isDriver && selectedServices.length > 0" style="height: 80px;"></div>
 
                         <!-- Loading State -->
                         <div v-if="loading" class="text-center py-5">
@@ -226,7 +223,9 @@
                                 <thead class="table-dark">
                                     <tr>
                                         <th scope="col" style="min-width: 140px;">
-                                            <input v-if="!isDriver" type="checkbox" v-model="selectAll" @change="toggleSelectAll" class="form-check-input">
+                                            <label v-if="!isDriver" class="bulk-checkbox-touch mb-0" @click.stop>
+                                                <input type="checkbox" v-model="selectAll" @change="toggleSelectAll" class="form-check-input">
+                                            </label>
                                         </th>
                                         <th scope="col" @click="sortBy('reference_number')" style="cursor: pointer;">
                                             Dati Identificativi
@@ -263,21 +262,49 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="service in services" :key="service.id" :class="{ 'table-active': selectedServices.includes(service.id) }">
+                                    <tr
+                                        v-for="service in services"
+                                        :key="service.id"
+                                        :class="{ 'table-active': selectedServices.includes(service.id) }"
+                                        :style="!selectedServices.includes(service.id) && service.status?.bg_color ? { backgroundColor: service.status.bg_color + '18' } : {}"
+                                    >
                                         <!-- Colonna unificata: Selezione + Azioni + Notifiche -->
                                         <td>
                                             <!-- Riga 1: Checkbox + Azioni -->
                                             <div class="d-flex align-items-center gap-1 mb-2">
-                                                <input v-if="!isDriver" type="checkbox" v-model="selectedServices" :value="service.id" class="form-check-input me-1">
+                                                    <label v-if="!isDriver" class="bulk-checkbox-touch" @click.stop>
+                                                    <input type="checkbox" v-model="selectedServices" :value="service.id" class="form-check-input">
+                                                </label>
                                                 <Link v-if="!isDriver || isServiceAssignedOrAccepted(service)" :href="route('easyncc.services.show', service.id)" class="btn btn-sm btn-soft-primary" title="Visualizza">
                                                     <i class="ri-eye-line"></i>
                                                 </Link>
                                                 <Link v-if="!isDriver" :href="route('easyncc.services.edit', service.id)" class="btn btn-sm btn-soft-info" title="Modifica">
                                                     <i class="ri-edit-line"></i>
                                                 </Link>
-                                                <button v-if="!isDriver" class="btn btn-sm btn-soft-danger" @click="deleteService(service.id)" title="Elimina">
-                                                    <i class="ri-delete-bin-line"></i>
-                                                </button>
+                                                <!-- Dropdown menu azioni secondarie -->
+                                                <div v-if="!isDriver" class="dropdown">
+                                                    <button class="btn btn-sm btn-soft-secondary" type="button" :id="'actionMenu-' + service.id" data-bs-toggle="dropdown" aria-expanded="false" title="Altre azioni">
+                                                        <i class="ri-more-2-fill"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end" :aria-labelledby="'actionMenu-' + service.id">
+                                                        <li>
+                                                            <a class="dropdown-item" href="#" @click.prevent="duplicateService(service.id)">
+                                                                <i class="ri-file-copy-line me-2 text-info"></i>Duplica
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" href="#" @click.prevent="returnService(service.id)">
+                                                                <i class="ri-arrow-go-back-line me-2 text-primary"></i>Ritorno
+                                                            </a>
+                                                        </li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li>
+                                                            <a class="dropdown-item text-danger" href="#" @click.prevent="deleteService(service.id)">
+                                                                <i class="ri-delete-bin-line me-2"></i>Elimina
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
                                             </div>
                                             <!-- Riga 2: Stato servizio (inline editable) -->
                                             <div class="mb-1">
@@ -285,10 +312,14 @@
                                                 <span
                                                     v-if="isDriver || editingStatus !== service.id"
                                                     class="badge"
-                                                    :class="[getStatusBadgeClass(service.status?.name), !isDriver ? 'inline-editable' : '']"
+                                                    :class="[!isDriver ? 'inline-editable' : '']"
                                                     @click="!isDriver && startEditStatus(service)"
                                                     :title="isDriver ? '' : 'Clicca per modificare lo stato'"
-                                                    :style="isDriver ? '' : 'cursor: pointer;'"
+                                                    :style="{
+                                                        backgroundColor: service.status?.color_code || '#6c757d',
+                                                        color: '#fff',
+                                                        cursor: isDriver ? 'default' : 'pointer',
+                                                    }"
                                                 >
                                                     {{ service.status?.name || 'Nessuno stato' }}
                                                     <i v-if="!isDriver" class="ri-pencil-line ms-1" style="font-size: 0.6rem;"></i>
@@ -333,29 +364,38 @@
                                         <td>
                                             <!-- Tipologia Servizio come Tag, più visibile -->
                                             <div class="mb-2" v-if="service.service_type">
-                                                <span class="badge bg-primary text-white" style="font-size: 0.9rem; padding: 0.45rem 0.85rem;">
+                                                <span
+                                                    class="badge"
+                                                    :style="{ ...serviceTypeBadgeStyle(service.service_type), fontSize: '0.9rem', padding: '0.45rem 0.85rem' }"
+                                                >
                                                     {{ service.service_type }}
                                                 </span>
                                             </div>
 
                                             <!-- Primo Passeggero o Messaggio -->
                                             <div class="mb-1">
-                                                <div v-if="service.passengers && service.passengers.length > 0" class="d-flex align-items-center gap-1">
-                                                    <span v-if="service.passengers[0].nationality">{{ getNationalityFlag(service.passengers[0].nationality) }} </span>
-                                                    <span class="fw-bold text-uppercase">{{ service.passengers[0].surname }}</span>
-                                                    <span>{{ service.passengers[0].name }}</span>
-                                                    <!-- Icona per aprire modale se ci sono più passeggeri -->
-                                                    <button
-                                                        v-if="service.passengers.length > 1"
-                                                        type="button"
-                                                        @click="showPassengersModal(service)"
-                                                        class="btn btn-link btn-sm p-0 text-primary"
-                                                        :title="`Vedi tutti i ${service.passengers.length} passeggeri`"
-                                                        style="line-height: 1;"
-                                                    >
-                                                        <i class="ri-group-line" style="font-size: 1rem;"></i>
-                                                        <span class="badge bg-primary rounded-pill ms-1" style="font-size: 0.7rem;">{{ service.passengers.length }}</span>
-                                                    </button>
+                                                <div v-if="service.passengers && service.passengers.length > 0">
+                                                    <div class="d-flex align-items-center gap-1">
+                                                        <span v-if="service.passengers[0].nationality">{{ getNationalityFlag(service.passengers[0].nationality) }} </span>
+                                                        <span class="fw-bold text-uppercase">{{ service.passengers[0].surname }}</span>
+                                                        <span>{{ service.passengers[0].name }}</span>
+                                                        <!-- Icona per aprire modale se ci sono più passeggeri -->
+                                                        <button
+                                                            v-if="service.passengers.length > 1"
+                                                            type="button"
+                                                            @click="showPassengersModal(service)"
+                                                            class="btn btn-link btn-sm p-0 text-primary"
+                                                            :title="`Vedi tutti i ${service.passengers.length} passeggeri`"
+                                                            style="line-height: 1;"
+                                                        >
+                                                            <i class="ri-group-line" style="font-size: 1rem;"></i>
+                                                            <span class="badge bg-primary rounded-pill ms-1" style="font-size: 0.7rem;">{{ service.passengers.length }}</span>
+                                                        </button>
+                                                    </div>
+                                                    <div v-if="service.passengers[0].phone" class="small text-muted">
+                                                        <i class="ri-phone-line me-1"></i>
+                                                        <a :href="'tel:' + service.passengers[0].phone" class="text-muted text-decoration-none">{{ service.passengers[0].phone }}</a>
+                                                    </div>
                                                 </div>
                                                 <div v-else class="text-muted small fst-italic">
                                                     Nessun passeggero inserito
@@ -374,11 +414,11 @@
                                                 <div class="mb-2" :class="{ 'inline-editable': !isDriver }" @click="!isDriver && startEditDatetimes(service)" :title="isDriver ? '' : 'Clicca per modificare orari'">
                                                     <div class="fw-bold text-success" style="font-size: 0.75rem;">Partenza:</div>
                                                     <div class="fw-bold">{{ formatDate(service.pickup_datetime) }}</div>
-                                                    <div class="small text-primary">{{ service.pickup_address }}</div>
+                                                    <div class="small text-muted">{{ service.pickup_address }}</div>
                                                 </div>
                                                 <div :class="{ 'inline-editable': !isDriver }" @click="!isDriver && startEditDatetimes(service)" :title="isDriver ? '' : 'Clicca per modificare orari'">
                                                     <div class="fw-bold text-danger" style="font-size: 0.75rem;">Arrivo:</div>
-                                                    <div class="small text-muted">{{ formatDate(service.dropoff_datetime) }}</div>
+                                                    <div class="fw-bold">{{ formatDate(service.dropoff_datetime) }}</div>
                                                     <div class="small text-muted">{{ service.dropoff_address }}</div>
                                                 </div>
                                             </div>
@@ -452,8 +492,8 @@
                                             <div class="small mb-1">
                                                 <span class="text-muted me-2" style="font-size: 0.7rem;">Bagagli:</span>
                                                 <span class="d-inline-flex align-items-center gap-2">
-                                                    <span :title="`Bagaglio grande: ${service.big_luggage || 0}`" style="cursor: help;">
-                                                        <i class="ri-luggage-cart-line"></i>{{ service.big_luggage || 0 }}
+                                                    <span :title="`Bagaglio grande: ${service.large_luggage || 0}`" style="cursor: help;">
+                                                        <i class="ri-luggage-cart-line"></i>{{ service.large_luggage || 0 }}
                                                     </span>
                                                     <span :title="`Bagaglio medio: ${service.medium_luggage || 0}`" style="cursor: help;">
                                                         <i class="ri-briefcase-line"></i>{{ service.medium_luggage || 0 }}
@@ -467,14 +507,14 @@
                                             <div class="small mb-1">
                                                 <span class="text-muted me-2" style="font-size: 0.7rem;">Carryons:</span>
                                                 <span class="d-inline-flex align-items-center gap-2">
-                                                    <span :title="`Ovetto: ${service.babyseat_egg || 0}`" style="cursor: help;">
-                                                        <i class="ri-bear-smile-line"></i>{{ service.babyseat_egg || 0 }}
+                                                    <span :title="`Ovetto: ${service.baby_seat_infant || 0}`" style="cursor: help;">
+                                                        <i class="ri-bear-smile-line"></i>{{ service.baby_seat_infant || 0 }}
                                                     </span>
-                                                    <span :title="`Seggiolino standard: ${service.babyseat_standard || 0}`" style="cursor: help;">
-                                                        <i class="ri-parent-line"></i>{{ service.babyseat_standard || 0 }}
+                                                    <span :title="`Seggiolino standard: ${service.baby_seat_standard || 0}`" style="cursor: help;">
+                                                        <i class="ri-parent-line"></i>{{ service.baby_seat_standard || 0 }}
                                                     </span>
-                                                    <span :title="`Booster: ${service.babyseat_booster || 0}`" style="cursor: help;">
-                                                        <i class="ri-user-smile-line"></i>{{ service.babyseat_booster || 0 }}
+                                                    <span :title="`Booster: ${service.baby_seat_booster || 0}`" style="cursor: help;">
+                                                        <i class="ri-user-smile-line"></i>{{ service.baby_seat_booster || 0 }}
                                                     </span>
                                                 </span>
                                             </div>
@@ -520,8 +560,7 @@
                                                     <div v-if="service.drivers && service.drivers.length > 0">
                                                         <div v-for="driver in service.drivers" :key="driver.id" class="mb-2">
                                                             <span class="badge text-start" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'}; padding: 0.5rem 0.75rem;`">
-                                                                <div class="fw-bold text-uppercase" style="font-size: 0.9rem;">{{ driver.surname }}</div>
-                                                                <div style="font-size: 0.85rem;">{{ driver.name }}</div>
+                                                                <div class="fw-bold text-uppercase" style="font-size: 0.9rem;">{{ driverLabel(driver) }}</div>
                                                             </span>
                                                         </div>
                                                     </div>
@@ -543,8 +582,7 @@
                                                     <div v-if="service.drivers && service.drivers.length > 0">
                                                         <div v-for="driver in service.drivers" :key="driver.id" class="mb-2">
                                                             <span class="badge text-start" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'}; padding: 0.5rem 0.75rem;`">
-                                                                <div class="fw-bold text-uppercase" style="font-size: 0.9rem;">{{ driver.surname }}</div>
-                                                                <div style="font-size: 0.85rem;">{{ driver.name }}</div>
+                                                                <div class="fw-bold text-uppercase" style="font-size: 0.9rem;">{{ driverLabel(driver) }}</div>
                                                             </span>
                                                         </div>
                                                     </div>
@@ -564,7 +602,7 @@
                                                         style="min-width: 200px;"
                                                     >
                                                         <option v-for="driver in drivers" :key="driver.id" :value="driver.id">
-                                                            {{ driver.surname }} {{ driver.name }}
+                                                            {{ driverLabel(driver) }}
                                                         </option>
                                                     </select>
                                                     <div class="d-flex gap-2 mt-2">
@@ -660,11 +698,10 @@
                                                     </div>
 
                                                     <!-- Edit mode -->
-                                                    <div v-else class="d-flex gap-2 align-items-center">
+                                                    <div v-else>
                                                         <select
                                                             v-model="editingVehicleValue"
                                                             :ref="el => vehicleInputRefs[service.id] = el"
-                                                            @change="saveVehicle(service)"
                                                             @keydown.escape="cancelEditVehicle"
                                                             class="form-select form-select-sm"
                                                             style="min-width: 150px;"
@@ -674,6 +711,15 @@
                                                                 {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
                                                             </option>
                                                         </select>
+                                                        <div class="d-flex gap-1 mt-1">
+                                                            <button type="button" @click="saveVehicle(service)" class="btn btn-sm btn-success" :disabled="savingField" title="Salva">
+                                                                <span v-if="savingField" class="spinner-border spinner-border-sm" role="status"></span>
+                                                                <i v-else class="ri-check-line"></i>
+                                                            </button>
+                                                            <button type="button" @click="cancelEditVehicle" class="btn btn-sm btn-secondary" title="Annulla">
+                                                                <i class="ri-close-line"></i>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div v-else class="text-muted inline-editable" @click="startEditVehicle(service)" title="Clicca per assegnare">
@@ -741,16 +787,16 @@
                                                     <div v-if="(parseFloat(service.deposit_amount) || 0) > 0 || getBalanceValue(service) > 0">
                                                         <div v-if="(parseFloat(service.deposit_amount) || 0) > 0" class="text-start mb-1">
                                                             <div class="text-muted" style="font-size: 0.65rem;">Acconto</div>
-                                                            <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.deposit_amount) }}</span>
+                                                            <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'deposit_amount', 'sale_deposit')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.deposit_amount) }}</span>
                                                         </div>
                                                         <div v-if="getBalanceValue(service) > 0" class="text-start mb-1">
                                                             <div class="text-muted" style="font-size: 0.65rem;">{{ getBalanceLabel(service) }}</div>
-                                                            <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(getBalanceValue(service)) }}</span>
+                                                            <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'balance', 'sale_balance')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(getBalanceValue(service)) }}</span>
                                                         </div>
                                                         <hr class="my-1" style="border-color: #ccc;">
                                                         <div class="text-start">
                                                             <div class="text-muted" style="font-size: 0.65rem;">TOTALE</div>
-                                                            <span class="badge bg-danger px-2 py-1" style="font-size: 0.85rem;">&euro;{{ formatCurrency((parseFloat(service.deposit_amount) || 0) + getBalanceValue(service)) }}</span>
+                                                            <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'sale')" style="font-size: 0.85rem;">&euro;{{ formatCurrency((parseFloat(service.deposit_amount) || 0) + getBalanceValue(service)) }}</span>
                                                         </div>
                                                     </div>
                                                     <span v-else class="text-muted small">--</span>
@@ -763,31 +809,31 @@
                                             <div v-else-if="hasAnyCost(service)" class="d-flex flex-column gap-1">
                                                 <div v-if="service.driver_compensation > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Autista</div>
-                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.driver_compensation) }}</span>
+                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'driver_compensation', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.driver_compensation) }}</span>
                                                 </div>
                                                 <div v-if="service.colleague_cost > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Collega</div>
-                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.colleague_cost) }}</span>
+                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'colleague_cost', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.colleague_cost) }}</span>
                                                 </div>
                                                 <div v-if="service.intermediary_commission > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Intermediazione</div>
-                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.intermediary_commission) }}</span>
+                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'intermediary_commission', 'intermediation')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.intermediary_commission) }}</span>
                                                 </div>
                                                 <div v-if="service.fuel_cost > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Carburante</div>
-                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.fuel_cost) }}</span>
+                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'fuel_cost', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.fuel_cost) }}</span>
                                                 </div>
                                                 <div v-if="service.toll_cost > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Pedaggi</div>
-                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.toll_cost) }}</span>
+                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'toll_cost', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.toll_cost) }}</span>
                                                 </div>
                                                 <div v-if="service.parking_cost > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Parcheggi</div>
-                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.parking_cost) }}</span>
+                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'parking_cost', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.parking_cost) }}</span>
                                                 </div>
                                                 <div v-if="service.other_vehicle_costs > 0" class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Altri costi</div>
-                                                    <span class="badge bg-danger bg-opacity-75 px-2 py-1" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.other_vehicle_costs) }}</span>
+                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'other_vehicle_costs', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.other_vehicle_costs) }}</span>
                                                 </div>
                                             </div>
                                             <span v-else class="text-muted small">--</span>
@@ -971,7 +1017,7 @@
                                             <div class="col-12">
                                                 <strong>Driver:</strong>
                                                 <span v-for="(driver, idx) in selectedServiceForOverlaps.drivers" :key="driver.id">
-                                                    {{ driver.surname }} {{ driver.name }}<span v-if="idx < selectedServiceForOverlaps.drivers.length - 1">, </span>
+                                                    {{ driverLabel(driver) }}<span v-if="idx < selectedServiceForOverlaps.drivers.length - 1">, </span>
                                                 </span>
                                             </div>
                                         </div>
@@ -1010,7 +1056,7 @@
                                                         </div>
                                                         <div v-if="overlap.overlap_type === 'driver' || overlap.overlap_type === 'both'">
                                                             <i class="ri-user-line me-1"></i>
-                                                            {{ overlap.driver ? `${overlap.driver.surname} ${overlap.driver.name}` : '-' }}
+                                                            {{ overlap.driver ? driverLabel(overlap.driver) : '-' }}
                                                         </div>
                                                     </td>
                                                     <td class="small">
@@ -1213,6 +1259,106 @@
                 </div>
             </div>
         </BModal>
+        <!-- Floating Bottom Action Bar -->
+        <Teleport to="body">
+            <Transition name="bulk-bar">
+                <div v-if="!isDriver && selectedServices.length > 0" class="bulk-action-bar">
+                    <div class="container-fluid">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <!-- Left: counter + deselect -->
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-white text-dark fs-6">{{ selectedServices.length }}</span>
+                                <span class="text-white small d-none d-sm-inline">selezionati</span>
+                                <button class="btn btn-sm btn-outline-light" @click="clearSelection" title="Deseleziona tutti">
+                                    <i class="ri-close-line"></i>
+                                </button>
+                            </div>
+
+                            <!-- Right: actions -->
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <!-- Bulk Status -->
+                                <div class="bulk-action-group">
+                                    <select
+                                        v-model="bulkStatusId"
+                                        class="form-select form-select-sm bulk-select"
+                                    >
+                                        <option value="">Stato...</option>
+                                        <option v-for="status in (serviceStatuses || [])" :key="status.id" :value="status.id">
+                                            {{ status.name }}
+                                        </option>
+                                    </select>
+                                    <button
+                                        v-if="bulkStatusId"
+                                        class="btn btn-sm btn-light"
+                                        @click="applyBulkStatus"
+                                        :disabled="bulkApplying"
+                                    >
+                                        <i class="ri-check-line"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Bulk Vehicle -->
+                                <div class="bulk-action-group">
+                                    <select
+                                        v-model="bulkVehicleId"
+                                        class="form-select form-select-sm bulk-select"
+                                    >
+                                        <option value="">Veicolo...</option>
+                                        <option v-for="vehicle in (vehicles || [])" :key="vehicle.id" :value="vehicle.id">
+                                            {{ vehicle.license_plate }}
+                                        </option>
+                                    </select>
+                                    <button
+                                        v-if="bulkVehicleId"
+                                        class="btn btn-sm btn-light"
+                                        @click="applyBulkVehicle"
+                                        :disabled="bulkApplying"
+                                    >
+                                        <i class="ri-check-line"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Bulk Driver -->
+                                <div class="bulk-action-group">
+                                    <select
+                                        v-model="bulkDriverId"
+                                        class="form-select form-select-sm bulk-select"
+                                    >
+                                        <option value="">Driver...</option>
+                                        <option v-for="driver in (drivers || [])" :key="driver.id" :value="driver.id">
+                                            {{ driverLabel(driver) }}
+                                        </option>
+                                    </select>
+                                    <button
+                                        v-if="bulkDriverId"
+                                        class="btn btn-sm btn-light"
+                                        @click="applyBulkDriver"
+                                        :disabled="bulkApplying"
+                                    >
+                                        <i class="ri-check-line"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Divider -->
+                                <span class="bulk-divider">|</span>
+
+                                <!-- Bulk Delete -->
+                                <button class="btn btn-sm btn-danger" @click="deleteSelected" :disabled="bulkApplying">
+                                    <i class="ri-delete-bin-line me-1"></i><span class="d-none d-sm-inline">Elimina</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Progress indicator -->
+                        <div v-if="bulkApplying" class="mt-2">
+                            <div class="progress" style="height: 3px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
     </Layout>
 </template>
 
@@ -1224,6 +1370,9 @@ import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import moment from 'moment';
 import Swal from 'sweetalert2';
+import { driverLabel } from '@/composables/useDriverLabel.js';
+import { useServiceTypeColor } from '@/composables/useServiceTypeColor.js';
+import { useTransactionStatusColor } from '@/composables/useTransactionStatusColor.js';
 
 const services = ref([]);
 const loading = ref(false);
@@ -1281,14 +1430,15 @@ const pendingSaveServiceId = ref(null);
 const savingField = ref(false);
 
 // Dictionaries
-const serviceTypes = ref([]);
-const clients = ref([]);
-const intermediaries = ref([]);
-const drivers = ref([]);
-const vehicles = ref([]);
-const companies = ref([]);
-const dressCodes = ref([]);
-const serviceStatuses = ref([]);
+// Lazy-loaded dropdown data (null = not loaded yet, [] = loaded empty)
+const serviceTypes = ref(null);
+const clients = ref(null);
+const intermediaries = ref(null);
+const drivers = ref(null);
+const vehicles = ref(null);
+const companies = ref(null);
+const dressCodes = ref(null);
+const serviceStatuses = ref(null);
 const currentUser = ref(null);
 
 // Filters
@@ -1332,6 +1482,9 @@ const perPage = ref(15);
 
 const isSuperAdmin = computed(() => currentUser.value?.role === 'super-admin');
 const isDriver = computed(() => currentUser.value?.role === 'driver');
+
+const { loadServiceTypes: loadServiceTypeColors, serviceTypeBadgeStyle } = useServiceTypeColor();
+const { loadTransactionStatuses, transactionBadgeClass } = useTransactionStatusColor();
 const acceptedStatusId = ref(null);
 const triggerStatusId = ref(null);
 
@@ -1358,58 +1511,98 @@ const loadCurrentUser = async () => {
     }
 };
 
-const loadDictionaries = async () => {
-    try {
-        console.log('Loading dictionaries...');
-        const requests = [
-            axios.get('/api/dictionaries/service-types'),
-            axios.get('/api/users', { params: { role: 'collaboratore', is_committente: true, per_page: 200 } }),
-            axios.get('/api/users', { params: { is_intermediario: true, per_page: 200 } }),
-            axios.get('/api/users', { params: { role: 'driver', per_page: 200 } }),
-            axios.get('/api/vehicles', { params: { per_page: 200 } }),
-            axios.get('/api/dictionaries/dress-codes'),
-            axios.get('/api/dictionaries/service-statuses')
-        ];
-
-        // Se l'utente è super-admin, carica anche le aziende
-        if (isSuperAdmin.value) {
-            requests.push(axios.get('/api/companies', { params: { per_page: 200 } }));
-        }
-
-        const responses = await Promise.all(requests);
-
-        console.log('Dictionaries loaded:', {
-            types: responses[0].data,
-            clients: responses[1].data,
-            intermediaries: responses[2].data,
-            drivers: responses[3].data,
-            vehicles: responses[4].data,
-            dressCodes: responses[5].data,
-            serviceStatuses: responses[6].data,
-            companies: responses[7]?.data
-        });
-
-        serviceTypes.value = responses[0].data.data || [];
-        clients.value = responses[1].data.data || [];
-        intermediaries.value = responses[2].data.data || [];
-        drivers.value = responses[3].data.data || [];
-        vehicles.value = responses[4].data.data || [];
-        dressCodes.value = responses[5].data.data || [];
-        serviceStatuses.value = responses[6].data.data || [];
-
-        if (isSuperAdmin.value && responses[7]) {
-            companies.value = responses[7].data.data || [];
-        }
-    } catch (err) {
-        console.error('Error loading dictionaries:', err);
-        console.error('Error details:', err.response?.data);
+// Lazy-loading helpers: load data only on first use, then cache
+const ensureServiceStatuses = async () => {
+    if (serviceStatuses.value === null) {
+        try {
+            const { data } = await axios.get('/api/dictionaries/service-statuses');
+            serviceStatuses.value = data.data || data || [];
+        } catch (e) { serviceStatuses.value = []; }
     }
+};
+const ensureDressCodes = async () => {
+    if (dressCodes.value === null) {
+        try {
+            const { data } = await axios.get('/api/dictionaries/dress-codes');
+            dressCodes.value = data.data || data || [];
+        } catch (e) { dressCodes.value = []; }
+    }
+};
+const ensureDrivers = async () => {
+    if (drivers.value === null) {
+        try {
+            const { data } = await axios.get('/api/users', { params: { role: 'driver', per_page: 200, light: 1 } });
+            drivers.value = data.data || [];
+        } catch (e) { drivers.value = []; }
+    }
+};
+const ensureVehicles = async () => {
+    if (vehicles.value === null) {
+        try {
+            const { data } = await axios.get('/api/vehicles', { params: { per_page: 200, light: 1 } });
+            vehicles.value = data.data || [];
+        } catch (e) { vehicles.value = []; }
+    }
+};
+const ensureClients = async () => {
+    if (clients.value === null) {
+        try {
+            const { data } = await axios.get('/api/users', { params: { role: 'collaboratore', is_committente: true, per_page: 200, light: 1 } });
+            clients.value = data.data || [];
+        } catch (e) { clients.value = []; }
+    }
+};
+const ensureIntermediaries = async () => {
+    if (intermediaries.value === null) {
+        try {
+            const { data } = await axios.get('/api/users', { params: { is_intermediario: true, per_page: 200, light: 1 } });
+            intermediaries.value = data.data || [];
+        } catch (e) { intermediaries.value = []; }
+    }
+};
+const ensureServiceTypes = async () => {
+    if (serviceTypes.value === null) {
+        try {
+            const { data } = await axios.get('/api/dictionaries/service-types');
+            serviceTypes.value = data.data || data || [];
+        } catch (e) { serviceTypes.value = []; }
+    }
+};
+const ensureCompanies = async () => {
+    if (companies.value === null && isSuperAdmin.value) {
+        try {
+            const { data } = await axios.get('/api/companies', { params: { per_page: 200 } });
+            companies.value = data.data || [];
+        } catch (e) { companies.value = []; }
+    }
+};
+
+// Legacy compatibility: load all dictionaries (used by filters dropdown rendering)
+const loadDictionaries = async () => {
+    // No-op: dictionaries are now lazy-loaded on demand
 };
 
 const loadServicesFromFilter = () => {
     activePreset.value = null;
     currentPage.value = 1;
     loadServices();
+};
+
+const shiftDates = (days) => {
+    const hasFrom = !!filters.value.date_from;
+    const hasTo = !!filters.value.date_to;
+
+    if (hasFrom) {
+        filters.value.date_from = moment(filters.value.date_from).add(days, 'days').format('YYYY-MM-DD');
+    }
+    if (hasTo) {
+        filters.value.date_to = moment(filters.value.date_to).add(days, 'days').format('YYYY-MM-DD');
+    }
+    if (!hasFrom && !hasTo) {
+        filters.value.date_from = moment().add(days, 'days').format('YYYY-MM-DD');
+    }
+
+    loadServicesFromFilter();
 };
 
 // Preset filter functions
@@ -1526,9 +1719,22 @@ const loadServices = async () => {
 };
 
 const deleteService = async (id) => {
-    if (!confirm('Sei sicuro di voler eliminare questo servizio?')) {
-        return;
-    }
+    const { isConfirmed } = await Swal.fire({
+        title: 'Conferma eliminazione',
+        html: 'Eliminando il servizio verranno rimossi anche:<ul class="text-start mt-2">'
+            + '<li>Esperienze collegate</li>'
+            + '<li>Task collegati</li>'
+            + '<li>Movimenti contabili</li>'
+            + '<li>Allegati</li>'
+            + '<li>Passeggeri</li>'
+            + '</ul>Vuoi procedere?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Elimina tutto',
+        cancelButtonText: 'Annulla',
+    });
+    if (!isConfirmed) return;
 
     try {
         await axios.delete(`/api/services/${id}`);
@@ -1539,32 +1745,127 @@ const deleteService = async (id) => {
     }
 };
 
-const deleteSelected = async () => {
-    if (!confirm(`Sei sicuro di voler eliminare ${selectedServices.value.length} servizi?`)) {
-        return;
-    }
+// Bulk action state
+const bulkStatusId = ref('');
+const bulkVehicleId = ref('');
+const bulkDriverId = ref('');
+const bulkApplying = ref(false);
 
+const clearSelection = () => {
+    selectedServices.value = [];
+    selectAll.value = false;
+    bulkStatusId.value = '';
+    bulkVehicleId.value = '';
+    bulkDriverId.value = '';
+};
+
+const applyBulkAction = async (payload, label) => {
+    const count = selectedServices.value.length;
+    const { isConfirmed } = await Swal.fire({
+        title: `Conferma azione`,
+        text: `Applicare ${label} a ${count} servizi?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Applica',
+        cancelButtonText: 'Annulla',
+    });
+    if (!isConfirmed) return;
+
+    bulkApplying.value = true;
+    try {
+        await Promise.all(selectedServices.value.map(id =>
+            axios.put(`/api/services/${id}`, { ...payload, force_overlaps: true })
+        ));
+        clearSelection();
+        await loadServices();
+        Swal.fire({ icon: 'success', title: 'Fatto', text: `${label} applicato a ${count} servizi.`, timer: 1500, showConfirmButton: false });
+    } catch (err) {
+        console.error('Bulk action error:', err);
+        Swal.fire({ icon: 'error', title: 'Errore', text: 'Errore durante l\'applicazione. Alcuni servizi potrebbero non essere stati aggiornati.' });
+    } finally {
+        bulkApplying.value = false;
+    }
+};
+
+const applyBulkStatus = () => {
+    const status = (serviceStatuses.value || []).find(s => s.id === parseInt(bulkStatusId.value));
+    if (!status) return;
+    applyBulkAction({ status_id: status.id }, `cambio stato "${status.name}"`);
+};
+
+const applyBulkVehicle = () => {
+    const vehicle = (vehicles.value || []).find(v => v.id === parseInt(bulkVehicleId.value));
+    if (!vehicle) return;
+    applyBulkAction({ vehicle_id: vehicle.id }, `cambio veicolo "${vehicle.license_plate}"`);
+};
+
+const applyBulkDriver = () => {
+    const driverId = parseInt(bulkDriverId.value);
+    if (!driverId) return;
+    const driver = (drivers.value || []).find(d => d.id === driverId);
+    applyBulkAction({ driver_ids: [driverId] }, `cambio driver "${driverLabel(driver)}"`);
+};
+
+const deleteSelected = async () => {
+    const count = selectedServices.value.length;
+    const { isConfirmed } = await Swal.fire({
+        title: 'Conferma eliminazione',
+        html: `Eliminando <strong>${count} servizi</strong> verranno rimossi anche per ciascuno:<ul class="text-start mt-2">`
+            + '<li>Esperienze collegate</li>'
+            + '<li>Task collegati</li>'
+            + '<li>Movimenti contabili</li>'
+            + '<li>Allegati</li>'
+            + '<li>Passeggeri</li>'
+            + '</ul>Vuoi procedere?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Elimina tutto',
+        cancelButtonText: 'Annulla',
+    });
+    if (!isConfirmed) return;
+
+    bulkApplying.value = true;
     try {
         await Promise.all(selectedServices.value.map(id => axios.delete(`/api/services/${id}`)));
-        selectedServices.value = [];
-        selectAll.value = false;
+        clearSelection();
         await loadServices();
     } catch (err) {
         error.value = 'Errore nell\'eliminazione dei servizi';
         console.error('Error deleting services:', err);
+    } finally {
+        bulkApplying.value = false;
+    }
+};
+
+const duplicateService = async (id) => {
+    try {
+        const { data } = await axios.post(`/api/services/${id}/duplicate`);
+        window.location.href = `/easyncc/services/${data.data.id}/edit`;
+    } catch (err) {
+        error.value = 'Errore nella duplicazione del servizio';
+        console.error('Error duplicating service:', err);
+    }
+};
+
+const returnService = async (id) => {
+    try {
+        const { data } = await axios.post(`/api/services/${id}/return`);
+        window.location.href = `/easyncc/services/${data.data.id}/edit`;
+    } catch (err) {
+        error.value = 'Errore nella creazione del servizio di ritorno';
+        console.error('Error creating return service:', err);
     }
 };
 
 // Inline dress code editing functions
-const startEditDressCode = (service) => {
+const startEditDressCode = async (service) => {
+    await ensureDressCodes();
     editingDressCode.value = service.id;
     editingDressCodeValue.value = service.dress_code_id;
-    // Focus select in next tick using dynamic ref
     nextTick(() => {
         const select = dressCodeInputRefs.value[service.id];
-        if (select) {
-            select.focus();
-        }
+        if (select) select.focus();
     });
 };
 
@@ -1579,7 +1880,7 @@ const saveDressCode = async (service) => {
             dress_code_id: editingDressCodeValue.value
         };
 
-        await axios.put(`/api/services/${service.id}`, payload);
+        await axios.patch(`/api/services/${service.id}/inline`, payload);
 
         // Update local service data
         const serviceIndex = services.value.findIndex(s => s.id === service.id);
@@ -1599,9 +1900,7 @@ const saveDressCode = async (service) => {
     } catch (err) {
         error.value = 'Errore nell\'aggiornamento del dress code';
         console.error('Error updating dress code:', err);
-        // Reload services to revert changes in case of error
         await loadServices();
-        // Clear editing state even on error
         editingDressCode.value = null;
         editingDressCodeValue.value = null;
     }
@@ -1613,14 +1912,13 @@ const cancelEditDressCode = () => {
 };
 
 // Inline status editing functions
-const startEditStatus = (service) => {
+const startEditStatus = async (service) => {
+    await ensureServiceStatuses();
     editingStatus.value = service.id;
     editingStatusValue.value = service.status_id;
     nextTick(() => {
         const select = statusInputRefs.value[service.id];
-        if (select) {
-            select.focus();
-        }
+        if (select) select.focus();
     });
 };
 
@@ -1656,7 +1954,7 @@ const saveStatus = async (service) => {
 
     try {
         const payload = { status_id: newStatusId };
-        await axios.put(`/api/services/${service.id}`, payload);
+        await axios.patch(`/api/services/${service.id}/inline`, payload);
 
         // Update local service data
         const serviceIndex = services.value.findIndex(s => s.id === service.id);
@@ -1682,15 +1980,13 @@ const cancelEditStatus = () => {
 };
 
 // Inline vehicle editing functions
-const startEditVehicle = (service) => {
+const startEditVehicle = async (service) => {
+    await ensureVehicles();
     editingVehicle.value = service.id;
     editingVehicleValue.value = service.vehicle_id;
-    // Focus select in next tick using dynamic ref
     nextTick(() => {
         const select = vehicleInputRefs.value[service.id];
-        if (select) {
-            select.focus();
-        }
+        if (select) select.focus();
     });
 };
 
@@ -1716,14 +2012,13 @@ const cancelEditVehicle = () => {
 };
 
 // Inline drivers editing functions
-const startEditDrivers = (service) => {
+const startEditDrivers = async (service) => {
+    await ensureDrivers();
     editingDrivers.value = service.id;
     editingDriversValue.value = service.drivers ? service.drivers.map(d => d.id) : [];
     nextTick(() => {
         const select = driversInputRefs.value[service.id];
-        if (select) {
-            select.focus();
-        }
+        if (select) select.focus();
     });
 };
 
@@ -2028,19 +2323,6 @@ const selectedServiceForPopup = ref(null);
 const selectedServiceForOverlaps = ref(null);
 const allOverlaps = ref([]);
 
-// Status badge classes
-const getStatusBadgeClass = (status) => {
-    const statusMap = {
-        'preventivo': 'bg-secondary',
-        'confermato': 'bg-success',
-        'in corso': 'bg-primary',
-        'completato': 'bg-info',
-        'cancellato': 'bg-danger',
-        'no-show': 'bg-warning'
-    };
-    return statusMap[status?.toLowerCase()] || 'bg-secondary';
-};
-
 // Task functions
 const getCompletedTasksCount = (service) => {
     return service.tasks_count - (service.incomplete_tasks_count || 0);
@@ -2334,7 +2616,19 @@ onMounted(async () => {
             console.error('Error loading public settings:', e);
         }
     }
-    await Promise.all([loadDictionaries(), loadServices()]);
+    // Load services immediately (critical for page display)
+    await loadServices();
+
+    // Load filter dropdown data in background (non-blocking)
+    ensureServiceTypes();
+    loadServiceTypeColors();
+    loadTransactionStatuses();
+    ensureClients();
+    ensureIntermediaries();
+    ensureDrivers();
+    ensureVehicles();
+    ensureServiceStatuses();
+    if (isSuperAdmin.value) ensureCompanies();
 });
 </script>
 
@@ -2416,6 +2710,91 @@ onMounted(async () => {
     justify-content: center;
     align-items: center;
     z-index: 9999;
+}
+
+/* Bulk checkbox touch target */
+.bulk-checkbox-touch {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    cursor: pointer;
+    margin: -8px;
+    padding: 8px;
+}
+
+/* Floating bulk action bar */
+.bulk-action-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #405189;
+    color: white;
+    padding: 12px 16px;
+    z-index: 1050;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.bulk-divider {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 1.2rem;
+    line-height: 1;
+    user-select: none;
+}
+
+.bulk-action-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bulk-select {
+    width: auto;
+    min-width: 120px;
+    max-width: 160px;
+    font-size: 0.8rem;
+    padding: 0.25rem 2rem 0.25rem 0.5rem;
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.bulk-select:focus {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 0.15rem rgba(255, 255, 255, 0.2);
+}
+
+.bulk-select option {
+    background-color: #405189;
+    color: white;
+}
+
+/* Transition for bulk bar */
+.bulk-bar-enter-active,
+.bulk-bar-leave-active {
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.bulk-bar-enter-from,
+.bulk-bar-leave-to {
+    transform: translateY(100%);
+    opacity: 0;
+}
+
+@media (max-width: 576px) {
+    .bulk-select {
+        min-width: 100px;
+        max-width: 130px;
+        font-size: 0.75rem;
+    }
+
+    .bulk-action-bar {
+        padding: 8px 12px;
+    }
 }
 
 .popup-content {

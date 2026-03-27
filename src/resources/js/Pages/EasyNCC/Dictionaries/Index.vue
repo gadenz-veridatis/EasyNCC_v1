@@ -43,18 +43,48 @@
               <table class="table table-borderless align-middle mb-0">
                 <thead class="table-light">
                   <tr>
-                    <th scope="col" v-if="hasSortOrder" style="white-space: nowrap;">#</th>
-                    <th scope="col" style="white-space: nowrap;">Nome</th>
-                    <th scope="col" v-if="hasCode" style="white-space: nowrap;">Codice</th>
+                    <th scope="col" v-if="hasSortOrder" class="sortable-th" style="white-space: nowrap;" @click="toggleSort('sort_order')">
+                      #
+                      <i v-if="sortField === 'sort_order'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
+                    </th>
+                    <th scope="col" class="sortable-th" style="white-space: nowrap;" @click="toggleSort('name')">
+                      Nome
+                      <i v-if="sortField === 'name'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
+                    </th>
+                    <th scope="col" v-if="hasCode" class="sortable-th" style="white-space: nowrap;" @click="toggleSort('code')">
+                      Codice
+                      <i v-if="sortField === 'code'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
+                    </th>
                     <th scope="col" v-if="hasDescription">Descrizione</th>
-                    <th scope="col" v-if="hasAbbreviation" style="white-space: nowrap;">Sigla</th>
+                    <th scope="col" v-if="hasAbbreviation" class="sortable-th" style="white-space: nowrap;" @click="toggleSort('abbreviation')">
+                      Sigla
+                      <i v-if="sortField === 'abbreviation'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
+                    </th>
                     <th scope="col" v-if="hasColor" style="white-space: nowrap;">Colore</th>
-                    <th scope="col" v-if="hasTransactionTypeGroup" style="white-space: nowrap;">Gruppo</th>
-                    <th scope="col" v-if="hasIsFinal" style="white-space: nowrap;">Finale</th>
-                    <th scope="col" v-if="hasIsDefault" style="white-space: nowrap;">Default</th>
-                    <th scope="col" v-if="hasIsActive" style="white-space: nowrap;">Stato</th>
-                    <th scope="col" v-if="hasType" style="white-space: nowrap;">Tipo</th>
-                    <th scope="col" v-if="isSuperAdmin" style="white-space: nowrap;">Azienda</th>
+                    <th scope="col" v-if="hasTransactionTypeGroup" class="sortable-th" style="white-space: nowrap;" @click="toggleSort('transaction_type_group')">
+                      Gruppo
+                      <i v-if="sortField === 'transaction_type_group'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
+                    </th>
+                    <th scope="col" v-if="hasIsFinal" class="sortable-th" style="white-space: nowrap;" @click="toggleSort('is_final')">
+                      Finale
+                      <i v-if="sortField === 'is_final'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
+                    </th>
+                    <th scope="col" v-if="hasIsDefault" class="sortable-th" style="white-space: nowrap;" @click="toggleSort('is_default')">
+                      Default
+                      <i v-if="sortField === 'is_default'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
+                    </th>
+                    <th scope="col" v-if="hasIsActive" class="sortable-th" style="white-space: nowrap;" @click="toggleSort('is_active')">
+                      Stato
+                      <i v-if="sortField === 'is_active'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
+                    </th>
+                    <th scope="col" v-if="hasType" class="sortable-th" style="white-space: nowrap;" @click="toggleSort('type')">
+                      Tipo
+                      <i v-if="sortField === 'type'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
+                    </th>
+                    <th scope="col" v-if="isSuperAdmin" class="sortable-th" style="white-space: nowrap;" @click="toggleSort('company_name')">
+                      Azienda
+                      <i v-if="sortField === 'company_name'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
+                    </th>
                     <th scope="col" style="white-space: nowrap;">Azioni</th>
                   </tr>
                 </thead>
@@ -66,12 +96,12 @@
                       </div>
                     </td>
                   </tr>
-                  <tr v-else-if="filteredItems.length === 0">
+                  <tr v-else-if="sortedItems.length === 0">
                     <td :colspan="columnCount" class="text-center">
                       Nessun elemento trovato
                     </td>
                   </tr>
-                  <tr v-for="item in filteredItems" :key="item.id" v-else>
+                  <tr v-for="item in sortedItems" :key="item.id" v-else>
                     <td v-if="hasSortOrder" style="white-space: nowrap;">{{ item.sort_order }}</td>
                     <td style="white-space: nowrap;">{{ item.name }}</td>
                     <td v-if="hasCode" style="white-space: nowrap;">
@@ -80,7 +110,7 @@
                     <td v-if="hasDescription" style="max-width: 400px; word-wrap: break-word; white-space: normal;">{{ item.description }}</td>
                     <td v-if="hasAbbreviation" style="white-space: nowrap;">{{ item.abbreviation }}</td>
                     <td v-if="hasColor" style="white-space: nowrap;">
-                      <span :class="'badge bg-' + (item.color || 'secondary') + '-subtle text-' + (item.color || 'secondary')">
+                      <span class="badge" :style="getColorBadgeStyle(item.color)">
                         {{ item.abbreviation || item.name }}
                       </span>
                     </td>
@@ -193,19 +223,25 @@
 
         <div class="mb-3" v-if="hasColor">
           <label class="form-label">Colore Badge</label>
-          <select class="form-select" v-model="form.color">
-            <option value="">Nessuno</option>
-            <option value="primary">Blu (primary)</option>
-            <option value="secondary">Grigio (secondary)</option>
-            <option value="success">Verde (success)</option>
-            <option value="danger">Rosso (danger)</option>
-            <option value="warning">Giallo (warning)</option>
-            <option value="info">Azzurro (info)</option>
-          </select>
-          <div v-if="form.color" class="mt-2">
-            <span :class="'badge bg-' + form.color + '-subtle text-' + form.color">
+          <div class="d-flex align-items-center gap-2">
+            <input
+              type="color"
+              class="form-control form-control-color"
+              v-model="form.color"
+              title="Scegli un colore"
+            />
+            <span v-if="form.color" class="badge" :style="getColorBadgeStyle(form.color)">
               Anteprima
             </span>
+            <button
+              v-if="form.color"
+              type="button"
+              class="btn btn-sm btn-soft-secondary"
+              @click="form.color = ''"
+              title="Rimuovi colore"
+            >
+              <i class="ri-close-line"></i>
+            </button>
           </div>
         </div>
 
@@ -364,6 +400,8 @@ export default {
       companies: [],
       selectedCompanyId: "",
       currentUser: null,
+      sortField: "name",
+      sortDirection: "asc",
     };
   },
   computed: {
@@ -384,6 +422,33 @@ export default {
           item.abbreviation?.toLowerCase().includes(query) ||
           item.code?.toLowerCase().includes(query)
       );
+    },
+    sortedItems() {
+      const items = [...this.filteredItems];
+      const field = this.sortField;
+      const dir = this.sortDirection === 'asc' ? 1 : -1;
+
+      return items.sort((a, b) => {
+        let valA, valB;
+
+        if (field === 'company_name') {
+          valA = a.company?.name || '';
+          valB = b.company?.name || '';
+        } else if (typeof a[field] === 'boolean' || typeof b[field] === 'boolean') {
+          valA = a[field] ? 1 : 0;
+          valB = b[field] ? 1 : 0;
+          return (valA - valB) * dir;
+        } else if (typeof a[field] === 'number' || field === 'sort_order') {
+          valA = Number(a[field]) || 0;
+          valB = Number(b[field]) || 0;
+          return (valA - valB) * dir;
+        } else {
+          valA = (a[field] || '').toString().toLowerCase();
+          valB = (b[field] || '').toString().toLowerCase();
+        }
+
+        return valA.localeCompare(valB) * dir;
+      });
     },
     columnCount() {
       let count = 2; // name + actions
@@ -410,6 +475,24 @@ export default {
     await this.loadItems();
   },
   methods: {
+    toggleSort(field) {
+      if (this.sortField === field) {
+        this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        this.sortField = field;
+        this.sortDirection = 'asc';
+      }
+    },
+    getColorBadgeStyle(color) {
+      if (!color) return { backgroundColor: '#6c757d20', color: '#6c757d' };
+      // Legacy Bootstrap color names
+      const bootstrapMap = {
+        primary: '#405189', secondary: '#6c757d', success: '#0ab39c',
+        danger: '#f06548', warning: '#f7b84b', info: '#299cdb',
+      };
+      const hex = color.startsWith('#') ? color : (bootstrapMap[color] || '#6c757d');
+      return { backgroundColor: hex + '20', color: hex, fontWeight: '500' };
+    },
     transactionTypeGroupLabel(group) {
       const labels = {
         purchase: 'Acquisto',
@@ -518,3 +601,17 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+}
+.sortable-th:hover {
+  color: #405189;
+}
+.sortable-th i {
+  font-size: 0.75rem;
+  margin-left: 2px;
+}
+</style>

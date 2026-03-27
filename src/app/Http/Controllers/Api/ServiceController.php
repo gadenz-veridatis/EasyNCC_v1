@@ -85,7 +85,7 @@ class ServiceController extends Controller
                 'accounting_entries' => AccountingEntry::where('company_id', $companyId)->orderBy('name')->get(),
                 'payment_types' => PaymentType::where('company_id', $companyId)->orderBy('name')->get(),
                 'transaction_statuses' => TransactionStatus::where('company_id', $companyId)->where('is_active', true)->orderBy('sort_order')->get(),
-                'settings' => Settings::where('company_id', $companyId)->first(),
+                'settings' => Settings::where('company_id', $companyId)->with('defaultSupplier:id,name,surname,email')->first(),
             ],
         ]);
     }
@@ -102,7 +102,7 @@ class ServiceController extends Controller
             'client:id,name,surname,email,phone',
             'intermediary:id,name,surname,email,phone',
             'supplier:id,name,surname',
-            'status:id,name',
+            'status:id,name,color_code,bg_color',
             'company:id,name',
             'drivers' => function ($q) {
                 $q->withTrashed()->with('driverProfile:user_id,color');
@@ -262,7 +262,7 @@ class ServiceController extends Controller
             'company_id' => 'required|exists:companies,id',
             'reference_number' => 'nullable|string|max:255',
             'service_type' => 'required|string|max:255',
-            'passenger_count' => 'required|integer|min:1',
+            'passenger_count' => 'required|integer|min:0',
             'contact_name' => 'nullable|string|max:255',
             'contact_phone' => 'nullable|string|max:255',
             // Passengers array
@@ -297,7 +297,7 @@ class ServiceController extends Controller
             'baby_seat_standard' => 'nullable|integer|min:0',
             'baby_seat_booster' => 'nullable|integer|min:0',
             // Service plan
-            'pickup_datetime' => 'required|date|after:now',
+            'pickup_datetime' => 'required|date',
             'pickup_location' => 'required|string|max:255',
             'pickup_address' => 'required|string',
             'pickup_latitude' => 'nullable|string|max:255',
@@ -383,8 +383,11 @@ class ServiceController extends Controller
             'stops',
             'payments',
             'costs',
-            'activities.activityType',
-            'activities.supplier',
+            'activities' => function ($query) {
+                $query->orderBy('sort_order', 'asc')
+                      ->orderBy('start_time', 'asc')
+                      ->with(['activityType', 'supplier']);
+            },
             'accountingTransactions',
             'tasks.assignedUsers',
             'company',
@@ -447,7 +450,7 @@ class ServiceController extends Controller
             'company_id' => 'sometimes|exists:companies,id',
             'reference_number' => 'sometimes|string|max:255',
             'service_type' => 'sometimes|string|max:255',
-            'passenger_count' => 'sometimes|integer|min:1',
+            'passenger_count' => 'sometimes|integer|min:0',
             'contact_name' => 'nullable|string|max:255',
             'contact_phone' => 'nullable|string|max:255',
             // Passengers array
@@ -588,6 +591,179 @@ class ServiceController extends Controller
     }
 
     /**
+     * Lightweight inline update for single-field edits from the service list.
+     * Avoids the overhead of full validation and eager-loading.
+     */
+    public function inlineUpdate(Request $request, Service $service): JsonResponse
+    {
+        $allowedFields = [
+            'status_id' => 'nullable|exists:service_statuses,id',
+            'dress_code_id' => 'nullable|exists:dress_codes,id',
+            'vehicle_id' => 'nullable|exists:vehicles,id',
+            'notes' => 'nullable|string',
+        ];
+
+        $fieldsToUpdate = array_intersect_key($request->all(), $allowedFields);
+
+        if (empty($fieldsToUpdate)) {
+            return response()->json(['error' => 'No valid fields provided'], 422);
+        }
+
+        // Build validation rules only for submitted fields
+        $rules = array_intersect_key($allowedFields, $fieldsToUpdate);
+        $validated = $request->validate($rules);
+
+        $validated['updated_by'] = $request->user()->id;
+        $service->update($validated);
+
+        // Telegram notification is handled centrally by ServiceObserver
+        // when status_id changes to the configured trigger status
+
+        // Only load the relation that was updated
+        $relations = [];
+        if (isset($validated['status_id'])) $relations[] = 'status';
+        if (isset($validated['dress_code_id'])) $relations[] = 'dressCode';
+        if (isset($validated['vehicle_id'])) $relations[] = 'vehicle:id,license_plate,brand,model';
+
+        if (!empty($relations)) {
+            $service->load($relations);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $service,
+        ]);
+    }
+
+    /**
+     * Duplicate a service with all related data.
+     */
+    public function duplicate(Request $request, Service $service): JsonResponse
+    {
+        $service->load(['passengers', 'stops', 'activities', 'drivers']);
+
+        $newData = $service->replicate()->toArray();
+        unset($newData['id'], $newData['created_at'], $newData['updated_at'], $newData['deleted_at']);
+        $newData['reference_number'] = 'SRV-' . now()->format('YmdHis');
+        $newData['created_by'] = $request->user()->id;
+        $newData['updated_by'] = $request->user()->id;
+        // Reset status to first available (draft)
+        $defaultStatus = \App\Models\ServiceStatus::withoutGlobalScopes()
+            ->where('company_id', $service->company_id)
+            ->orderBy('id')
+            ->first();
+        if ($defaultStatus) {
+            $newData['status_id'] = $defaultStatus->id;
+        }
+
+        $newService = Service::create($newData);
+
+        // Duplicate drivers
+        $driverIds = $service->drivers->pluck('id')->toArray();
+        if (!empty($driverIds)) {
+            $newService->drivers()->attach($driverIds);
+        }
+
+        // Duplicate passengers
+        foreach ($service->passengers as $passenger) {
+            $pData = $passenger->replicate()->toArray();
+            unset($pData['id'], $pData['service_id'], $pData['created_at'], $pData['updated_at']);
+            $newService->passengers()->create($pData);
+        }
+
+        // Duplicate stops
+        foreach ($service->stops as $stop) {
+            $sData = $stop->replicate()->toArray();
+            unset($sData['id'], $sData['service_id'], $sData['created_at'], $sData['updated_at']);
+            $newService->stops()->create($sData);
+        }
+
+        // Duplicate activities
+        foreach ($service->activities as $activity) {
+            $aData = $activity->replicate()->toArray();
+            unset($aData['id'], $aData['service_id'], $aData['created_at'], $aData['updated_at']);
+            $newService->activities()->create($aData);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => ['id' => $newService->id],
+        ], 201);
+    }
+
+    /**
+     * Create a return service (duplicate with pickup/dropoff swapped).
+     */
+    public function returnService(Request $request, Service $service): JsonResponse
+    {
+        $service->load(['passengers', 'stops', 'activities', 'drivers']);
+
+        $newData = $service->replicate()->toArray();
+        unset($newData['id'], $newData['created_at'], $newData['updated_at'], $newData['deleted_at']);
+        $newData['reference_number'] = 'SRV-' . now()->format('YmdHis');
+        $newData['created_by'] = $request->user()->id;
+        $newData['updated_by'] = $request->user()->id;
+
+        // Swap pickup and dropoff
+        $newData['pickup_datetime'] = $service->dropoff_datetime;
+        $newData['pickup_location'] = $service->dropoff_location;
+        $newData['pickup_address'] = $service->dropoff_address;
+        $newData['pickup_latitude'] = $service->dropoff_latitude;
+        $newData['pickup_longitude'] = $service->dropoff_longitude;
+        $newData['dropoff_datetime'] = $service->pickup_datetime;
+        $newData['dropoff_location'] = $service->pickup_location;
+        $newData['dropoff_address'] = $service->pickup_address;
+        $newData['dropoff_latitude'] = $service->pickup_latitude;
+        $newData['dropoff_longitude'] = $service->pickup_longitude;
+        $newData['vehicle_departure_datetime'] = $service->vehicle_return_datetime;
+        $newData['vehicle_return_datetime'] = $service->vehicle_departure_datetime;
+
+        // Reset status
+        $defaultStatus = \App\Models\ServiceStatus::withoutGlobalScopes()
+            ->where('company_id', $service->company_id)
+            ->orderBy('id')
+            ->first();
+        if ($defaultStatus) {
+            $newData['status_id'] = $defaultStatus->id;
+        }
+
+        $newService = Service::create($newData);
+
+        // Duplicate drivers
+        $driverIds = $service->drivers->pluck('id')->toArray();
+        if (!empty($driverIds)) {
+            $newService->drivers()->attach($driverIds);
+        }
+
+        // Duplicate passengers
+        foreach ($service->passengers as $passenger) {
+            $pData = $passenger->replicate()->toArray();
+            unset($pData['id'], $pData['service_id'], $pData['created_at'], $pData['updated_at']);
+            $newService->passengers()->create($pData);
+        }
+
+        // Duplicate stops (reversed order)
+        $stops = $service->stops->reverse();
+        foreach ($stops as $stop) {
+            $sData = $stop->replicate()->toArray();
+            unset($sData['id'], $sData['service_id'], $sData['created_at'], $sData['updated_at']);
+            $newService->stops()->create($sData);
+        }
+
+        // Duplicate activities
+        foreach ($service->activities as $activity) {
+            $aData = $activity->replicate()->toArray();
+            unset($aData['id'], $aData['service_id'], $aData['created_at'], $aData['updated_at']);
+            $newService->activities()->create($aData);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => ['id' => $newService->id],
+        ], 201);
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(Service $service): JsonResponse
@@ -595,6 +771,62 @@ class ServiceController extends Controller
         $service->delete();
 
         return response()->json(['message' => 'Service deleted successfully'], 200);
+    }
+
+    /**
+     * Recalculate all overlaps for the current company.
+     * Respects current allow_overlapping flags on vehicles and drivers.
+     */
+    public function recalculateOverlaps(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $companyId = $user->role === 'super-admin'
+            ? ($request->input('company_id') ?? $user->company_id)
+            : $user->company_id;
+
+        // Load all active services for the company
+        $services = Service::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->whereNull('deleted_at')
+            ->whereNotNull('vehicle_departure_datetime')
+            ->whereNotNull('vehicle_return_datetime')
+            ->with('drivers')
+            ->get();
+
+        $removedCount = 0;
+        $createdCount = 0;
+
+        // Delete all existing overlaps for this company
+        $removedCount = \App\Models\ServiceOverlap::whereIn('service_id', $services->pluck('id'))->count();
+        \App\Models\ServiceOverlap::whereIn('service_id', $services->pluck('id'))->delete();
+
+        // Recalculate overlaps for each service
+        foreach ($services as $service) {
+            $serviceData = [
+                'vehicle_departure_datetime' => $service->vehicle_departure_datetime?->format('Y-m-d H:i:s'),
+                'vehicle_return_datetime' => $service->vehicle_return_datetime?->format('Y-m-d H:i:s'),
+                'pickup_datetime' => $service->pickup_datetime?->format('Y-m-d H:i:s'),
+                'dropoff_datetime' => $service->dropoff_datetime?->format('Y-m-d H:i:s'),
+                'vehicle_id' => $service->vehicle_id,
+                'driver_ids' => $service->drivers->pluck('id')->toArray(),
+                'company_id' => $companyId,
+            ];
+
+            $overlaps = $this->overlapService->checkOverlaps($serviceData, $service->id);
+
+            if (count($overlaps) > 0) {
+                $this->overlapService->saveOverlaps($service, $overlaps, true);
+                $createdCount += count($overlaps);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Ricalcolo completato: {$removedCount} sovrapposizioni rimosse, {$createdCount} sovrapposizioni trovate.",
+            'removed' => $removedCount,
+            'created' => $createdCount,
+            'services_checked' => $services->count(),
+        ]);
     }
 
     /**

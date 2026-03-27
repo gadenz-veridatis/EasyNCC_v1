@@ -23,6 +23,8 @@ class Activity extends Model
         'cost',
         'cost_per_person',
         'payment_type',
+        'should_account',
+        'sort_order',
         'notes',
     ];
 
@@ -31,6 +33,7 @@ class Activity extends Model
         'end_time' => 'datetime',
         'cost' => 'decimal:2',
         'cost_per_person' => 'decimal:2',
+        'should_account' => 'boolean',
     ];
 
     /**

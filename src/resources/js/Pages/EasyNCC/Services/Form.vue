@@ -125,7 +125,7 @@
                                                 type="number"
                                                 class="form-control"
                                                 required
-                                                min="1"
+                                                min="0"
                                             />
                                         </BCol>
                                     </BRow>
@@ -228,6 +228,7 @@
                                             <label for="client_id" class="form-label">Committente *</label>
                                             <div class="d-flex gap-2">
                                                 <Multiselect
+                                                    :key="committentiKey"
                                                     id="client_id"
                                                     v-model="form.client_id"
                                                     :options="searchCommittenti"
@@ -278,6 +279,7 @@
                                             <label for="intermediary_id" class="form-label">Intermediario</label>
                                             <div class="d-flex gap-2">
                                                 <Multiselect
+                                                    :key="intermediariKey"
                                                     id="intermediary_id"
                                                     v-model="form.intermediary_id"
                                                     :options="searchIntermediari"
@@ -317,6 +319,7 @@
                                             <label for="supplier_id" class="form-label">Fornitore</label>
                                             <div class="d-flex gap-2">
                                                 <Multiselect
+                                                    :key="fornitoriKey"
                                                     id="supplier_id"
                                                     v-model="form.supplier_id"
                                                     :options="searchFornitori"
@@ -440,8 +443,8 @@
                                                                 display: 'inline-block'
                                                             }"
                                                         ></span>
-                                                        <span class="text-dark">{{ driver.name }} {{ driver.surname }}</span>
-                                                        <span v-if="driver.driver_profile?.overlappable" class="badge bg-info-subtle text-info" style="font-size: 0.7rem;">
+                                                        <span class="text-dark">{{ driverLabel(driver) }}</span>
+                                                        <span v-if="driver.driver_profile?.allow_overlapping" class="badge bg-info-subtle text-info" style="font-size: 0.7rem;">
                                                             Sovrapponibile
                                                         </span>
                                                         <button
@@ -449,7 +452,7 @@
                                                             class="btn-close btn-sm"
                                                             style="font-size: 0.7rem;"
                                                             @click="removeDriver(driver.id)"
-                                                            :title="`Rimuovi ${driver.name} ${driver.surname}`"
+                                                            :title="`Rimuovi ${driverLabel(driver)}`"
                                                             :disabled="form.driver_not_replaceable"
                                                         ></button>
                                                     </div>
@@ -618,13 +621,18 @@
                                             </BCol>
                                             <BCol md="6" class="mb-3">
                                                 <label for="vehicle_departure_datetime" class="form-label">Data/Ora Uscita Mezzo *</label>
-                                                <input
-                                                    id="vehicle_departure_datetime"
-                                                    v-model="form.vehicle_departure_datetime"
-                                                    type="datetime-local"
-                                                    class="form-control"
-                                                    required
-                                                />
+                                                <div class="input-group">
+                                                    <input
+                                                        id="vehicle_departure_datetime"
+                                                        v-model="form.vehicle_departure_datetime"
+                                                        type="datetime-local"
+                                                        class="form-control"
+                                                        required
+                                                    />
+                                                    <button type="button" class="btn btn-outline-secondary" @click="form.vehicle_departure_datetime = form.pickup_datetime" title="Copia da Pickup">
+                                                        <i class="ri-file-copy-line"></i>
+                                                    </button>
+                                                </div>
                                             </BCol>
                                             <BCol md="3" class="mb-3">
                                                 <label for="pickup_latitude" class="form-label">Latitudine</label>
@@ -659,13 +667,18 @@
                                                 <label for="dropoff_datetime" class="form-label fw-bold text-danger fs-5">
                                                     <i class="ri-calendar-event-line me-1"></i>Data/Ora Dropoff *
                                                 </label>
-                                                <input
-                                                    id="dropoff_datetime"
-                                                    v-model="form.dropoff_datetime"
-                                                    type="datetime-local"
-                                                    class="form-control form-control-lg border-danger"
-                                                    required
-                                                />
+                                                <div class="input-group">
+                                                    <input
+                                                        id="dropoff_datetime"
+                                                        v-model="form.dropoff_datetime"
+                                                        type="datetime-local"
+                                                        class="form-control form-control-lg border-danger"
+                                                        required
+                                                    />
+                                                    <button type="button" class="btn btn-outline-danger" @click="form.dropoff_datetime = form.pickup_datetime" title="Copia da Pickup">
+                                                        <i class="ri-file-copy-line"></i>
+                                                    </button>
+                                                </div>
                                             </BCol>
                                             <BCol md="6" class="mb-3">
                                                 <label for="dropoff_location" class="form-label fw-bold text-danger fs-5">
@@ -693,13 +706,18 @@
                                             </BCol>
                                             <BCol md="6" class="mb-3">
                                                 <label for="vehicle_return_datetime" class="form-label">Data/Ora Rientro Mezzo *</label>
-                                                <input
-                                                    id="vehicle_return_datetime"
-                                                    v-model="form.vehicle_return_datetime"
-                                                    type="datetime-local"
-                                                    class="form-control"
-                                                    required
-                                                />
+                                                <div class="input-group">
+                                                    <input
+                                                        id="vehicle_return_datetime"
+                                                        v-model="form.vehicle_return_datetime"
+                                                        type="datetime-local"
+                                                        class="form-control"
+                                                        required
+                                                    />
+                                                    <button type="button" class="btn btn-outline-secondary" @click="form.vehicle_return_datetime = form.dropoff_datetime" title="Copia da Dropoff">
+                                                        <i class="ri-file-copy-line"></i>
+                                                    </button>
+                                                </div>
                                             </BCol>
                                             <BCol md="3" class="mb-3">
                                                 <label for="dropoff_latitude" class="form-label">Latitudine</label>
@@ -743,6 +761,7 @@
                                                 <table class="table table-sm table-hover mb-0">
                                                     <thead>
                                                         <tr>
+                                                            <th style="width: 60px" class="text-center">Ordine</th>
                                                             <th>Inizio</th>
                                                             <th>Fine</th>
                                                             <th>Descrizione Esperienza</th>
@@ -755,7 +774,27 @@
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        <tr v-for="activity in form.activities" :key="activity.id">
+                                                        <tr v-for="(activity, index) in form.activities" :key="activity.id">
+                                                            <td class="text-center">
+                                                                <button
+                                                                    type="button"
+                                                                    class="btn btn-sm btn-soft-secondary p-0 px-1"
+                                                                    :disabled="index === 0"
+                                                                    @click="moveActivity(index, -1)"
+                                                                    title="Sposta su"
+                                                                >
+                                                                    <i class="ri-arrow-up-s-line"></i>
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    class="btn btn-sm btn-soft-secondary p-0 px-1"
+                                                                    :disabled="index === form.activities.length - 1"
+                                                                    @click="moveActivity(index, 1)"
+                                                                    title="Sposta giù"
+                                                                >
+                                                                    <i class="ri-arrow-down-s-line"></i>
+                                                                </button>
+                                                            </td>
                                                             <td>{{ formatDateTime(activity.start_time) }}</td>
                                                             <td>{{ formatDateTime(activity.end_time) }}</td>
                                                             <td>{{ activity.name }}</td>
@@ -776,6 +815,7 @@
                                                                     {{ activity.payment_type }}
                                                                 </span>
                                                                 <span v-else class="text-muted">-</span>
+                                                                <i v-if="activity.should_account" class="ri-calculator-line ms-1 text-success" title="Contabilizzato"></i>
                                                             </td>
                                                             <td class="text-center">
                                                                 <button
@@ -858,6 +898,11 @@
                                         </BCol>
                                     </BRow>
                                 </fieldset>
+
+                                <!-- FIELDSET: ALLEGATI SERVIZIO -->
+                                <div v-if="isEdit && props.service?.id">
+                                    <ServiceAttachments :service-id="props.service.id" />
+                                </div>
 
                                 <!-- FIELDSET: ECONOMICS -->
                                 <fieldset id="section-prezzi" class="border rounded p-3 mb-4">
@@ -1717,12 +1762,19 @@
                     <BCol md="6">
                         <div class="mb-3">
                             <label class="form-label">Fornitore</label>
-                            <select v-model="activityForm.supplier_id" class="form-select">
-                                <option value="">Nessuno</option>
-                                <option v-for="supplier in fornitori" :key="supplier.id" :value="supplier.id">
-                                    {{ supplier.name }} {{ supplier.surname }}
-                                </option>
-                            </select>
+                            <Multiselect
+                                v-model="activityForm.supplier_id"
+                                :options="searchActivitySuppliers"
+                                :searchable="true"
+                                :filter-results="false"
+                                :min-chars="0"
+                                :delay="100"
+                                :resolve-on-load="true"
+                                placeholder="Cerca fornitore..."
+                                no-options-text="Nessun fornitore trovato"
+                                no-results-text="Nessun risultato"
+                                :canClear="true"
+                            />
                         </div>
                     </BCol>
                     <BCol md="6">
@@ -1759,27 +1811,25 @@
                 <BRow>
                     <BCol md="6">
                         <div class="mb-3">
-                            <label class="form-label">Data e Ora Inizio <span class="text-danger">*</span></label>
+                            <label class="form-label">Data e Ora Inizio</label>
                             <input
                                 v-model="activityForm.start_time"
                                 type="datetime-local"
                                 class="form-control"
                                 :min="form.pickup_datetime"
                                 :max="form.dropoff_datetime"
-                                required
                             />
                         </div>
                     </BCol>
                     <BCol md="6">
                         <div class="mb-3">
-                            <label class="form-label">Data e Ora Fine <span class="text-danger">*</span></label>
+                            <label class="form-label">Data e Ora Fine</label>
                             <input
                                 v-model="activityForm.end_time"
                                 type="datetime-local"
                                 class="form-control"
                                 :min="activityForm.start_time || form.pickup_datetime"
                                 :max="form.dropoff_datetime"
-                                required
                             />
                         </div>
                     </BCol>
@@ -1835,6 +1885,19 @@
                             </select>
                         </div>
                     </BCol>
+                    <BCol md="6">
+                        <div class="mb-3 d-flex align-items-center" style="margin-top: 2rem;">
+                            <div class="form-check form-switch">
+                                <input
+                                    id="should_account"
+                                    v-model="activityForm.should_account"
+                                    type="checkbox"
+                                    class="form-check-input"
+                                />
+                                <label class="form-check-label" for="should_account">Contabilizza</label>
+                            </div>
+                        </div>
+                    </BCol>
                 </BRow>
             </fieldset>
 
@@ -1871,7 +1934,7 @@
                     type="button"
                     class="btn btn-primary"
                     @click="saveActivity"
-                    :disabled="!activityForm.name || !activityForm.start_time || !activityForm.end_time"
+                    :disabled="!activityForm.name"
                 >
                     <i :class="activityForm.id ? 'ri-save-line' : 'ri-add-line'" class="me-1"></i>
                     {{ activityForm.id ? 'Aggiorna Esperienza' : 'Aggiungi Esperienza' }}
@@ -2299,47 +2362,96 @@
                 </div>
             </div>
 
-            <h6 class="mb-2">Servizi in sovrapposizione:</h6>
-            <div class="table-responsive">
-                <table class="table table-bordered table-sm">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Servizio</th>
-                            <th>Tipo Sovrapposizione</th>
-                            <th>Risorsa Sovrapposta</th>
-                            <th>Periodo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="(overlap, index) in detectedOverlaps" :key="index">
-                            <td>
-                                <strong>{{ overlap.overlapping_service_reference || '#' + overlap.overlapping_service_id }}</strong>
-                            </td>
-                            <td>
-                                <span v-if="overlap.overlap_type === 'vehicle'" class="badge bg-info">Veicolo</span>
-                                <span v-else-if="overlap.overlap_type === 'driver'" class="badge bg-warning">Autista</span>
-                                <span v-else-if="overlap.overlap_type === 'both'" class="badge bg-danger">Veicolo + Autista</span>
-                            </td>
-                            <td>
-                                <div v-if="overlap.vehicle_plate" class="text-info mb-1">
-                                    <i class="ri-car-line me-1"></i>
-                                    <strong>{{ overlap.vehicle_plate }}</strong>
-                                    <small class="text-muted ms-1">{{ overlap.vehicle_brand }} {{ overlap.vehicle_model }}</small>
-                                </div>
-                                <div v-if="overlap.driver_name" class="text-warning">
-                                    <i class="ri-user-line me-1"></i>
-                                    <strong>{{ overlap.driver_name }}</strong>
-                                </div>
-                            </td>
-                            <td>
-                                <small>
-                                    {{ formatDateTime(overlap.service_departure) }} -
-                                    {{ formatDateTime(overlap.service_return) }}
-                                </small>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <!-- Sovrapposizioni con servizi -->
+            <div v-if="serviceOverlaps.length > 0">
+                <h6 class="mb-2">Servizi in sovrapposizione:</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Servizio</th>
+                                <th>Tipo Sovrapposizione</th>
+                                <th>Risorsa Sovrapposta</th>
+                                <th>Periodo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(overlap, index) in serviceOverlaps" :key="'svc-' + index">
+                                <td>
+                                    <strong>{{ overlap.overlapping_service_reference || '#' + overlap.overlapping_service_id }}</strong>
+                                </td>
+                                <td>
+                                    <span v-if="overlap.overlap_type === 'vehicle'" class="badge bg-info">Veicolo</span>
+                                    <span v-else-if="overlap.overlap_type === 'driver'" class="badge bg-warning">Autista</span>
+                                    <span v-else-if="overlap.overlap_type === 'both'" class="badge bg-danger">Veicolo + Autista</span>
+                                </td>
+                                <td>
+                                    <div v-if="overlap.vehicle_plate" class="text-info mb-1">
+                                        <i class="ri-car-line me-1"></i>
+                                        <strong>{{ overlap.vehicle_plate }}</strong>
+                                        <small class="text-muted ms-1">{{ overlap.vehicle_brand }} {{ overlap.vehicle_model }}</small>
+                                    </div>
+                                    <div v-if="overlap.driver_name" class="text-warning">
+                                        <i class="ri-user-line me-1"></i>
+                                        <strong>{{ overlap.driver_name }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <small>
+                                        {{ formatDateTime(overlap.service_departure) }} -
+                                        {{ formatDateTime(overlap.service_return) }}
+                                    </small>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Conflitti con indisponibilità -->
+            <div v-if="unavailabilityConflicts.length > 0">
+                <h6 class="mb-2 text-danger">
+                    <i class="ri-error-warning-line me-1"></i>Conflitti con periodi di indisponibilità:
+                </h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Risorsa</th>
+                                <th>Motivo</th>
+                                <th>Periodo Indisponibilità</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(conflict, index) in unavailabilityConflicts" :key="'unavail-' + index" class="table-danger">
+                                <td>
+                                    <span v-if="conflict.overlap_type === 'vehicle_unavailability'" class="badge bg-secondary">
+                                        <i class="ri-car-line me-1"></i>Veicolo
+                                    </span>
+                                    <span v-else-if="conflict.overlap_type === 'driver_unavailability'" class="badge bg-danger">
+                                        <i class="ri-user-line me-1"></i>Autista
+                                    </span>
+                                </td>
+                                <td>
+                                    <div v-if="conflict.vehicle_plate">
+                                        <strong>{{ conflict.vehicle_plate }}</strong>
+                                        <small class="text-muted ms-1">{{ conflict.vehicle_brand }} {{ conflict.vehicle_model }}</small>
+                                    </div>
+                                    <div v-if="conflict.driver_name">
+                                        <strong>{{ conflict.driver_name }}</strong>
+                                    </div>
+                                </td>
+                                <td>{{ conflict.unavailability_reason }}</td>
+                                <td>
+                                    <small>
+                                        {{ conflict.unavailability_start }} - {{ conflict.unavailability_end }}
+                                    </small>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-3">
@@ -2937,6 +3049,9 @@ import Multiselect from '@vueform/multiselect';
 import '@vueform/multiselect/themes/default.css';
 import axios from 'axios';
 import moment from 'moment';
+import Swal from 'sweetalert2';
+import ServiceAttachments from '@/Components/ProfileFields/ServiceAttachments.vue';
+import { driverLabel } from '@/composables/useDriverLabel.js';
 
 const props = defineProps({
     service: {
@@ -2955,6 +3070,15 @@ const showTransactionModal = ref(false);
 const showTaskModal = ref(false);
 const showOverlapModal = ref(false);
 const detectedOverlaps = ref([]);
+
+// Computed: split detected overlaps into service overlaps and unavailability conflicts
+const serviceOverlaps = computed(() => {
+    return detectedOverlaps.value.filter(o => !['driver_unavailability', 'vehicle_unavailability'].includes(o.overlap_type));
+});
+const unavailabilityConflicts = computed(() => {
+    return detectedOverlaps.value.filter(o => ['driver_unavailability', 'vehicle_unavailability'].includes(o.overlap_type));
+});
+
 const showNewCommittenteModal = ref(false);
 const savingNewCommittente = ref(false);
 const showNewCommittentePassword = ref(false);
@@ -2973,6 +3097,9 @@ const currentUser = ref(null);
 const companies = ref([]);
 
 // Lists
+const committentiKey = ref(0);
+const intermediariKey = ref(0);
+const fornitoriKey = ref(0);
 const committenti = ref([]);
 const committentiLoaded = ref(false);
 const committentiLoading = ref(false);
@@ -3085,7 +3212,7 @@ const currentServiceDrivers = computed(() => {
     if (!form.value.driver_ids || form.value.driver_ids.length === 0) return null;
     const driverNames = form.value.driver_ids.map(id => {
         const driver = drivers.value.find(d => d.id === id);
-        return driver ? `${driver.surname} ${driver.name}` : null;
+        return driver ? driverLabel(driver) : null;
     }).filter(Boolean);
     return driverNames.join(', ');
 });
@@ -3193,6 +3320,7 @@ const activityForm = ref({
     end_time: '',
     cost: 0,
     payment_type: '',
+    should_account: false,
     description: ''
 });
 
@@ -3444,6 +3572,11 @@ const loadCounterparts = async () => {
     }
 };
 
+// Injected options (used after creation to make them visible in async Multiselect)
+const injectedCommittenteOption = ref(null);
+const injectedIntermediarioOption = ref(null);
+const injectedFornitoreOption = ref(null);
+
 // Async search function for committenti
 const searchCommittenti = async (query) => {
     if (!form.value.company_id) return [];
@@ -3480,6 +3613,14 @@ const searchCommittenti = async (query) => {
                     value: c.id,
                     label: `${c.surname || ''} ${c.name || ''}`.trim() || c.email
                 });
+            }
+        }
+
+        // Include injected option (from create committente from passenger)
+        if (injectedCommittenteOption.value) {
+            const exists = options.some(o => o.value === injectedCommittenteOption.value.value);
+            if (!exists) {
+                options.unshift(injectedCommittenteOption.value);
             }
         }
 
@@ -3546,6 +3687,14 @@ const searchIntermediari = async (query) => {
             }
         }
 
+        // Include injected option
+        if (injectedIntermediarioOption.value) {
+            const exists = options.some(o => o.value === injectedIntermediarioOption.value.value);
+            if (!exists) {
+                options.unshift(injectedIntermediarioOption.value);
+            }
+        }
+
         return options;
     } catch (error) {
         console.error('Error searching intermediari:', error);
@@ -3596,16 +3745,35 @@ const searchFornitori = async (query) => {
             label: `${f.surname || ''} ${f.name || ''}`.trim() || f.email
         }));
 
-        // If editing and current supplier is not in results, add it
-        if (isEdit.value && props.service?.supplier && form.value.supplier_id) {
+        // If current supplier is not in results, add it
+        if (form.value.supplier_id) {
             const currentId = form.value.supplier_id;
             const exists = options.some(o => o.value === currentId);
             if (!exists) {
-                const s = props.service.supplier;
-                options.unshift({
-                    value: s.id,
-                    label: `${s.surname || ''} ${s.name || ''}`.trim() || s.email
-                });
+                // In edit mode, use service supplier data
+                if (isEdit.value && props.service?.supplier) {
+                    const s = props.service.supplier;
+                    options.unshift({
+                        value: s.id,
+                        label: `${s.surname || ''} ${s.name || ''}`.trim() || s.email
+                    });
+                }
+                // In new mode, use default supplier from settings
+                else if (!isEdit.value && settings.value?.default_supplier && settings.value.default_supplier.id === currentId) {
+                    const s = settings.value.default_supplier;
+                    options.unshift({
+                        value: s.id,
+                        label: `${s.surname || ''} ${s.name || ''}`.trim() || s.email
+                    });
+                }
+            }
+        }
+
+        // Include injected option
+        if (injectedFornitoreOption.value) {
+            const exists = options.some(o => o.value === injectedFornitoreOption.value.value);
+            if (!exists) {
+                options.unshift(injectedFornitoreOption.value);
             }
         }
 
@@ -3626,6 +3794,38 @@ const loadFornitoriLazy = async () => {
     const options = await searchFornitori('');
     fornitori.value = options;
     fornitoriLoaded.value = true;
+};
+
+// Cached supplier search for activity modal (light mode, single API call)
+const activitySuppliersCache = ref([]);
+let activitySuppliersCacheLoaded = false;
+
+const searchActivitySuppliers = async (query) => {
+    // Load once from light endpoint
+    if (!activitySuppliersCacheLoaded) {
+        try {
+            const params = {
+                light: true,
+                is_fornitore: 1,
+                per_page: 200,
+                company_id: isSuperAdmin.value ? form.value.company_id : undefined
+            };
+            const response = await axios.get('/api/users', { params });
+            activitySuppliersCache.value = (response.data.data || []).map(f => ({
+                value: f.id,
+                label: `${f.surname || ''} ${f.name || ''}`.trim() || f.email
+            }));
+            activitySuppliersCacheLoaded = true;
+        } catch (error) {
+            console.error('Error loading activity suppliers:', error);
+            return [];
+        }
+    }
+
+    // Filter client-side
+    if (!query) return activitySuppliersCache.value;
+    const needle = query.toLowerCase();
+    return activitySuppliersCache.value.filter(s => s.label.toLowerCase().includes(needle));
 };
 
 // Options for fornitori Multiselect
@@ -3694,7 +3894,7 @@ const searchDrivers = async (query) => {
             .filter(d => !form.value.driver_ids.includes(d.id))
             .map(d => ({
                 value: d.id,
-                label: `${d.name} ${d.surname}${d.driver_profile?.overlappable ? ' (Sovrapponibile)' : ''}`,
+                label: `${d.name} ${d.surname}${d.driver_profile?.allow_overlapping ? ' (Sovrapponibile)' : ''}`,
                 driver: d
             }));
     } catch (error) {
@@ -3811,6 +4011,14 @@ const applySettingsDefaults = () => {
         // Imposta il fornitore di default
         if (settings.value.default_supplier_id !== null && settings.value.default_supplier_id !== undefined) {
             form.value.supplier_id = settings.value.default_supplier_id;
+            // Pre-popola le opzioni fornitori con il fornitore di default per il resolve-on-load del Multiselect
+            if (settings.value.default_supplier) {
+                const s = settings.value.default_supplier;
+                fornitori.value = [{
+                    value: s.id,
+                    label: `${s.surname || ''} ${s.name || ''}`.trim() || s.email
+                }];
+            }
             // Aggiorna il referente fornitore dopo aver impostato il fornitore
             onSupplierChange();
         }
@@ -3863,13 +4071,18 @@ const onCompanyChange = async () => {
     // Reset task assignable users
     taskAssignableUsers.value = [];
 
-    // Reset lazy-loaded data (vehicles/drivers will reload via Multiselect search)
+    // Reset lazy-loaded data (will reload via Multiselect async search)
     vehicles.value = [];
     drivers.value = [];
+    committenti.value = [];
+    intermediari.value = [];
+    fornitori.value = [];
+    committentiLoaded.value = false;
+    intermediariLoaded.value = false;
+    fornitoriLoaded.value = false;
 
-    // Ricarica tutti i dati dipendenti dall'azienda
+    // Ricarica dati dipendenti dall'azienda (dizionari + settings)
     await Promise.all([
-        loadCounterparts(),
         loadFormData(),
         loadTaskAssignableUsers()
     ]);
@@ -4101,20 +4314,24 @@ const openActivityModal = (activity = null) => {
             cost: activity.cost || 0,
             cost_per_person: activity.cost_per_person || 0,
             payment_type: activity.payment_type || '',
+            should_account: activity.should_account || false,
             notes: activity.notes || ''
         };
     } else {
         // Create mode - reset form with default dates from service
+        const defaultStart = form.value.pickup_datetime || '';
+        const defaultEnd = form.value.dropoff_datetime || '';
         activityForm.value = {
             id: null,
             name: '',
             activity_type_id: '',
             supplier_id: '',
-            start_time: form.value.pickup_datetime || '',
-            end_time: form.value.pickup_datetime || '',
+            start_time: defaultStart,
+            end_time: defaultEnd,
             cost: 0,
             cost_per_person: 0,
             payment_type: '',
+            should_account: false,
             notes: ''
         };
     }
@@ -4142,8 +4359,8 @@ const cancelActivityEdit = () => {
 };
 
 const saveActivity = async () => {
-    if (!activityForm.value.name || !activityForm.value.start_time || !activityForm.value.end_time) {
-        alert('Compila tutti i campi obbligatori');
+    if (!activityForm.value.name) {
+        alert('Inserisci il nome dell\'esperienza');
         return;
     }
 
@@ -4154,11 +4371,12 @@ const saveActivity = async () => {
             name: activityForm.value.name,
             activity_type_id: activityForm.value.activity_type_id || null,
             supplier_id: activityForm.value.supplier_id || null,
-            start_time: activityForm.value.start_time,
-            end_time: activityForm.value.end_time,
+            start_time: activityForm.value.start_time || null,
+            end_time: activityForm.value.end_time || null,
             cost: activityForm.value.cost || 0,
             cost_per_person: activityForm.value.cost_per_person || 0,
             payment_type: activityForm.value.payment_type || null,
+            should_account: activityForm.value.should_account || false,
             notes: activityForm.value.notes || null
         };
 
@@ -4184,6 +4402,36 @@ const saveActivity = async () => {
     } catch (error) {
         console.error('Error saving activity:', error);
         alert('Errore durante il salvataggio dell\'esperienza');
+    }
+};
+
+const moveActivity = async (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= form.value.activities.length) return;
+
+    // Swap in local array
+    const activities = form.value.activities;
+    const temp = activities[index];
+    activities[index] = activities[newIndex];
+    activities[newIndex] = temp;
+
+    // Update sort_order for all activities
+    const reorderPayload = activities.map((a, i) => ({
+        id: a.id,
+        sort_order: i + 1
+    }));
+
+    try {
+        await axios.post('/api/activities/reorder', {
+            activities: reorderPayload,
+            company_id: form.value.company_id
+        });
+    } catch (error) {
+        console.error('Error reordering activities:', error);
+        // Revert swap on error
+        const temp2 = activities[index];
+        activities[index] = activities[newIndex];
+        activities[newIndex] = temp2;
     }
 };
 
@@ -4858,12 +5106,11 @@ const saveNewCommittente = async () => {
         };
 
         const response = await axios.post('/api/users', data);
+        const newUser = response.data;
+        const newLabel = `${newUser.surname || ''} ${newUser.name || ''}`.trim() || newUser.email;
 
-        // Reload committenti list
-        await loadCounterparts();
-
-        // Select the newly created committente
-        form.value.client_id = response.data.id;
+        // Select the newly created committente in Multiselect
+        selectCommittenteInMultiselect(newUser.id, newLabel);
 
         // Close modal
         showNewCommittenteModal.value = false;
@@ -4884,6 +5131,16 @@ const saveNewCommittente = async () => {
     }
 };
 
+// Helper to select a committente in the async Multiselect
+const selectCommittenteInMultiselect = (id, label) => {
+    // Inject option so searchCommittenti includes it on next resolve
+    injectedCommittenteOption.value = { value: id, label: label };
+    // Set value
+    form.value.client_id = id;
+    // Force Multiselect to recreate — resolve-on-load will find the injected option
+    committentiKey.value++;
+};
+
 // Create Committente from Passenger data
 const createCommittenteFromPassenger = async () => {
     if (!hasPassengerData.value) {
@@ -4891,26 +5148,64 @@ const createCommittenteFromPassenger = async () => {
         return;
     }
 
+    // Prevent multiple concurrent clicks
+    if (creatingCommittenteFromPassenger.value) return;
     creatingCommittenteFromPassenger.value = true;
 
     try {
         const firstPassenger = form.value.passengers[0];
+        const surname = (firstPassenger.surname || '').trim();
+        const name = (firstPassenger.name || '').trim();
+
+        // Check for exact duplicates by name+surname (dedicated API call, no side effects on Multiselect)
+        if (surname) {
+            try {
+                const params = {
+                    is_committente: 1,
+                    per_page: 50,
+                    search: surname,
+                    company_id: isSuperAdmin.value ? form.value.company_id : undefined
+                };
+                const dupResponse = await axios.get('/api/users', { params });
+                const dupUsers = dupResponse.data.data || [];
+
+                // Filter for exact match on surname + name
+                const exactMatches = dupUsers.filter(u => {
+                    const uSurname = (u.surname || '').trim().toLowerCase();
+                    const uName = (u.name || '').trim().toLowerCase();
+                    const matchSurname = uSurname === surname.toLowerCase();
+                    const matchName = !name || uName === name.toLowerCase();
+                    return matchSurname && matchName;
+                });
+
+                if (exactMatches.length > 0) {
+                    const names = exactMatches.map(c => `  - ${c.surname || ''} ${c.name || ''}`.trim()).join('\n');
+                    const useExisting = confirm(
+                        `Esiste già un committente con lo stesso nome:\n${names}\n\nVuoi selezionarlo invece di crearne uno nuovo?`
+                    );
+                    if (useExisting) {
+                        const match = exactMatches[0];
+                        const matchLabel = `${match.surname || ''} ${match.name || ''}`.trim() || match.email;
+                        selectCommittenteInMultiselect(match.id, matchLabel);
+                    }
+                    // In both cases (OK or Annulla) stop here — no new user created
+                    return;
+                }
+            } catch (dupError) {
+                console.error('Error checking duplicate committenti:', dupError);
+            }
+        }
+
         const timestamp = Date.now();
-
-        // Generate username if not available (passengers don't have username)
         const username = `NCC-USR-${timestamp}`;
-
-        // Use passenger email or generate one
         const email = firstPassenger.email || `${username}@nccgest.it`;
-
-        // Default password
         const password = 'NCC-PWD-123!!';
 
         const data = {
             username: username,
             email: email,
-            surname: firstPassenger.surname || 'Da completare',
-            name: firstPassenger.name || null,
+            surname: surname || 'Da completare',
+            name: name || null,
             password: password,
             password_confirmation: password,
             phone: firstPassenger.phone || null,
@@ -4925,20 +5220,11 @@ const createCommittenteFromPassenger = async () => {
         };
 
         const response = await axios.post('/api/users', data);
+        const newUser = response.data;
+        const newLabel = `${newUser.surname || ''} ${newUser.name || ''}`.trim() || newUser.email;
 
-        // Reload committenti list
-        await loadCounterparts();
+        selectCommittenteInMultiselect(newUser.id, newLabel);
 
-        // Also reload lazy-loaded committenti if already loaded
-        if (committentiLoaded.value) {
-            committentiLoaded.value = false;
-            await loadCommittentiLazy();
-        }
-
-        // Select the newly created committente
-        form.value.client_id = response.data.id;
-
-        // Show success message
         alert('Committente creato con successo dai dati del passeggero!');
     } catch (error) {
         console.error('Error creating committente from passenger:', error);
@@ -5025,18 +5311,13 @@ const saveNewIntermediario = async () => {
         };
 
         const response = await axios.post('/api/users', data);
+        const newUser = response.data;
+        const newLabel = `${newUser.surname || ''} ${newUser.name || ''}`.trim() || newUser.email;
 
-        // Reload intermediari list
-        await loadCounterparts();
-
-        // Also reload lazy-loaded intermediari if already loaded
-        if (intermediariLoaded.value) {
-            intermediariLoaded.value = false;
-            await loadIntermediariLazy();
-        }
-
-        // Select the newly created intermediario
-        form.value.intermediary_id = response.data.id;
+        // Inject option, set value, recreate Multiselect
+        injectedIntermediarioOption.value = { value: newUser.id, label: newLabel };
+        form.value.intermediary_id = newUser.id;
+        intermediariKey.value++;
 
         // Close modal
         showNewIntermediarioModal.value = false;
@@ -5127,18 +5408,13 @@ const saveNewFornitore = async () => {
         };
 
         const response = await axios.post('/api/users', data);
+        const newUser = response.data;
+        const newLabel = `${newUser.surname || ''} ${newUser.name || ''}`.trim() || newUser.email;
 
-        // Reload fornitori list
-        await loadCounterparts();
-
-        // Also reload lazy-loaded fornitori if already loaded
-        if (fornitoriLoaded.value) {
-            fornitoriLoaded.value = false;
-            await loadFornitoriLazy();
-        }
-
-        // Select the newly created fornitore
-        form.value.supplier_id = response.data.id;
+        // Inject option, set value, recreate Multiselect
+        injectedFornitoreOption.value = { value: newUser.id, label: newLabel };
+        form.value.supplier_id = newUser.id;
+        fornitoriKey.value++;
 
         // Close modal
         showNewFornitoreModal.value = false;
@@ -5258,7 +5534,7 @@ const removeActivityConfirmationTasks = async () => {
 };
 
 // Process accounting transactions via single batch API call
-const processAccountingTransactions = async () => {
+const processAccountingTransactions = async (overrideServiceId = null) => {
     if (!form.value.client_id) {
         console.warn('No client selected for accounting');
         return false;
@@ -5274,19 +5550,19 @@ const processAccountingTransactions = async () => {
             ? moment(form.value.pickup_datetime).format('YYYY-MM-DD')
             : moment().format('YYYY-MM-DD');
         const clientId = form.value.client_id;
-        const serviceId = props.service.id;
+        const serviceId = overrideServiceId || props.service.id;
         const handlingFeesEntryId = settings.value.handling_fees_accounting_entry_id;
         const cardFeesEntryId = settings.value.card_fees_accounting_entry_id;
 
         const operations = [];
 
-        // === ACCONTO VENDITA (deposit - componente imponibile) ===
-        if (form.value.deposit_taxable && form.value.deposit_taxable > 0) {
+        // === ACCONTO VENDITA (deposit - card fees) ===
+        if (form.value.deposit_amount && form.value.deposit_amount > 0) {
             operations.push({
                 action: 'upsert',
                 find_by: { transaction_type: 'sale', installment: 'deposit', accounting_entry_id: settings.value.deposit_accounting_entry_id },
                 data: {
-                    transaction_date: pickupDate, amount: form.value.deposit_taxable,
+                    transaction_date: pickupDate, amount: form.value.deposit_amount,
                     transaction_type: 'sale', installment: 'deposit',
                     accounting_entry_id: settings.value.deposit_accounting_entry_id,
                     counterpart_id: clientId, payment_type: 'carta_di_credito',
@@ -5559,6 +5835,35 @@ const processAccountingTransactions = async () => {
             });
         }
 
+        // === COSTO ESPERIENZE (somma attivita con should_account) ===
+        const experienceEntryId = settings.value.experience_accounting_entry_id;
+        if (experienceEntryId) {
+            const accountableActivities = (form.value.activities || []).filter(a => a.should_account && parseFloat(a.cost) > 0);
+            const totalExperienceCost = accountableActivities.reduce((sum, a) => sum + parseFloat(a.cost || 0), 0);
+            // Use the supplier of the first accountable activity as counterpart
+            const experienceSupplierId = accountableActivities.length > 0 ? accountableActivities[0].supplier_id : null;
+
+            if (totalExperienceCost > 0) {
+                operations.push({
+                    action: 'upsert',
+                    find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: experienceEntryId },
+                    data: {
+                        transaction_date: pickupDate, amount: Math.round(totalExperienceCost * 100) / 100,
+                        transaction_type: 'purchase', installment: 'balance',
+                        accounting_entry_id: experienceEntryId,
+                        counterpart_id: experienceSupplierId,
+                        payment_reason: settings.value.experience_reason, status: 'to_pay',
+                    }
+                });
+            } else {
+                operations.push({
+                    action: 'delete',
+                    find_by: { transaction_type: 'purchase', installment: 'balance', accounting_entry_id: experienceEntryId },
+                    data: {}
+                });
+            }
+        }
+
         // Single batch API call
         const response = await axios.post('/api/accounting-transactions/batch', {
             service_id: serviceId,
@@ -5613,6 +5918,27 @@ const saveAndExit = async () => {
 };
 
 const submitForm = async (confirmOverlaps = false) => {
+    // Check if status is changing to "assegnato" - warn about Telegram notification
+    if (isEdit.value && form.value.status_id && props.service.status_id !== form.value.status_id) {
+        const newStatus = serviceStatuses.value.find(s => s.id === form.value.status_id);
+        const newStatusName = newStatus?.name?.toLowerCase() || '';
+        if (newStatusName.includes('assegnato')) {
+            const result = await Swal.fire({
+                title: 'Notifica al Driver',
+                html: 'Cambiando lo stato in <strong>"Assegnato"</strong> verrà inviato un messaggio Telegram al driver per richiedere la conferma del servizio.<br><br>Vuoi procedere?',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sì, procedi',
+                cancelButtonText: 'Annulla',
+            });
+            if (!result.isConfirmed) {
+                return;
+            }
+        }
+    }
+
     submitting.value = true;
     try {
         const payload = { ...form.value };
@@ -5633,11 +5959,11 @@ const submitForm = async (confirmOverlaps = false) => {
         const response = await axios[method](url, payload);
         const savedServiceId = response.data.data?.id || props.service?.id;
 
-        // Handle post-save operations in parallel (only for edit mode)
-        if (isEdit.value && props.service) {
-            const postSavePromises = [];
+        // Handle post-save operations in parallel
+        const postSavePromises = [];
 
-            // Activity confirmation tasks
+        if (isEdit.value && props.service) {
+            // Activity confirmation tasks (edit mode only)
             const hasConfirmationTasks = serviceTasks.value.some(task =>
                 task.notes && task.notes.includes('Task di conferma automatico per l\'esperienza:')
             );
@@ -5647,8 +5973,10 @@ const submitForm = async (confirmOverlaps = false) => {
             } else if (!activityConfirmationEnabled.value && hasConfirmationTasks) {
                 postSavePromises.push(removeActivityConfirmationTasks());
             }
+        }
 
-            // Accounting transactions
+        // Accounting transactions (both new and edit mode)
+        if (savedServiceId) {
             const hasAccountingTransactions = form.value.accounting_transactions.some(
                 t => (t.transaction_type === 'sale' && (t.installment === 'deposit' || t.installment === 'balance'))
                     || t.transaction_type === 'intermediation'
@@ -5656,15 +5984,15 @@ const submitForm = async (confirmOverlaps = false) => {
             );
 
             if (accountingEnabled.value) {
-                postSavePromises.push(processAccountingTransactions());
+                postSavePromises.push(processAccountingTransactions(savedServiceId));
             } else if (!accountingEnabled.value && hasAccountingTransactions) {
                 postSavePromises.push(removeAccountingTransactions());
             }
+        }
 
-            // Execute all post-save operations in parallel
-            if (postSavePromises.length > 0) {
-                await Promise.all(postSavePromises);
-            }
+        // Execute all post-save operations in parallel
+        if (postSavePromises.length > 0) {
+            await Promise.all(postSavePromises);
         }
 
         // Decide where to go based on exitAfterSave flag
@@ -5876,6 +6204,17 @@ onMounted(async () => {
         const minutes = String(now.getMinutes()).padStart(2, '0');
         const seconds = String(now.getSeconds()).padStart(2, '0');
         form.value.reference_number = `SRV-${year}${month}${day}${hours}${minutes}${seconds}`;
+
+        // Pre-fill date from query parameter (e.g., from calendar right-click)
+        const urlParams = new URLSearchParams(window.location.search);
+        const dateParam = urlParams.get('date');
+        if (dateParam) {
+            const dateWithTime = `${dateParam}T09:00`;
+            form.value.pickup_datetime = dateWithTime;
+            form.value.vehicle_departure_datetime = dateWithTime;
+            form.value.dropoff_datetime = dateWithTime;
+            form.value.vehicle_return_datetime = dateWithTime;
+        }
     }
 
     loading.value = false;

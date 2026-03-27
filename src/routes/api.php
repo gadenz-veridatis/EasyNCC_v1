@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\DictionaryController;
 use App\Http\Controllers\Api\DriverAttachmentController;
 use App\Http\Controllers\Api\VehicleAttachmentController;
 use App\Http\Controllers\Api\VehicleUnavailabilityController;
+use App\Http\Controllers\Api\DriverUnavailabilityController;
+use App\Http\Controllers\Api\ServiceAttachmentController;
 use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\AccountingTransactionController;
 use App\Http\Controllers\Api\TaskController;
@@ -30,6 +32,10 @@ use App\Http\Controllers\Api\SumupConfigController;
 use App\Http\Controllers\Api\GmailAccountController;
 use App\Http\Controllers\Api\SumUpWebhookController;
 use App\Http\Controllers\Api\PricingDestinationController;
+use App\Http\Controllers\Api\UnavailabilityCalendarController;
+use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\VehicleMileageEntryController;
+use App\Http\Controllers\Api\TrashController;
 
 /*
 |--------------------------------------------------------------------------
@@ -121,6 +127,14 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::delete('vehicles/{vehicle}/attachments/{attachment}', [VehicleAttachmentController::class, 'destroy']);
     });
 
+    // Global unavailability endpoints
+    Route::middleware(['role:super-admin,admin'])->group(function () {
+        Route::get('driver-unavailabilities', [DriverUnavailabilityController::class, 'listAll']);
+        Route::post('driver-unavailabilities', [DriverUnavailabilityController::class, 'storeGlobal']);
+        Route::get('vehicle-unavailabilities', [VehicleUnavailabilityController::class, 'listAll']);
+        Route::post('vehicle-unavailabilities', [VehicleUnavailabilityController::class, 'storeGlobal']);
+    });
+
     // Vehicle Unavailabilities - admin and operator can manage
     Route::middleware(['role:super-admin,admin,operator'])->group(function () {
         Route::get('vehicles/{vehicle}/unavailabilities', [VehicleUnavailabilityController::class, 'index']);
@@ -130,6 +144,26 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::delete('vehicles/{vehicle}/unavailabilities/{unavailability}', [VehicleUnavailabilityController::class, 'destroy']);
     });
 
+    // Driver Unavailabilities - admin and operator can manage
+    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+        Route::get('users/{user}/unavailabilities', [DriverUnavailabilityController::class, 'index']);
+        Route::post('users/{user}/unavailabilities', [DriverUnavailabilityController::class, 'store']);
+        Route::put('users/{user}/unavailabilities/{unavailability}', [DriverUnavailabilityController::class, 'update']);
+        Route::patch('users/{user}/unavailabilities/{unavailability}', [DriverUnavailabilityController::class, 'update']);
+        Route::delete('users/{user}/unavailabilities/{unavailability}', [DriverUnavailabilityController::class, 'destroy']);
+    });
+
+    // Vehicle Mileage Entries - admin and operator can manage
+    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+        Route::get('vehicles/{vehicle}/mileage-entries', [VehicleMileageEntryController::class, 'index']);
+        Route::post('vehicles/{vehicle}/mileage-entries', [VehicleMileageEntryController::class, 'store']);
+        Route::put('vehicles/{vehicle}/mileage-entries/{entry}', [VehicleMileageEntryController::class, 'update']);
+        Route::delete('vehicles/{vehicle}/mileage-entries/{entry}', [VehicleMileageEntryController::class, 'destroy']);
+    });
+
+    // Unavailabilities calendar - aggregated view for calendar
+    Route::get('unavailabilities/calendar', [UnavailabilityCalendarController::class, 'index']);
+
     // Services - all can view, admin/operator can manage
     Route::get('services', [ServiceController::class, 'index']);
     Route::get('services/form-data', [ServiceController::class, 'formData']);
@@ -137,10 +171,19 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
 
     Route::middleware(['role:super-admin,admin,operator'])->group(function () {
         Route::post('services/check-overlaps', [ServiceController::class, 'checkOverlaps']);
+        Route::post('services/recalculate-overlaps', [ServiceController::class, 'recalculateOverlaps']);
         Route::post('services', [ServiceController::class, 'store']);
+        Route::patch('services/{service}/inline', [ServiceController::class, 'inlineUpdate']);
         Route::put('services/{service}', [ServiceController::class, 'update']);
         Route::patch('services/{service}', [ServiceController::class, 'update']);
         Route::delete('services/{service}', [ServiceController::class, 'destroy']);
+        Route::post('services/{service}/duplicate', [ServiceController::class, 'duplicate']);
+        Route::post('services/{service}/return', [ServiceController::class, 'returnService']);
+        // Service Attachments
+        Route::get('services/{service}/attachments', [ServiceAttachmentController::class, 'index']);
+        Route::post('services/{service}/attachments', [ServiceAttachmentController::class, 'store']);
+        Route::get('services/{service}/attachments/{attachment}/download', [ServiceAttachmentController::class, 'download']);
+        Route::delete('services/{service}/attachments/{attachment}', [ServiceAttachmentController::class, 'destroy']);
     });
 
     // Activities - admin and operator can CRU, only admin can delete
@@ -150,6 +193,7 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::get('activities/{activity}', [ActivityController::class, 'show']);
         Route::put('activities/{activity}', [ActivityController::class, 'update']);
         Route::patch('activities/{activity}', [ActivityController::class, 'update']);
+        Route::post('activities/reorder', [ActivityController::class, 'reorder']);
     });
 
     Route::middleware(['role:super-admin,admin'])->group(function () {
@@ -200,6 +244,12 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::delete('dictionaries/{type}/{id}', [DictionaryController::class, 'destroy']);
     });
 
+    // Contacts - admin and operator can manage
+    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+        Route::get('contacts/search', [ContactController::class, 'search']);
+        Route::apiResource('contacts', ContactController::class);
+    });
+
     // Quotes (Preventivi) - admin and operator can manage
     Route::middleware(['role:super-admin,admin,operator'])->group(function () {
         Route::get('quotes', [QuoteController::class, 'index']);
@@ -214,6 +264,9 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::get('quotes/{quote}/transitions', [QuoteController::class, 'getTransitions']);
         Route::post('quotes/{quote}/preview-email', [QuoteController::class, 'previewEmail']);
         Route::post('quotes/{quote}/duplicate', [QuoteController::class, 'duplicate']);
+        Route::post('quotes/{quote}/create-version', [QuoteController::class, 'createVersion']);
+        Route::get('quotes/{quote}/versions', [QuoteController::class, 'getVersions']);
+        Route::post('quotes/{quote}/restore-version', [QuoteController::class, 'restoreVersion']);
     });
 
     // Quote Email Templates - admin can manage
@@ -261,6 +314,8 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::get('settings/accounting-entries', [SettingsController::class, 'getAccountingEntries']);
         Route::get('settings/suppliers', [SettingsController::class, 'getSuppliers']);
         Route::get('settings/service-statuses', [SettingsController::class, 'getServiceStatuses']);
+        Route::get('settings/company-data', [SettingsController::class, 'getCompanyData']);
+        Route::post('settings/company-data', [SettingsController::class, 'updateCompanyData']);
     });
 
     // Public settings - accessible to all authenticated users
@@ -288,6 +343,14 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::get('telegram/chat/messages', [TelegramChatController::class, 'messages']);
         Route::post('telegram/chat/send', [TelegramChatController::class, 'send']);
         Route::post('telegram/chat/mark-read', [TelegramChatController::class, 'markAsRead']);
+    });
+
+    // Trash (Cestino) - admin and super-admin only
+    Route::middleware(['role:super-admin,admin'])->group(function () {
+        Route::get('trash/counts', [TrashController::class, 'counts']);
+        Route::get('trash/{type}', [TrashController::class, 'index']);
+        Route::post('trash/{type}/{id}/restore', [TrashController::class, 'restore']);
+        Route::delete('trash/{type}/{id}', [TrashController::class, 'forceDelete']);
     });
 
     // Telegram Chat - driver access (filtered to own conversation)

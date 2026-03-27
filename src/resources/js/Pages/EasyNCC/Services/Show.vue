@@ -27,7 +27,7 @@
                                 Servizio #{{ service.reference_number || service.id }}
                             </h5>
                             <div>
-                                <span :class="`badge bg-${getStatusColor(service.status?.name)} me-2`">
+                                <span class="badge me-2" :style="{ backgroundColor: service.status?.color_code || '#6c757d', color: '#fff' }">
                                     {{ service.status?.name || 'N/A' }}
                                 </span>
                                 <Link :href="route('easyncc.services.edit', service.id)" class="btn btn-sm btn-primary me-2">
@@ -106,7 +106,7 @@
                                     <div v-if="service.drivers && service.drivers.length > 0" class="mb-3">
                                         <label class="text-muted small">Autista/i</label>
                                         <div v-for="driver in service.drivers" :key="driver.id" class="fw-medium">
-                                            {{ `${driver.name} ${driver.surname}` }}
+                                            {{ driverLabel(driver) }}
                                         </div>
                                         <div v-if="service.driver_not_replaceable" class="mt-1">
                                             <span class="badge bg-warning-subtle text-warning">Autista non sostituibile</span>
@@ -199,7 +199,12 @@
                                 <BCardBody>
                                     <div v-if="service.service_type" class="mb-3">
                                         <label class="text-muted small">Tipologia Servizio</label>
-                                        <div class="fw-medium">{{ service.service_type }}</div>
+                                        <div>
+                                            <span
+                                                class="badge"
+                                                :style="{ ...serviceTypeBadgeStyle(service.service_type), fontSize: '0.85rem' }"
+                                            >{{ service.service_type }}</span>
+                                        </div>
                                     </div>
                                     <div v-if="service.vehicle_type" class="mb-3">
                                         <label class="text-muted small">Tipologia Veicolo</label>
@@ -375,6 +380,8 @@ import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import moment from 'moment';
+import { driverLabel } from '@/composables/useDriverLabel.js';
+import { useServiceTypeColor } from '@/composables/useServiceTypeColor.js';
 
 const props = defineProps({
     serviceId: {
@@ -386,6 +393,7 @@ const props = defineProps({
 const service = ref(null);
 const loading = ref(false);
 const error = ref('');
+const { loadServiceTypes, serviceTypeBadgeStyle } = useServiceTypeColor();
 
 const loadService = async () => {
     loading.value = true;
@@ -420,19 +428,8 @@ const formatCurrency = (amount) => {
     }).format(amount);
 };
 
-const getStatusColor = (statusName) => {
-    const colors = {
-        'preventivo': 'info',
-        'confermato': 'success',
-        'in corso': 'primary',
-        'completato': 'secondary',
-        'cancellato': 'danger',
-        'no-show': 'warning'
-    };
-    return colors[statusName?.toLowerCase()] || 'secondary';
-};
-
 onMounted(() => {
     loadService();
+    loadServiceTypes();
 });
 </script>

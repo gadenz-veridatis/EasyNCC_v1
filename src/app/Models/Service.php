@@ -71,6 +71,7 @@ class Service extends Model
         'other_vehicle_costs',
         'colleague_cost',
         'notes',
+        'transaction_status_map',
         'created_by',
         'updated_by',
     ];
@@ -112,6 +113,7 @@ class Service extends Model
         'parking_cost' => 'decimal:2',
         'other_vehicle_costs' => 'decimal:2',
         'colleague_cost' => 'decimal:2',
+        'transaction_status_map' => 'array',
     ];
 
     // Relationships
@@ -180,6 +182,11 @@ class Service extends Model
         return $this->hasMany(AccountingTransaction::class);
     }
 
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(ServiceAttachment::class);
+    }
+
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
@@ -209,5 +216,120 @@ class Service extends Model
     public function overlappedBy(): HasMany
     {
         return $this->hasMany(ServiceOverlap::class, 'overlapping_service_id');
+    }
+
+    /**
+     * Rebuild the transaction_status_map from current accounting transactions.
+     *
+     * Produces semantic keys mapped to status codes:
+     * - "deposit_amount" → status of the sale deposit transaction
+     * - "balance" → status of the sale balance transaction
+     * - "driver_compensation" → status of the driver cost transaction
+     * - "fuel_cost", "toll_cost", etc. → individual cost statuses
+     * - "intermediary_commission" → intermediation status
+     * - Aggregate: "sale", "purchase" → worst status across group
+     */
+    public function refreshTransactionStatusMap(): void
+    {
+        $transactions = $this->accountingTransactions()
+            ->whereNotNull('status')
+            ->select('transaction_type', 'installment', 'accounting_entry_id', 'status')
+            ->get();
+
+        if ($transactions->isEmpty()) {
+            $this->update(['transaction_status_map' => null]);
+            return;
+        }
+
+        // Load company settings to map entry_ids to semantic field names
+        $settings = Settings::where('company_id', $this->company_id)->first();
+
+        // Build reverse map: accounting_entry_id → semantic field name
+        $entryToField = [];
+        if ($settings) {
+            $fieldMap = [
+                'deposit_accounting_entry_id' => 'deposit_amount',
+                'balance_accounting_entry_id' => 'balance',
+                'driver_cost_accounting_entry_id' => 'driver_compensation',
+                'colleague_cost_accounting_entry_id' => 'colleague_cost',
+                'commission_accounting_entry_id' => 'intermediary_commission',
+                'fuel_accounting_entry_id' => 'fuel_cost',
+                'toll_accounting_entry_id' => 'toll_cost',
+                'parking_accounting_entry_id' => 'parking_cost',
+                'other_vehicle_accounting_entry_id' => 'other_vehicle_costs',
+                'experience_accounting_entry_id' => 'experience_cost',
+                'handling_fees_accounting_entry_id' => 'handling_fees',
+                'card_fees_accounting_entry_id' => 'card_fees',
+            ];
+
+            foreach ($fieldMap as $settingsField => $semanticName) {
+                $entryId = $settings->$settingsField;
+                if ($entryId) {
+                    $entryToField[$entryId] = $semanticName;
+                }
+            }
+        }
+
+        $statusPriority = [
+            'suspended' => 0,
+            'cancelled' => 1,
+            'to_pay' => 2,
+            'to_collect' => 2,
+            'collected_driver' => 3,
+            'paid' => 4,
+            'collected' => 4,
+        ];
+
+        $map = [];
+        $groups = []; // group_key => [statuses]
+
+        foreach ($transactions as $t) {
+            // Semantic key from settings mapping
+            $semanticKey = null;
+            if ($t->accounting_entry_id && isset($entryToField[$t->accounting_entry_id])) {
+                $fieldName = $entryToField[$t->accounting_entry_id];
+                // Disambiguate deposit vs balance for same entry_id (e.g. both use "Ricavo Servizio")
+                if ($t->installment === 'deposit' && $fieldName === 'deposit_amount') {
+                    $semanticKey = 'deposit_amount';
+                } elseif ($t->installment === 'balance' && $fieldName === 'balance') {
+                    $semanticKey = 'balance';
+                } elseif ($t->installment === 'deposit' && in_array($fieldName, ['handling_fees', 'card_fees'])) {
+                    $semanticKey = 'deposit_' . $fieldName;
+                } elseif ($t->installment === 'balance' && in_array($fieldName, ['handling_fees', 'card_fees'])) {
+                    $semanticKey = 'balance_' . $fieldName;
+                } else {
+                    $semanticKey = $fieldName;
+                }
+            }
+
+            // Write semantic key
+            if ($semanticKey) {
+                $map[$semanticKey] = $t->status;
+            }
+
+            // Aggregate keys by type+installment and by type
+            $typeInstallmentKey = $t->transaction_type . '_' . $t->installment;
+            $typeKey = $t->transaction_type;
+            $groups[$typeInstallmentKey][] = $t->status;
+            $groups[$typeKey][] = $t->status;
+        }
+
+        // Compute worst status per aggregate group
+        foreach ($groups as $groupKey => $statuses) {
+            $worst = null;
+            $worstPriority = PHP_INT_MAX;
+            foreach ($statuses as $s) {
+                $p = $statusPriority[$s] ?? 5;
+                if ($p < $worstPriority) {
+                    $worstPriority = $p;
+                    $worst = $s;
+                }
+            }
+            if ($worst) {
+                $map[$groupKey] = $worst;
+            }
+        }
+
+        $this->update(['transaction_status_map' => $map]);
     }
 }

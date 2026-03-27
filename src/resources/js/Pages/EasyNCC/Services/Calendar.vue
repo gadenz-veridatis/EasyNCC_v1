@@ -19,6 +19,14 @@
                                 {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
                                 <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
                             </button>
+                            <button
+                                type="button"
+                                class="btn btn-soft-info btn-sm"
+                                @click="showDriverLegend = !showDriverLegend"
+                            >
+                                <i :class="showDriverLegend ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
+                                {{ showDriverLegend ? 'Nascondi Calendari' : 'Mostra Calendari' }}
+                            </button>
                             <Link :href="route('easyncc.services.create')" class="btn btn-primary btn-sm">
                                 <i class="bx bx-plus me-1"></i>
                                 Nuovo Servizio
@@ -34,7 +42,7 @@
                                     <select v-model="filters.driver_id" class="form-select form-select-sm" @change="applyFilters">
                                         <option value="">Tutti gli autisti</option>
                                         <option v-for="driver in allDrivers" :key="driver.id" :value="driver.id">
-                                            {{ driver.name }} {{ driver.surname }}
+                                            {{ driverLabel(driver) }}
                                         </option>
                                     </select>
                                 </BCol>
@@ -71,20 +79,65 @@
                             </BRow>
                         </div>
 
-                        <!-- Driver Legend with Toggle -->
-                        <div v-if="allDrivers.length > 0" class="driver-legend d-flex flex-wrap align-items-center gap-2 mb-3 p-2 border rounded bg-light">
+                        <!-- Driver Legend with Toggle (collapsible) -->
+                        <div v-if="showDriverLegend && allDrivers.length > 0" class="driver-legend d-flex flex-wrap align-items-center gap-2 mb-3 p-2 border rounded bg-light">
                             <span class="small text-muted fw-semibold me-1">Driver:</span>
-                            <button
+                            <span
                                 v-for="driver in allDrivers"
                                 :key="driver.id"
-                                class="btn btn-sm driver-legend-item"
+                                class="btn btn-sm driver-legend-item d-inline-flex align-items-center gap-1"
                                 :style="getLegendStyle(driver)"
-                                @click="toggleDriverVisibility(driver.id)"
-                                :title="hiddenDriverIds.has(driver.id) ? 'Mostra servizi di ' + driver.name : 'Nascondi servizi di ' + driver.name"
                             >
-                                <i :class="hiddenDriverIds.has(driver.id) ? 'ri-eye-off-line' : 'ri-eye-line'" class="me-1"></i>
-                                {{ driver.name }} {{ driver.surname }}
-                            </button>
+                                <i
+                                    :class="hiddenDriverIds.has(driver.id) ? 'ri-eye-off-line' : 'ri-eye-line'"
+                                    style="cursor: pointer;"
+                                    @click="toggleDriverVisibility(driver.id)"
+                                    :title="hiddenDriverIds.has(driver.id) ? 'Mostra servizi di ' + driverLabel(driver) : 'Nascondi servizi di ' + driverLabel(driver)"
+                                ></i>
+                                <span>{{ driverLabel(driver) }}</span>
+                                <Link
+                                    :href="'/easyncc/users/' + driver.id + '/edit'"
+                                    class="text-white"
+                                    style="opacity: 0.8;"
+                                    title="Modifica anagrafica driver"
+                                    @click.stop
+                                >
+                                    <i class="ri-pencil-line"></i>
+                                </Link>
+                            </span>
+                            <span class="vr mx-1"></span>
+                            <!-- Toggle indisponibilità driver -->
+                            <span
+                                class="btn btn-sm driver-legend-item d-inline-flex align-items-center gap-1"
+                                :style="{
+                                    backgroundColor: showDriverUnavailabilities ? '#dc3545' : 'transparent',
+                                    color: showDriverUnavailabilities ? '#fff' : '#dc3545',
+                                    border: '2px solid #dc3545',
+                                    opacity: showDriverUnavailabilities ? 1 : 0.5,
+                                }"
+                                @click="toggleDriverUnavailabilities"
+                                title="Mostra/nascondi indisponibilità driver"
+                                style="cursor: pointer;"
+                            >
+                                <i :class="showDriverUnavailabilities ? 'ri-eye-line' : 'ri-eye-off-line'"></i>
+                                <span>🚫 Indisponibilità Driver</span>
+                            </span>
+                            <!-- Toggle indisponibilità veicoli -->
+                            <span
+                                class="btn btn-sm driver-legend-item d-inline-flex align-items-center gap-1"
+                                :style="{
+                                    backgroundColor: showVehicleUnavailabilities ? '#6c757d' : 'transparent',
+                                    color: showVehicleUnavailabilities ? '#fff' : '#6c757d',
+                                    border: '2px solid #6c757d',
+                                    opacity: showVehicleUnavailabilities ? 1 : 0.5,
+                                }"
+                                @click="toggleVehicleUnavailabilities"
+                                title="Mostra/nascondi indisponibilità veicoli"
+                                style="cursor: pointer;"
+                            >
+                                <i :class="showVehicleUnavailabilities ? 'ri-eye-line' : 'ri-eye-off-line'"></i>
+                                <span>🚗 Indisponibilità Veicoli</span>
+                            </span>
                             <button
                                 v-if="hiddenDriverIds.size > 0"
                                 class="btn btn-sm btn-outline-secondary"
@@ -138,7 +191,10 @@
                 <div class="flex-grow-1">
                     <!-- Tipo di Tour -->
                     <div v-if="selectedService.service_type" class="mb-1">
-                        <span class="badge bg-light text-dark" style="font-size: 0.8rem;">{{ selectedService.service_type }}</span>
+                        <span
+                            class="badge"
+                            :style="{ ...serviceTypeBadgeStyle(selectedService.service_type, '#6c757d'), fontSize: '0.8rem' }"
+                        >{{ selectedService.service_type }}</span>
                     </div>
                     <!-- Nome primo passeggero -->
                     <div class="fw-bold" v-if="selectedService.passengers && selectedService.passengers.length > 0">
@@ -146,6 +202,11 @@
                     </div>
                     <div class="fw-bold" v-else-if="selectedService.contact_name">
                         {{ selectedService.contact_name }}
+                    </div>
+                    <!-- Telefono primo passeggero -->
+                    <div v-if="selectedService.passengers && selectedService.passengers.length > 0 && selectedService.passengers[0].phone" class="small">
+                        <i class="ri-phone-line me-1"></i>
+                        <a :href="'tel:' + selectedService.passengers[0].phone" class="text-white text-decoration-none" style="opacity: 0.9;">{{ selectedService.passengers[0].phone }}</a>
                     </div>
                     <!-- Numero PAX -->
                     <div class="small mt-1">
@@ -213,7 +274,7 @@
                             :title="isDriver ? '' : 'Clicca per modificare'"
                         >
                             <span class="badge" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'};`">
-                                {{ driver.surname }} {{ driver.name }}
+                                {{ driverLabel(driver) }}
                             </span>
                         </div>
                     </div>
@@ -226,7 +287,7 @@
                             style="font-size: 0.75rem;"
                         >
                             <option v-for="driver in allDrivers" :key="driver.id" :value="driver.id">
-                                {{ driver.surname }} {{ driver.name }}
+                                {{ driverLabel(driver) }}
                             </option>
                         </select>
                         <div class="d-flex gap-1 mt-1">
@@ -342,7 +403,7 @@
                             <i class="ri-car-line me-1"></i>{{ overlap.vehicle.license_plate }}
                         </div>
                         <div v-if="overlap.driver" class="text-warning">
-                            <i class="ri-user-line me-1"></i>{{ overlap.driver.surname }} {{ overlap.driver.name }}
+                            <i class="ri-user-line me-1"></i>{{ driverLabel(overlap.driver) }}
                         </div>
                     </div>
                 </div>
@@ -353,22 +414,41 @@
                         <i class="ri-alert-fill me-1"></i>Sovrapposizioni Rilevate
                     </div>
                     <div class="small mb-2">Confermare per salvare con sovrapposizioni:</div>
-                    <div v-for="(overlap, index) in pendingOverlaps" :key="index" class="small border-start border-warning ps-2 mt-1">
-                        <div class="fw-bold">
-                            {{ overlap.overlapping_service_reference || ('#' + overlap.overlapping_service_id) }}
-                        </div>
-                        <div>
-                            <span v-if="overlap.overlap_type === 'vehicle'" class="badge bg-info me-1">Veicolo</span>
-                            <span v-else-if="overlap.overlap_type === 'driver'" class="badge bg-warning text-dark me-1">Autista</span>
-                            <span v-else-if="overlap.overlap_type === 'both'" class="badge bg-danger me-1">Entrambi</span>
-                        </div>
-                        <div v-if="overlap.vehicle_plate" class="text-info">
-                            <i class="ri-car-line me-1"></i>{{ overlap.vehicle_plate }}
-                            <small class="text-muted">{{ overlap.vehicle_brand }} {{ overlap.vehicle_model }}</small>
-                        </div>
-                        <div v-if="overlap.driver_name" class="text-warning">
-                            <i class="ri-user-line me-1"></i>{{ overlap.driver_name }}
-                        </div>
+                    <div v-for="(overlap, index) in pendingOverlaps" :key="index" class="small border-start ps-2 mt-1" :class="overlap.overlap_type.includes('unavailability') ? 'border-danger' : 'border-warning'">
+                        <!-- Service overlaps -->
+                        <template v-if="!overlap.overlap_type.includes('unavailability')">
+                            <div class="fw-bold">
+                                {{ overlap.overlapping_service_reference || ('#' + overlap.overlapping_service_id) }}
+                            </div>
+                            <div>
+                                <span v-if="overlap.overlap_type === 'vehicle'" class="badge bg-info me-1">Veicolo</span>
+                                <span v-else-if="overlap.overlap_type === 'driver'" class="badge bg-warning text-dark me-1">Autista</span>
+                                <span v-else-if="overlap.overlap_type === 'both'" class="badge bg-danger me-1">Entrambi</span>
+                            </div>
+                            <div v-if="overlap.vehicle_plate" class="text-info">
+                                <i class="ri-car-line me-1"></i>{{ overlap.vehicle_plate }}
+                                <small class="text-muted">{{ overlap.vehicle_brand }} {{ overlap.vehicle_model }}</small>
+                            </div>
+                            <div v-if="overlap.driver_name" class="text-warning">
+                                <i class="ri-user-line me-1"></i>{{ overlap.driver_name }}
+                            </div>
+                        </template>
+                        <!-- Unavailability conflicts -->
+                        <template v-else>
+                            <div class="fw-bold text-danger">
+                                <span v-if="overlap.overlap_type === 'driver_unavailability'">🚫 Autista non disponibile</span>
+                                <span v-else>🚗 Veicolo non disponibile</span>
+                            </div>
+                            <div v-if="overlap.driver_name" class="text-danger">
+                                <i class="ri-user-line me-1"></i>{{ overlap.driver_name }}
+                            </div>
+                            <div v-if="overlap.vehicle_plate" class="text-secondary">
+                                <i class="ri-car-line me-1"></i>{{ overlap.vehicle_plate }}
+                            </div>
+                            <div class="text-muted">
+                                {{ overlap.unavailability_reason }} ({{ overlap.unavailability_start }} - {{ overlap.unavailability_end }})
+                            </div>
+                        </template>
                     </div>
                     <div class="d-flex gap-1 mt-2">
                         <button class="btn btn-sm btn-warning py-0 px-2" @click.stop="confirmOverlapsAndSavePopover" :disabled="popoverSaving" style="font-size: 0.7rem;">
@@ -399,6 +479,53 @@
                 </div>
             </div>
         </div>
+        <!-- Context Menu (right-click on event) -->
+        <div
+            v-if="showContextMenu && !isDriver"
+            class="context-menu"
+            :style="contextMenuStyle"
+            @click.stop
+        >
+            <ul class="list-unstyled mb-0">
+                <li>
+                    <Link :href="'/easyncc/services/' + contextMenuServiceId + '/edit'" class="context-menu-item">
+                        <i class="ri-pencil-line me-2"></i>Modifica
+                    </Link>
+                </li>
+                <li>
+                    <a href="#" class="context-menu-item" @click.prevent="contextMenuDuplicate">
+                        <i class="ri-file-copy-line me-2"></i>Duplica
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="context-menu-item" @click.prevent="contextMenuReturn">
+                        <i class="ri-arrow-go-back-line me-2"></i>Ritorno
+                    </a>
+                </li>
+                <li class="context-menu-divider"></li>
+                <li>
+                    <a href="#" class="context-menu-item text-danger" @click.prevent="contextMenuDelete">
+                        <i class="ri-delete-bin-line me-2"></i>Elimina
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Context Menu (right-click on cell) -->
+        <div
+            v-if="showCellContextMenu && !isDriver"
+            class="context-menu"
+            :style="cellContextMenuStyle"
+            @click.stop
+        >
+            <ul class="list-unstyled mb-0">
+                <li>
+                    <Link :href="'/easyncc/services/create?date=' + cellContextMenuDate" class="context-menu-item">
+                        <i class="ri-add-line me-2"></i>Nuovo Servizio
+                    </Link>
+                </li>
+            </ul>
+        </div>
     </Layout>
 </template>
 
@@ -409,6 +536,9 @@ import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import moment from 'moment';
+import Swal from 'sweetalert2';
+import { driverLabel } from '@/composables/useDriverLabel.js';
+import { useServiceTypeColor } from '@/composables/useServiceTypeColor.js';
 
 // FullCalendar instance
 let calendarInstance;
@@ -418,6 +548,7 @@ const loading = ref(true);
 const error = ref('');
 const services = ref([]);
 const showFilters = ref(false);
+const showDriverLegend = ref(false);
 const currentUser = ref(null);
 const isDriver = computed(() => currentUser.value?.role === 'driver');
 const acceptedStatusId = ref(null);
@@ -431,6 +562,12 @@ const filters = ref({
 
 // Driver legend toggle
 const hiddenDriverIds = ref(new Set());
+
+// Unavailability toggles
+const showDriverUnavailabilities = ref(true);
+const showVehicleUnavailabilities = ref(true);
+const driverUnavailabilities = ref([]);
+const vehicleUnavailabilities = ref([]);
 
 const toggleDriverVisibility = (driverId) => {
     const newSet = new Set(hiddenDriverIds.value);
@@ -448,9 +585,105 @@ const showAllDrivers = () => {
     updateEventVisibility();
 };
 
+const toggleDriverUnavailabilities = () => {
+    showDriverUnavailabilities.value = !showDriverUnavailabilities.value;
+    updateUnavailabilityVisibility();
+};
+
+const toggleVehicleUnavailabilities = () => {
+    showVehicleUnavailabilities.value = !showVehicleUnavailabilities.value;
+    updateUnavailabilityVisibility();
+};
+
+const loadUnavailabilities = async (start = null, end = null) => {
+    if (!start || !end) return;
+    try {
+        const params = {
+            start: moment(start).subtract(7, 'days').format('YYYY-MM-DD'),
+            end: moment(end).add(7, 'days').format('YYYY-MM-DD'),
+        };
+        const response = await axios.get('/api/unavailabilities/calendar', { params });
+        driverUnavailabilities.value = response.data.driver_unavailabilities || [];
+        vehicleUnavailabilities.value = response.data.vehicle_unavailabilities || [];
+        renderUnavailabilityEvents();
+    } catch (err) {
+        console.error('Error loading unavailabilities:', err);
+    }
+};
+
+const renderUnavailabilityEvents = () => {
+    if (!calendarInstance) return;
+
+    // Remove existing unavailability events
+    calendarInstance.getEvents().forEach(event => {
+        if (event.extendedProps?.isUnavailability) {
+            event.remove();
+        }
+    });
+
+    // Add driver unavailabilities
+    if (showDriverUnavailabilities.value) {
+        driverUnavailabilities.value.forEach(item => {
+            // Skip if driver is hidden
+            if (hiddenDriverIds.value.has(item.driver_id)) return;
+
+            const endDate = moment(item.end_date).add(1, 'day').format('YYYY-MM-DD');
+            calendarInstance.addEvent({
+                id: item.id,
+                title: `🚫 ${item.driver_name} - ${item.reason}`,
+                start: item.start_date,
+                end: endDate,
+                allDay: true,
+                display: 'auto',
+                backgroundColor: item.driver_color || '#dc3545',
+                borderColor: item.driver_color || '#dc3545',
+                textColor: '#fff',
+                classNames: ['fc-unavailability-driver'],
+                extendedProps: {
+                    isUnavailability: true,
+                    unavailabilityType: 'driver',
+                    driverId: item.driver_id,
+                    notes: item.notes,
+                }
+            });
+        });
+    }
+
+    // Add vehicle unavailabilities
+    if (showVehicleUnavailabilities.value) {
+        vehicleUnavailabilities.value.forEach(item => {
+            const endDate = moment(item.end_date).add(1, 'day').format('YYYY-MM-DD');
+            calendarInstance.addEvent({
+                id: item.id,
+                title: `🚗 ${item.vehicle_plate} - ${item.reason}`,
+                start: item.start_date,
+                end: endDate,
+                allDay: true,
+                display: 'auto',
+                backgroundColor: '#6c757d',
+                borderColor: '#6c757d',
+                textColor: '#fff',
+                classNames: ['fc-unavailability-vehicle'],
+                extendedProps: {
+                    isUnavailability: true,
+                    unavailabilityType: 'vehicle',
+                    vehicleId: item.vehicle_id,
+                    notes: item.notes,
+                }
+            });
+        });
+    }
+};
+
+const updateUnavailabilityVisibility = () => {
+    renderUnavailabilityEvents();
+};
+
 const updateEventVisibility = () => {
     if (!calendarInstance) return;
     calendarInstance.getEvents().forEach(event => {
+        // Skip unavailability events (handled separately)
+        if (event.extendedProps?.isUnavailability) return;
         const service = event.extendedProps.service;
         const serviceDriverIds = (service.drivers || []).map(d => d.id);
         // Nascondi se TUTTI i driver del servizio sono nascosti
@@ -458,6 +691,8 @@ const updateEventVisibility = () => {
             serviceDriverIds.every(id => hiddenDriverIds.value.has(id));
         event.setProp('display', allHidden ? 'none' : 'auto');
     });
+    // Re-render unavailability events to reflect driver visibility changes
+    renderUnavailabilityEvents();
 };
 
 const getLegendStyle = (driver) => {
@@ -505,6 +740,98 @@ const resetFilters = () => {
     filters.value.passenger_name = '';
     applyFilters();
 };
+
+// Context menu (right-click on event)
+const showContextMenu = ref(false);
+const contextMenuStyle = ref({});
+const contextMenuServiceId = ref(null);
+
+// Context menu (right-click on cell)
+const showCellContextMenu = ref(false);
+const cellContextMenuStyle = ref({});
+const cellContextMenuDate = ref('');
+
+const closeAllContextMenus = () => {
+    showContextMenu.value = false;
+    showCellContextMenu.value = false;
+};
+
+const openEventContextMenu = (e, serviceId) => {
+    e.preventDefault();
+    closeAllContextMenus();
+    contextMenuServiceId.value = serviceId;
+    contextMenuStyle.value = {
+        position: 'fixed',
+        top: `${e.clientY}px`,
+        left: `${e.clientX}px`,
+        zIndex: 9999,
+    };
+    showContextMenu.value = true;
+};
+
+const openCellContextMenu = (e, dateStr) => {
+    e.preventDefault();
+    closeAllContextMenus();
+    cellContextMenuDate.value = dateStr;
+    cellContextMenuStyle.value = {
+        position: 'fixed',
+        top: `${e.clientY}px`,
+        left: `${e.clientX}px`,
+        zIndex: 9999,
+    };
+    showCellContextMenu.value = true;
+};
+
+const contextMenuDuplicate = async () => {
+    closeAllContextMenus();
+    try {
+        const { data } = await axios.post(`/api/services/${contextMenuServiceId.value}/duplicate`);
+        window.location.href = `/easyncc/services/${data.data.id}/edit`;
+    } catch (err) {
+        error.value = 'Errore nella duplicazione del servizio';
+    }
+};
+
+const contextMenuReturn = async () => {
+    closeAllContextMenus();
+    try {
+        const { data } = await axios.post(`/api/services/${contextMenuServiceId.value}/return`);
+        window.location.href = `/easyncc/services/${data.data.id}/edit`;
+    } catch (err) {
+        error.value = 'Errore nella creazione del servizio di ritorno';
+    }
+};
+
+const contextMenuDelete = async () => {
+    closeAllContextMenus();
+    const { isConfirmed } = await Swal.fire({
+        title: 'Conferma eliminazione',
+        html: 'Eliminando il servizio verranno rimossi anche:<ul class="text-start mt-2">'
+            + '<li>Esperienze collegate</li>'
+            + '<li>Task collegati</li>'
+            + '<li>Movimenti contabili</li>'
+            + '<li>Allegati</li>'
+            + '<li>Passeggeri</li>'
+            + '</ul>Vuoi procedere?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Elimina tutto',
+        cancelButtonText: 'Annulla',
+    });
+    if (!isConfirmed) return;
+    try {
+        await axios.delete(`/api/services/${contextMenuServiceId.value}`);
+        closePopover();
+        if (calendarInstance) {
+            const view = calendarInstance.view;
+            loadServices(view.activeStart, view.activeEnd);
+        }
+    } catch (err) {
+        error.value = 'Errore nell\'eliminazione del servizio';
+    }
+};
+
 const showDetailPopover = ref(false);
 const selectedService = ref(null);
 const popoverEl = ref(null);
@@ -545,6 +872,7 @@ const pendingSavePayload = ref(null);
 const allDrivers = ref([]);
 const allVehicles = ref([]);
 const allDressCodes = ref([]);
+const { loadServiceTypes, serviceTypeBadgeStyle } = useServiceTypeColor();
 
 // Track if we're currently loading to prevent duplicate requests
 let isLoadingServices = false;
@@ -553,24 +881,26 @@ const mapServicesToEvents = (servicesList) => {
     return servicesList.map(service => {
         const drivers = service.drivers || [];
         const pickupTime = moment.utc(service.pickup_datetime).format('HH:mm');
-        const contactName = service.contact_name || '';
         const passengerCount = service.passenger_count || 0;
-        const clientName = service.client ? `${service.client.name || ''} ${service.client.surname || ''}`.trim() : '';
         const serviceType = service.service_type || '';
 
-        // Capitalizza la prima parola del nome di riferimento
-        const capitalizedContactName = contactName ?
-            contactName.split(' ').map((word, index) =>
-                index === 0 ? word.toUpperCase() : word
-            ).join(' ') : '';
+        // Passenger label: COGNOME + Nome from first passenger, fallback to contact_name
+        let passengerLabel = '';
+        if (service.passengers && service.passengers.length > 0) {
+            const p = service.passengers[0];
+            const surname = p.surname ? p.surname.toUpperCase() : '';
+            const name = p.name || '';
+            passengerLabel = `${surname} ${name}`.trim();
+        } else if (service.contact_name) {
+            passengerLabel = service.contact_name;
+        }
 
-        // Costruisci il titolo dell'evento: ORA | TIPO | PAX | NOME | COMMITTENTE
+        // Costruisci il titolo: ORA | COGNOME Nome | SIGLA TIPOLOGIA | PAX
         const titleParts = [
             pickupTime,
+            passengerLabel,
             serviceType,
-            `${passengerCount} pax`,
-            capitalizedContactName,
-            clientName
+            `${passengerCount} pax`
         ].filter(part => part && part.trim());
 
         const title = titleParts.join(' | ');
@@ -648,10 +978,17 @@ const loadServices = async (start = null, end = null) => {
         const response = await axios.get('/api/services', { params });
         services.value = response.data.data || [];
 
+        // Load unavailabilities in parallel (non-blocking)
+        loadUnavailabilities(start, end);
+
         // Update calendar events if calendar exists
         if (calendarInstance) {
-            // Remove all existing events
-            calendarInstance.removeAllEvents();
+            // Remove all existing events (except unavailabilities, handled by renderUnavailabilityEvents)
+            calendarInstance.getEvents().forEach(event => {
+                if (!event.extendedProps?.isUnavailability) {
+                    event.remove();
+                }
+            });
             // Add new events
             const events = mapServicesToEvents(services.value);
             events.forEach(event => calendarInstance.addEvent(event));
@@ -685,14 +1022,23 @@ const initializeCalendar = async () => {
 
             calendarInstance = new CalendarCore(calendarEl, {
                 plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
+                customButtons: {
+                    goToDateBtn: {
+                        text: 'Vai a...',
+                        click: function() {
+                            // Handled by the injected date input
+                        }
+                    }
+                },
                 headerToolbar: {
-                    left: 'prev,next today',
+                    left: 'prev,next today goToDateBtn',
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,timeGridDay'
                 },
                 initialView: 'dayGridMonth',
                 timeZone: 'UTC',
                 locale: 'it',
+                firstDay: 1,
                 navLinks: true,
                 navLinkDayClick: 'timeGridDay',
                 slotEventOverlap: false,
@@ -734,16 +1080,57 @@ const initializeCalendar = async () => {
                     // Aggiungi event listeners per hover
                     info.el.addEventListener('mouseenter', (e) => handleEventHover(e, info));
                     info.el.addEventListener('mouseleave', handleEventLeave);
+
+                    // Context menu (right-click) on event
+                    if (!isDriver.value) {
+                        info.el.addEventListener('contextmenu', (e) => {
+                            e.stopPropagation();
+                            const serviceId = info.event.id;
+                            if (serviceId) {
+                                closePopover();
+                                openEventContextMenu(e, serviceId);
+                            }
+                        });
+                    }
                 },
                 eventMouseEnter: (info) => {
                     // Backup per eventMouseEnter di FullCalendar
                 },
                 eventMouseLeave: () => {
                     // Backup per eventMouseLeave di FullCalendar
+                },
+                dayCellDidMount: (info) => {
+                    if (!isDriver.value) {
+                        info.el.addEventListener('contextmenu', (e) => {
+                            const dateStr = moment(info.date).format('YYYY-MM-DD');
+                            openCellContextMenu(e, dateStr);
+                        });
+                    }
                 }
             });
 
             calendarInstance.render();
+
+            // Replace the custom "goToDateBtn" button content with a date input
+            await nextTick();
+            const goToBtn = document.querySelector('.fc-goToDateBtn-button');
+            if (goToBtn) {
+                const dateInput = document.createElement('input');
+                dateInput.type = 'date';
+                dateInput.className = 'fc-goto-date-input';
+                dateInput.style.cssText = 'border: none; background: transparent; color: inherit; font-size: 0.85em; cursor: pointer; outline: none; width: 130px;';
+                dateInput.addEventListener('change', (e) => {
+                    if (e.target.value && calendarInstance) {
+                        calendarInstance.gotoDate(e.target.value);
+                    }
+                });
+                dateInput.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+                goToBtn.textContent = '';
+                goToBtn.appendChild(dateInput);
+                goToBtn.style.padding = '0.2em 0.5em';
+            }
         }
     } catch (err) {
         console.error('Error initializing calendar:', err);
@@ -775,6 +1162,9 @@ const createStripedGradient = (colors) => {
 };
 
 const handleEventClick = (info) => {
+    // Skip unavailability events
+    if (info.event.extendedProps?.isUnavailability) return;
+
     // Driver: non aprire popup per eventi non assegnati
     if (isDriver.value && !info.event.extendedProps.isAssignedToCurrentDriver) {
         return;
@@ -800,6 +1190,9 @@ const handleEventClick = (info) => {
 };
 
 const handleEventHover = (event, info) => {
+    // Skip unavailability events
+    if (info.event.extendedProps?.isUnavailability) return;
+
     // Driver: non mostrare hover per eventi non assegnati
     if (isDriver.value && !info.event.extendedProps.isAssignedToCurrentDriver) {
         return;
@@ -916,6 +1309,7 @@ const loadDictionaries = async () => {
         allDrivers.value = driversRes.data.data || [];
         allVehicles.value = vehiclesRes.data.data || [];
         allDressCodes.value = dressCodesRes.data.data || [];
+        loadServiceTypes();
     } catch (err) {
         console.error('Error loading dictionaries:', err);
     }
@@ -1174,31 +1568,34 @@ const formatCurrency = (value) => {
 
 const getHoverEventTitle = (service) => {
     const pickupTime = moment.utc(service.pickup_datetime).format('HH:mm');
-    const contactName = service.contact_name || '';
     const passengerCount = service.passenger_count || 0;
-    const clientName = service.client ? `${service.client.name || ''} ${service.client.surname || ''}`.trim() : '';
     const serviceType = service.service_type || '';
 
-    // Capitalizza la prima parola del nome di riferimento
-    const capitalizedContactName = contactName ?
-        contactName.split(' ').map((word, index) =>
-            index === 0 ? word.toUpperCase() : word
-        ).join(' ') : '';
+    let passengerLabel = '';
+    if (service.passengers && service.passengers.length > 0) {
+        const p = service.passengers[0];
+        const surname = p.surname ? p.surname.toUpperCase() : '';
+        const name = p.name || '';
+        passengerLabel = `${surname} ${name}`.trim();
+    } else if (service.contact_name) {
+        passengerLabel = service.contact_name;
+    }
 
-    // Costruisci il titolo: ORA | TIPO | PAX | NOME | COMMITTENTE
     const titleParts = [
         pickupTime,
+        passengerLabel,
         serviceType,
-        `${passengerCount} pax`,
-        capitalizedContactName,
-        clientName
+        `${passengerCount} pax`
     ].filter(part => part && part.trim());
 
     return titleParts.join(' | ');
 };
 
-// Chiudi il popover quando si clicca fuori
+// Chiudi il popover e context menu quando si clicca fuori
 const handleClickOutside = (event) => {
+    // Close context menus on any click
+    closeAllContextMenus();
+
     if (showDetailPopover.value && popoverEl.value && !popoverEl.value.contains(event.target)) {
         if (!selectedEvent.value || !selectedEvent.value.contains(event.target)) {
             closePopover();
@@ -1366,5 +1763,71 @@ onUnmounted(() => {
 :deep(.fc-daygrid-day-number:hover) {
     color: #007bff;
     text-decoration: underline;
+}
+
+/* Context Menu */
+.context-menu {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 180px;
+    padding: 4px 0;
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    color: #212529;
+    text-decoration: none;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.context-menu-item:hover {
+    background-color: #f8f9fa;
+    color: #212529;
+    text-decoration: none;
+}
+
+.context-menu-item.text-danger:hover {
+    background-color: #fff5f5;
+}
+
+.context-menu-divider {
+    border-top: 1px solid #dee2e6;
+    margin: 4px 0;
+}
+
+/* Unavailability events - visible banners with striped pattern */
+:deep(.fc-unavailability-driver),
+:deep(.fc-unavailability-vehicle) {
+    opacity: 0.85 !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    border-radius: 3px !important;
+    cursor: default !important;
+}
+
+:deep(.fc-unavailability-driver) {
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 4px,
+        rgba(255, 255, 255, 0.2) 4px,
+        rgba(255, 255, 255, 0.2) 8px
+    ) !important;
+}
+
+:deep(.fc-unavailability-vehicle) {
+    background-image: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 4px,
+        rgba(255, 255, 255, 0.2) 4px,
+        rgba(255, 255, 255, 0.2) 8px
+    ) !important;
 }
 </style>

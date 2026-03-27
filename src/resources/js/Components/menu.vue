@@ -222,6 +222,28 @@ export default {
           </Link>
         </li>
 
+        <!-- Esperienze -->
+        <li class="nav-item" v-if="canManage">
+          <Link href="/easyncc/activities" class="nav-link menu-link">
+            <i class="ri-calendar-event-line"></i>
+            <span>Esperienze</span>
+          </Link>
+        </li>
+
+        <!-- RICHIESTE & PREVENTIVI -->
+        <li class="menu-title" v-if="canManage">
+          <i class="ri-more-fill"></i>
+          <span data-key="t-quotes">Richieste &amp; Preventivi</span>
+        </li>
+
+        <!-- Contatti -->
+        <li class="nav-item" v-if="canManage">
+          <Link href="/easyncc/contacts" class="nav-link menu-link">
+            <i class="ri-contacts-line"></i>
+            <span>Contatti</span>
+          </Link>
+        </li>
+
         <!-- Preventivi -->
         <li class="nav-item" v-if="canManage">
           <Link href="/easyncc/quotes" class="nav-link menu-link">
@@ -230,11 +252,11 @@ export default {
           </Link>
         </li>
 
-        <!-- Esperienze -->
+        <!-- Calcolatore Prezzi -->
         <li class="nav-item" v-if="canManage">
-          <Link href="/easyncc/activities" class="nav-link menu-link">
-            <i class="ri-calendar-event-line"></i>
-            <span>Esperienze</span>
+          <Link href="/easyncc/pricing-calculator" class="nav-link menu-link">
+            <i class="ri-calculator-line"></i>
+            <span>Calcolatore Prezzi</span>
           </Link>
         </li>
 
@@ -257,6 +279,22 @@ export default {
           <Link href="/easyncc/accounting-transactions" class="nav-link menu-link">
             <i class="ri-money-euro-circle-line"></i>
             <span>Contabilità</span>
+          </Link>
+        </li>
+
+        <!-- Assenze Driver -->
+        <li class="nav-item" v-if="isAdmin">
+          <Link href="/easyncc/settings/driver-unavailabilities" class="nav-link menu-link">
+            <i class="ri-user-unfollow-line"></i>
+            <span>Assenze Driver</span>
+          </Link>
+        </li>
+
+        <!-- Non Disp. Veicoli -->
+        <li class="nav-item" v-if="isAdmin">
+          <Link href="/easyncc/settings/vehicle-unavailabilities" class="nav-link menu-link">
+            <i class="ri-car-washing-line"></i>
+            <span>Non Disp. Veicoli</span>
           </Link>
         </li>
 
@@ -382,6 +420,16 @@ export default {
                   Stato Movimenti
                 </Link>
               </li>
+              <li class="nav-item">
+                <Link href="/easyncc/dictionaries/leave-types" class="nav-link">
+                  Tipologie Congedo
+                </Link>
+              </li>
+              <li class="nav-item">
+                <Link href="/easyncc/dictionaries/vehicle-unavailability-types" class="nav-link">
+                  Tipologie Non Disp. Veicoli
+                </Link>
+              </li>
             </ul>
           </div>
         </li>
@@ -431,6 +479,14 @@ export default {
               </li>
             </ul>
           </div>
+        </li>
+
+        <!-- Cestino (solo per admin e super-admin) -->
+        <li class="nav-item" v-if="isAdmin">
+          <Link href="/easyncc/trash" class="nav-link menu-link">
+            <i class="ri-delete-bin-line"></i>
+            <span>Cestino</span>
+          </Link>
         </li>
     </ul>
   </template>

@@ -77,6 +77,37 @@
                                         <label class="form-label small">Data A</label>
                                         <input v-model="filters.date_to" type="date" class="form-control form-control-sm" @change="loadQuotes(1)" />
                                     </BCol>
+                                    <BCol md="3" class="mb-2">
+                                        <label class="form-label small">Contatto</label>
+                                        <div class="position-relative">
+                                            <input
+                                                v-model="contactSearch"
+                                                type="text"
+                                                class="form-control form-control-sm"
+                                                placeholder="Cerca contatto..."
+                                                @input="onContactSearch"
+                                                @focus="showContactResults = contactSearchResults.length > 0"
+                                            />
+                                            <div v-if="filters.contact_id" class="mt-1">
+                                                <span class="badge bg-primary-subtle text-primary">
+                                                    {{ contactFilterName }}
+                                                    <i class="ri-close-line ms-1" role="button" @click="clearContactFilter"></i>
+                                                </span>
+                                            </div>
+                                            <div v-if="showContactResults && contactSearchResults.length > 0" class="position-absolute bg-white border rounded shadow-sm w-100 mt-1" style="z-index: 1000; max-height: 200px; overflow-y: auto;">
+                                                <div
+                                                    v-for="c in contactSearchResults"
+                                                    :key="c.id"
+                                                    class="px-3 py-2 border-bottom cursor-pointer"
+                                                    style="cursor: pointer;"
+                                                    @mousedown.prevent="selectContactFilter(c)"
+                                                >
+                                                    <div class="fw-semibold">{{ c.name }}</div>
+                                                    <small class="text-muted">{{ c.email || '' }} {{ c.phone || '' }}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </BCol>
                                     <BCol md="1" class="mb-2 d-flex align-items-end">
                                         <button type="button" class="btn btn-sm btn-outline-secondary w-100" @click="resetFilters">
                                             <i class="ri-refresh-line"></i>
@@ -109,6 +140,7 @@
                                         <th role="button" @click="sortBy('id')" class="text-nowrap">
                                             # <i :class="sortIcon('id')"></i>
                                         </th>
+                                        <th class="text-center">Ver.</th>
                                         <th role="button" @click="sortBy('service_date')" class="text-nowrap">
                                             Data <i :class="sortIcon('service_date')"></i>
                                         </th>
@@ -131,11 +163,23 @@
                                 <tbody>
                                     <tr v-for="quote in quotes" :key="quote.id">
                                         <td>{{ quote.id }}</td>
+                                        <td class="text-center">
+                                            <span class="badge bg-primary-subtle text-primary">v{{ quote.version || 1 }}</span>
+                                        </td>
                                         <td>{{ formatDate(quote.service_date) }}</td>
                                         <td>{{ quote.client_name || '-' }}</td>
-                                        <td>{{ quote.destination_name || '-' }}</td>
                                         <td>
-                                            <span class="badge bg-info-subtle text-info">{{ quote.service_type || '-' }}</span>
+                                            <template v-if="quote.items && quote.items.length > 0">
+                                                {{ quote.items[0]?.destination_name || '-' }}
+                                                <small v-if="quote.items.length > 1" class="text-muted d-block">(+{{ quote.items.length - 1 }} servizi)</small>
+                                            </template>
+                                            <template v-else>{{ quote.destination_name || '-' }}</template>
+                                        </td>
+                                        <td>
+                                            <template v-if="quote.items && quote.items.length > 0">
+                                                <span v-for="(item, idx) in quote.items" :key="idx" class="badge me-1" :style="serviceTypeBadgeStyle(item.service_type, '#299cdb')">{{ item.service_type || '-' }}</span>
+                                            </template>
+                                            <span v-else class="badge" :style="serviceTypeBadgeStyle(quote.service_type, '#299cdb')">{{ quote.service_type || '-' }}</span>
                                         </td>
                                         <td>
                                             <span class="badge" :class="`bg-${getStatusColor(quote.status)}-subtle text-${getStatusColor(quote.status)}`">
@@ -279,6 +323,9 @@ import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
 import moment from "moment";
+import { useServiceTypeColor } from '@/composables/useServiceTypeColor.js';
+
+const { loadServiceTypes, serviceTypeBadgeStyle } = useServiceTypeColor();
 
 export default {
     components: { Head, Link, Layout, PageHeader },
@@ -301,7 +348,14 @@ export default {
                 seasonality: '',
                 date_from: '',
                 date_to: '',
+                contact_id: '',
             },
+            // Contact filter
+            contactSearch: '',
+            contactSearchResults: [],
+            contactSearchTimeout: null,
+            showContactResults: false,
+            contactFilterName: '',
         };
     },
     computed: {
@@ -326,9 +380,18 @@ export default {
         },
     },
     async mounted() {
+        // Check URL for contact_id filter
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('contact_id')) {
+            this.filters.contact_id = urlParams.get('contact_id');
+            this.contactFilterName = urlParams.get('contact_name') || 'Contatto #' + urlParams.get('contact_id');
+            this.showFilters = true;
+        }
         await this.loadQuotes();
+        loadServiceTypes();
     },
     methods: {
+        serviceTypeBadgeStyle,
         async loadQuotes(page = 1) {
             this.loading = true;
             try {
@@ -369,7 +432,40 @@ export default {
             }
         },
         resetFilters() {
-            this.filters = { search: '', service_type: '', status: '', seasonality: '', date_from: '', date_to: '' };
+            this.filters = { search: '', service_type: '', status: '', seasonality: '', date_from: '', date_to: '', contact_id: '' };
+            this.contactSearch = '';
+            this.contactFilterName = '';
+            this.contactSearchResults = [];
+            this.loadQuotes(1);
+        },
+        onContactSearch() {
+            clearTimeout(this.contactSearchTimeout);
+            if (!this.contactSearch || this.contactSearch.length < 2) {
+                this.contactSearchResults = [];
+                this.showContactResults = false;
+                return;
+            }
+            this.contactSearchTimeout = setTimeout(async () => {
+                try {
+                    const { data } = await axios.get('/api/contacts/search', { params: { q: this.contactSearch } });
+                    this.contactSearchResults = data.data || [];
+                    this.showContactResults = true;
+                } catch (e) {
+                    console.error('Error searching contacts:', e);
+                }
+            }, 300);
+        },
+        selectContactFilter(contact) {
+            this.filters.contact_id = contact.id;
+            this.contactFilterName = contact.name;
+            this.contactSearch = '';
+            this.contactSearchResults = [];
+            this.showContactResults = false;
+            this.loadQuotes(1);
+        },
+        clearContactFilter() {
+            this.filters.contact_id = '';
+            this.contactFilterName = '';
             this.loadQuotes(1);
         },
         async duplicateQuote(id) {
