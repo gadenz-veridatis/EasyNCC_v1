@@ -34,7 +34,7 @@
                                     <i class="bx bx-edit me-1"></i>
                                     Modifica
                                 </Link>
-                                <Link :href="route('easyncc.services.index')" class="btn btn-sm btn-secondary">
+                                <Link :href="returnUrl || route('easyncc.services.index')" class="btn btn-sm btn-secondary">
                                     <i class="bx bx-arrow-back me-1"></i>
                                     Torna alla lista
                                 </Link>
@@ -202,8 +202,7 @@
                                         <div>
                                             <span
                                                 class="badge"
-                                                :class="serviceTypeBadgeClass(service.service_type)"
-                                                style="font-size: 0.85rem;"
+                                                :style="{ ...serviceTypeBadgeStyle(service.service_type), fontSize: '0.85rem' }"
                                             >{{ service.service_type }}</span>
                                         </div>
                                     </div>
@@ -394,7 +393,8 @@ const props = defineProps({
 const service = ref(null);
 const loading = ref(false);
 const error = ref('');
-const { loadServiceTypes, serviceTypeBadgeClass } = useServiceTypeColor();
+const { loadServiceTypes, serviceTypeBadgeStyle } = useServiceTypeColor();
+const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') || '';
 
 const loadService = async () => {
     loading.value = true;

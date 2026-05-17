@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\Service;
+use App\Models\Vehicle;
 use App\Observers\ServiceObserver;
+use App\Observers\VehicleObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 
@@ -26,5 +28,6 @@ class AppServiceProvider extends ServiceProvider
 
         // Register observers
         Service::observe(ServiceObserver::class);
+        Vehicle::observe(VehicleObserver::class);
     }
 }

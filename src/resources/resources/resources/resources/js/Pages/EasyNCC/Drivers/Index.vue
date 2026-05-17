@@ -19,7 +19,7 @@
                                 {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
                                 <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
                             </button>
-                            <Link :href="route('easyncc.users.create')" class="btn btn-primary btn-sm">
+                            <Link v-if="canManage" :href="withReturnUrl(route('easyncc.users.create'))" class="btn btn-primary btn-sm">
                                 <i class="bx bx-plus me-1"></i>
                                 Nuovo Driver
                             </Link>
@@ -45,7 +45,7 @@
                                         type="text"
                                         class="form-control form-control-sm"
                                         placeholder="Nome, cognome, username, email..."
-                                        @input="applyFilters"
+                                        @input="debouncedApplyFilters"
                                     />
                                 </BCol>
                                 <BCol :md="isSuperAdmin ? 3 : 4">
@@ -199,13 +199,14 @@
                                                 </button>
                                             </template>
                                             <template v-else>
-                                                <Link :href="route('easyncc.users.show', driver.id)" class="btn btn-sm btn-soft-info me-1" title="Visualizza Dettagli">
+                                                <Link :href="withReturnUrl(route('easyncc.users.show', driver.id))" class="btn btn-sm btn-soft-info me-1" title="Visualizza Dettagli">
                                                     <i class="bx bx-show"></i>
                                                 </Link>
-                                                <Link :href="route('easyncc.users.edit', driver.id)" class="btn btn-sm btn-soft-primary me-1" title="Modifica">
+                                                <Link v-if="canManage" :href="withReturnUrl(route('easyncc.users.edit', driver.id))" class="btn btn-sm btn-soft-primary me-1" title="Modifica">
                                                     <i class="bx bx-edit"></i>
                                                 </Link>
                                                 <button
+                                                    v-if="canManage"
                                                     class="btn btn-sm btn-soft-danger"
                                                     @click="deleteDriver(driver.id)"
                                                     title="Elimina"
@@ -352,6 +353,7 @@ import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import moment from 'moment';
 import Swal from 'sweetalert2';
+import { useUrlFilters } from '@/composables/useUrlFilters.js';
 
 const drivers = ref([]);
 const companies = ref([]);
@@ -386,8 +388,16 @@ const filters = ref({
 const sortField = ref('surname');
 const sortDirection = ref('asc');
 
+const { readFromUrl, withReturnUrl } = useUrlFilters(filters, { sortField, sortDirection });
+
+// Debounce & request counter
+let searchTimer = null;
+let requestCounter = 0;
+
 // Computed
 const isSuperAdmin = computed(() => currentUser.value?.role === 'super-admin');
+const isDriver = computed(() => currentUser.value?.role === 'driver');
+const canManage = computed(() => ['super-admin', 'admin', 'operator'].includes(currentUser.value?.role));
 
 const hasActiveFilters = computed(() => {
     return Object.values(filters.value).some(value => value !== '');
@@ -435,6 +445,7 @@ const loadCompanies = async () => {
 const loadDrivers = async () => {
     loading.value = true;
     error.value = '';
+    const thisRequest = ++requestCounter;
 
     try {
         const params = {
@@ -446,12 +457,18 @@ const loadDrivers = async () => {
         };
 
         const response = await axios.get('/api/users', { params });
+
+        if (thisRequest !== requestCounter) return;
+
         drivers.value = response.data.data || [];
     } catch (err) {
+        if (thisRequest !== requestCounter) return;
         error.value = 'Errore nel caricamento dei driver';
         console.error('Error loading drivers:', err);
     } finally {
-        loading.value = false;
+        if (thisRequest === requestCounter) {
+            loading.value = false;
+        }
     }
 };
 
@@ -459,7 +476,15 @@ const applyFilters = () => {
     loadDrivers();
 };
 
+const debouncedApplyFilters = () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        applyFilters();
+    }, 300);
+};
+
 const resetFilters = () => {
+    clearTimeout(searchTimer);
     filters.value = {
         company_id: '',
         search: '',
@@ -622,6 +647,7 @@ const getExpiryColorClass = (expiryDate) => {
 
 onMounted(async () => {
     await loadCurrentUser();
+    readFromUrl();
     await loadCompanies();
     await loadDrivers();
 });

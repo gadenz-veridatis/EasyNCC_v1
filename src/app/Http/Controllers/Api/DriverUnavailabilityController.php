@@ -16,23 +16,21 @@ class DriverUnavailabilityController extends Controller
     public function listAll(Request $request): JsonResponse
     {
         $user = $request->user();
-        $query = DriverUnavailability::with(['user:id,name,surname,nickname,company_id', 'user.driverProfile:user_id,color', 'leaveType:id,name'])
-            ->join('users', 'driver_unavailabilities.user_id', '=', 'users.id')
-            ->select('driver_unavailabilities.*');
+        $query = DriverUnavailability::with(['user:id,name,surname,nickname,company_id', 'user.driverProfile:user_id,color', 'leaveType:id,name']);
 
         if ($user->isSuperAdmin()) {
             if ($request->filled('company_id')) {
-                $query->where('users.company_id', $request->company_id);
+                $query->where('company_id', $request->company_id);
             }
         } else {
-            $query->where('users.company_id', $user->company_id);
+            $query->where('company_id', $user->company_id);
         }
 
         if ($request->filled('user_id')) {
-            $query->where('driver_unavailabilities.user_id', $request->user_id);
+            $query->where('user_id', $request->user_id);
         }
 
-        $unavailabilities = $query->orderBy('driver_unavailabilities.start_date', 'desc')->get();
+        $unavailabilities = $query->orderBy('start_date', 'desc')->get();
 
         return response()->json($unavailabilities);
     }
@@ -47,8 +45,13 @@ class DriverUnavailabilityController extends Controller
             'leave_type_id' => 'required|exists:leave_types,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'all_day' => 'boolean',
             'notes' => 'nullable|string',
         ]);
+
+        // Set company_id from the driver's company
+        $driver = User::findOrFail($validated['user_id']);
+        $validated['company_id'] = $driver->company_id;
 
         $unavailability = DriverUnavailability::create($validated);
         $unavailability->load(['user:id,name,surname,nickname,company_id', 'user.driverProfile:user_id,color', 'leaveType:id,name']);
@@ -72,9 +75,11 @@ class DriverUnavailabilityController extends Controller
             'leave_type_id' => 'required|exists:leave_types,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'all_day' => 'boolean',
             'notes' => 'nullable|string',
         ]);
 
+        $validated['company_id'] = $user->company_id;
         $unavailability = $user->unavailabilities()->create($validated);
         $unavailability->load('leaveType:id,name');
 
@@ -91,6 +96,7 @@ class DriverUnavailabilityController extends Controller
             'leave_type_id' => 'sometimes|exists:leave_types,id',
             'start_date' => 'sometimes|date',
             'end_date' => 'sometimes|date|after_or_equal:start_date',
+            'all_day' => 'boolean',
             'notes' => 'nullable|string',
         ]);
 

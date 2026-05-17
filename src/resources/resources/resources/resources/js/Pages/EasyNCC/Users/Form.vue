@@ -589,7 +589,9 @@ const getRedirectRoute = (role) => {
     }
     return route('easyncc.users.index');
 };
+const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') || '';
 const exitRoute = computed(() => {
+    if (returnUrl) return returnUrl;
     const role = form.value.role || (isEdit.value ? props.user?.role : '');
     return getRedirectRoute(role);
 });

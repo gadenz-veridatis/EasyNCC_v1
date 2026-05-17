@@ -2,40 +2,42 @@
     <Head title="Calendario Servizi" />
 
     <Layout :collapsed-sidebar="true">
-        <PageHeader title="Calendario Servizi" pageTitle="EasyNCC" />
+        <!-- Sticky Header -->
+        <div class="calendar-sticky-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Calendario</h5>
+                <div v-if="!isDriver" class="d-flex gap-1 gap-md-2 flex-wrap">
+                    <button
+                        type="button"
+                        class="btn btn-soft-primary btn-sm"
+                        @click="isMobile ? (showFiltersSheet = true) : (showFilters = !showFilters)"
+                    >
+                        <i class="bx bx-filter-alt"></i>
+                        <span class="d-none d-md-inline ms-1">{{ showFilters ? 'Nascondi Filtri' : 'Filtri' }}</span>
+                        <span v-if="hasActiveFilters" class="badge bg-primary ms-1">{{ activeFiltersCount }}</span>
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-soft-info btn-sm"
+                        @click="isMobile ? (showLegendSheet = true) : (showDriverLegend = !showDriverLegend)"
+                    >
+                        <i class="bx bx-palette"></i>
+                        <span class="d-none d-md-inline ms-1">{{ showDriverLegend ? 'Nascondi Calendari' : 'Calendari' }}</span>
+                    </button>
+                    <Link :href="route('easyncc.services.create')" class="btn btn-primary btn-sm">
+                        <i class="bx bx-plus"></i>
+                        <span class="d-none d-sm-inline ms-1">Nuovo</span>
+                    </Link>
+                </div>
+            </div>
+        </div>
 
-        <BRow>
+        <BRow class="mt-0">
             <BCol lg="12">
-                <BCard no-body>
-                    <BCardHeader class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">Calendario Servizi</h5>
-                        <div v-if="!isDriver" class="d-flex gap-2">
-                            <button
-                                type="button"
-                                class="btn btn-soft-primary btn-sm"
-                                @click="showFilters = !showFilters"
-                            >
-                                <i :class="showFilters ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
-                                {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
-                                <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
-                            </button>
-                            <button
-                                type="button"
-                                class="btn btn-soft-info btn-sm"
-                                @click="showDriverLegend = !showDriverLegend"
-                            >
-                                <i :class="showDriverLegend ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
-                                {{ showDriverLegend ? 'Nascondi Calendari' : 'Mostra Calendari' }}
-                            </button>
-                            <Link :href="route('easyncc.services.create')" class="btn btn-primary btn-sm">
-                                <i class="bx bx-plus me-1"></i>
-                                Nuovo Servizio
-                            </Link>
-                        </div>
-                    </BCardHeader>
-                    <BCardBody>
+                <BCard no-body class="mb-1">
+                    <BCardBody class="pt-1">
                         <!-- Collapsible Filters Section -->
-                        <div v-show="showFilters" class="border rounded p-3 mb-3 bg-light">
+                        <div v-show="showFilters" class="border rounded p-2 mb-2 bg-light">
                             <BRow class="align-items-end">
                                 <BCol md="3">
                                     <label class="form-label">Autista</label>
@@ -80,7 +82,7 @@
                         </div>
 
                         <!-- Driver Legend with Toggle (collapsible) -->
-                        <div v-if="showDriverLegend && allDrivers.length > 0" class="driver-legend d-flex flex-wrap align-items-center gap-2 mb-3 p-2 border rounded bg-light">
+                        <div v-if="showDriverLegend && allDrivers.length > 0" class="driver-legend d-flex flex-wrap align-items-center gap-1 mb-2 p-1 border rounded bg-light">
                             <span class="small text-muted fw-semibold me-1">Driver:</span>
                             <span
                                 v-for="driver in allDrivers"
@@ -177,45 +179,57 @@
         >
             <div class="hover-popover-content">
                 <div class="fw-bold">{{ getHoverEventTitle(hoverService) }}</div>
+                <div v-if="hoverService.vehicle" class="small text-muted mt-1">
+                    <i class="ri-car-line me-1"></i>{{ hoverService.vehicle.license_plate }}
+                </div>
             </div>
         </div>
 
-        <!-- Service Detail Popover (Click) -->
+        <!-- Service Detail Popover (Click) - desktop only -->
         <div
-            v-if="showDetailPopover && selectedService"
+            v-if="showDetailPopover && selectedService && !isMobile"
             ref="popoverEl"
             class="service-detail-popover"
             :style="popoverStyle"
         >
-            <div class="popover-header d-flex justify-content-between align-items-start">
-                <div class="flex-grow-1">
-                    <!-- Tipo di Tour -->
-                    <div v-if="selectedService.service_type" class="mb-1">
-                        <span
-                            class="badge"
-                            :style="{ ...serviceTypeBadgeStyle(selectedService.service_type, '#6c757d'), fontSize: '0.8rem' }"
-                        >{{ selectedService.service_type }}</span>
+            <div class="popover-header">
+                <!-- Riga 1: Tipo servizio + close -->
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                    <div v-if="selectedService.service_type">
+                        <span class="badge" :style="{ ...serviceTypeBadgeStyle(selectedService.service_type, '#6c757d'), fontSize: '0.8rem', color: '#fff' }">{{ selectedService.service_type }}</span>
                     </div>
-                    <!-- Nome primo passeggero -->
-                    <div class="fw-bold" v-if="selectedService.passengers && selectedService.passengers.length > 0">
-                        {{ selectedService.passengers[0].surname ? selectedService.passengers[0].surname.toUpperCase() : '' }} {{ selectedService.passengers[0].name || '' }}
-                    </div>
-                    <div class="fw-bold" v-else-if="selectedService.contact_name">
-                        {{ selectedService.contact_name }}
-                    </div>
-                    <!-- Telefono primo passeggero -->
-                    <div v-if="selectedService.passengers && selectedService.passengers.length > 0 && selectedService.passengers[0].phone" class="small">
-                        <i class="ri-phone-line me-1"></i>
-                        <a :href="'tel:' + selectedService.passengers[0].phone" class="text-white text-decoration-none" style="opacity: 0.9;">{{ selectedService.passengers[0].phone }}</a>
-                    </div>
-                    <!-- Numero PAX -->
-                    <div class="small mt-1">
-                        <i class="ri-user-line me-1"></i>{{ selectedService.passenger_count || 0 }} pax
-                    </div>
-                    <!-- ID piccolo -->
-                    <div class="small" style="opacity: 0.7; font-size: 0.7rem;">#{{ selectedService.reference_number || selectedService.id }}</div>
+                    <div v-else></div>
+                    <button type="button" class="btn-close btn-close-white" @click="closePopover" style="font-size: 0.6rem;"></button>
                 </div>
-                <button type="button" class="btn-close btn-close-white ms-2" @click="closePopover"></button>
+                <!-- Riga 2: Due colonne — Passeggero | Committente+Fornitore+Prezzo -->
+                <div class="d-flex gap-3">
+                    <!-- Sinistra: Passeggero -->
+                    <div class="flex-fill">
+                        <div class="fw-bold" v-if="selectedService.passengers && selectedService.passengers.length > 0">
+                            {{ selectedService.passengers[0].surname ? selectedService.passengers[0].surname.toUpperCase() : '' }} {{ selectedService.passengers[0].name || '' }}
+                        </div>
+                        <div class="fw-bold" v-else-if="selectedService.contact_name">{{ selectedService.contact_name }}</div>
+                        <div v-if="selectedService.passengers && selectedService.passengers.length > 0 && selectedService.passengers[0].phone" class="small">
+                            <i class="ri-phone-line me-1"></i>
+                            <a :href="'tel:' + selectedService.passengers[0].phone" class="text-white text-decoration-none" style="opacity: 0.9;">{{ selectedService.passengers[0].phone }}</a>
+                        </div>
+                        <div class="small" style="opacity: 0.85;">
+                            <i class="ri-user-line me-1"></i>{{ selectedService.passenger_count || 0 }} pax
+                        </div>
+                    </div>
+                    <!-- Destra: Committente, Fornitore, Prezzo -->
+                    <div class="text-end" style="min-width: 120px;">
+                        <div v-if="selectedService.client && popoverClientDiffersFromPassenger" class="small" style="opacity: 0.85;">
+                            <i class="ri-building-line me-1"></i>{{ selectedService.client.name }} {{ selectedService.client.surname }}
+                        </div>
+                        <div v-if="!isDriver && selectedService.supplier" class="small" style="opacity: 0.85;">
+                            <i class="ri-building-2-line me-1"></i>{{ selectedService.supplier.name }} {{ selectedService.supplier.surname }}
+                        </div>
+                        <div v-if="!isDriver && getServiceTotal(selectedService) > 0" class="mt-1">
+                            <span class="badge bg-success px-2 py-1" style="font-size: 0.8rem;">&euro;{{ formatCurrency(getServiceTotal(selectedService)) }}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="popover-body">
                 <!-- Pickup - inline editable -->
@@ -223,6 +237,7 @@
                     <div class="fw-bold text-success" style="font-size: 0.75rem;">Partenza:</div>
                     <div v-if="isDriver || !popoverEditingDatetimes" :class="{ 'popover-inline-editable': !isDriver }" @click.stop="!isDriver && startPopoverEditDatetimes()" :title="isDriver ? '' : 'Clicca per modificare orari'">
                         <div class="fw-bold small">{{ formatDateTime(selectedService.pickup_datetime) }}</div>
+                        <div v-if="selectedService.pickup_location" class="small fw-medium">{{ selectedService.pickup_location }}</div>
                         <div class="small text-truncate">{{ selectedService.pickup_address }}</div>
                     </div>
                     <div v-else @click.stop>
@@ -235,11 +250,29 @@
                     </div>
                 </div>
 
+                <!-- Soste -->
+                <div v-if="selectedService.activities && selectedService.activities.length > 0" class="mb-2">
+                    <div class="text-muted" style="font-size: 0.7rem; font-weight: 600;">Soste:</div>
+                    <div v-for="activity in selectedService.activities" :key="activity.id" class="small ps-2 mb-1" style="border-left: 2px solid #e9ecef;">
+                        <div class="fw-medium">
+                            {{ formatTime(activity.start_time) }} | {{ activity.activity_type?.name || '-' }}<span v-if="activity.name"> | {{ activity.name.length > 40 ? activity.name.substring(0, 40) + '...' : activity.name }}</span>
+                        </div>
+                        <div v-if="activity.supplier?.name || activity.supplier?.surname || activity.payment_type" class="text-muted" style="font-size: 0.7rem;">
+                            <span v-if="activity.supplier?.name || activity.supplier?.surname">
+                                {{ activity.supplier.name }} {{ activity.supplier.surname }}
+                            </span>
+                            <span v-if="(activity.supplier?.name || activity.supplier?.surname) && activity.payment_type"> | </span>
+                            <span v-if="activity.payment_type">{{ activity.payment_type }}</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Dropoff - inline editable -->
                 <div class="mb-2">
                     <div class="fw-bold text-danger" style="font-size: 0.75rem;">Arrivo:</div>
                     <div v-if="isDriver || !popoverEditingDatetimes" :class="{ 'popover-inline-editable': !isDriver }" @click.stop="!isDriver && startPopoverEditDatetimes()" :title="isDriver ? '' : 'Clicca per modificare orari'">
                         <div class="fw-bold small">{{ formatDateTime(selectedService.dropoff_datetime) }}</div>
+                        <div v-if="selectedService.dropoff_location" class="small fw-medium">{{ selectedService.dropoff_location }}</div>
                         <div class="small text-truncate">{{ selectedService.dropoff_address }}</div>
                     </div>
                     <div v-else @click.stop>
@@ -261,104 +294,96 @@
                     </div>
                 </div>
 
-                <!-- Driver - inline editable -->
-                <div class="mb-2" v-if="selectedService.drivers && selectedService.drivers.length > 0">
-                    <div class="text-muted small">Autista</div>
-                    <div v-if="isDriver || !popoverEditingDrivers">
-                        <div
-                            v-for="driver in selectedService.drivers"
-                            :key="driver.id"
-                            class="small"
-                            :class="{ 'popover-inline-editable': !isDriver }"
-                            @click.stop="!isDriver && startPopoverEditDrivers()"
-                            :title="isDriver ? '' : 'Clicca per modificare'"
-                        >
-                            <span class="badge" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'};`">
-                                {{ driverLabel(driver) }}
-                            </span>
+                <!-- Autista+DressCode | Veicolo — senza label -->
+                <div class="d-flex gap-2 mb-2">
+                    <!-- Sinistra: Autista + Dress Code -->
+                    <div class="flex-fill">
+                        <div v-if="selectedService.drivers && selectedService.drivers.length > 0">
+                            <div v-if="isDriver || !popoverEditingDrivers">
+                                <div
+                                    v-for="driver in selectedService.drivers"
+                                    :key="driver.id"
+                                    class="mb-1"
+                                    :class="{ 'popover-inline-editable': !isDriver }"
+                                    @click.stop="!isDriver && startPopoverEditDrivers()"
+                                    :title="isDriver ? '' : 'Clicca per modificare'"
+                                >
+                                    <span class="badge px-2 py-1" style="font-size: 0.8rem;" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'};`">
+                                        {{ driverLabel(driver) }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div v-else @click.stop>
+                                <select
+                                    v-model="popoverEditingDriversValue"
+                                    class="form-select form-select-sm"
+                                    multiple
+                                    size="4"
+                                    style="font-size: 0.75rem;"
+                                >
+                                    <option v-for="driver in allDrivers" :key="driver.id" :value="driver.id">
+                                        {{ driverLabel(driver) }}
+                                    </option>
+                                </select>
+                                <div class="d-flex gap-1 mt-1">
+                                    <button class="btn btn-sm btn-success py-0 px-1" @click.stop="savePopoverDrivers" :disabled="popoverSaving" style="font-size: 0.7rem;">
+                                        <span v-if="popoverSaving" class="spinner-border spinner-border-sm" role="status"></span>
+                                        <i v-else class="ri-check-line"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-secondary py-0 px-1" @click.stop="cancelPopoverEditDrivers" style="font-size: 0.7rem;">
+                                        <i class="ri-close-line"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="isDriver" class="small text-muted mt-1">
+                            <i class="ri-shirt-line me-1"></i>{{ selectedService.dress_code ? selectedService.dress_code.name : '' }}
+                        </div>
+                        <div v-else-if="!popoverEditingDressCode" class="small text-muted mt-1 popover-inline-editable" @click.stop="startPopoverEditDressCode" title="Clicca per modificare">
+                            <i class="ri-shirt-line me-1"></i>{{ selectedService.dress_code ? selectedService.dress_code.name : 'Nessun dress code' }}
+                        </div>
+                        <div v-else @click.stop class="mt-1">
+                            <select
+                                v-model="popoverEditingDressCodeValue"
+                                class="form-select form-select-sm"
+                                style="font-size: 0.75rem;"
+                                @change="savePopoverDressCode"
+                            >
+                                <option :value="null">Nessun dress code</option>
+                                <option v-for="dc in allDressCodes" :key="dc.id" :value="dc.id">
+                                    {{ dc.name }}
+                                </option>
+                            </select>
                         </div>
                     </div>
-                    <div v-else @click.stop>
-                        <select
-                            v-model="popoverEditingDriversValue"
-                            class="form-select form-select-sm"
-                            multiple
-                            size="4"
-                            style="font-size: 0.75rem;"
-                        >
-                            <option v-for="driver in allDrivers" :key="driver.id" :value="driver.id">
-                                {{ driverLabel(driver) }}
-                            </option>
-                        </select>
-                        <div class="d-flex gap-1 mt-1">
-                            <button class="btn btn-sm btn-success py-0 px-1" @click.stop="savePopoverDrivers" :disabled="popoverSaving" style="font-size: 0.7rem;">
-                                <span v-if="popoverSaving" class="spinner-border spinner-border-sm" role="status"></span>
-                                <i v-else class="ri-check-line"></i>
-                            </button>
-                            <button class="btn btn-sm btn-secondary py-0 px-1" @click.stop="cancelPopoverEditDrivers" style="font-size: 0.7rem;">
-                                <i class="ri-close-line"></i>
-                            </button>
+
+                    <!-- Destra: Targa + nome veicolo -->
+                    <div class="flex-fill text-end">
+                        <div v-if="isDriver && selectedService.vehicle">
+                            <span class="popover-targa"><span class="popover-codice-targa">{{ selectedService.vehicle.license_plate }}</span></span>
+                            <div class="text-muted" style="font-size: 0.7rem;">{{ selectedService.vehicle.brand }} {{ selectedService.vehicle.model }}</div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Veicolo - inline editable -->
-                <div class="mb-2">
-                    <div class="text-muted small">Veicolo</div>
-                    <div v-if="isDriver && selectedService.vehicle" class="small">
-                        {{ selectedService.vehicle.brand }} {{ selectedService.vehicle.model }} - {{ selectedService.vehicle.license_plate }}
-                    </div>
-                    <div v-else-if="isDriver" class="small text-muted">—</div>
-                    <div v-else-if="!popoverEditingVehicle && selectedService.vehicle" class="small popover-inline-editable" @click.stop="startPopoverEditVehicle" title="Clicca per modificare">
-                        {{ selectedService.vehicle.brand }} {{ selectedService.vehicle.model }} - {{ selectedService.vehicle.license_plate }}
-                    </div>
-                    <div v-else-if="!popoverEditingVehicle" class="small text-muted popover-inline-editable" @click.stop="startPopoverEditVehicle" title="Clicca per assegnare">
-                        <i class="ri-add-line"></i> Assegna veicolo
-                    </div>
-                    <div v-else @click.stop>
-                        <select
-                            v-model="popoverEditingVehicleValue"
-                            class="form-select form-select-sm"
-                            style="font-size: 0.75rem;"
-                            @change="savePopoverVehicle"
-                        >
-                            <option value="">Seleziona veicolo</option>
-                            <option v-for="vehicle in allVehicles" :key="vehicle.id" :value="vehicle.id">
-                                {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
-                            </option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Dress Code - inline editable -->
-                <div class="mb-2">
-                    <div class="text-muted small">Dress Code</div>
-                    <div v-if="isDriver" class="small">
-                        <i class="ri-shirt-line me-1"></i>{{ selectedService.dress_code ? selectedService.dress_code.name : 'Nessun dress code' }}
-                    </div>
-                    <div v-else-if="!popoverEditingDressCode" class="small popover-inline-editable" @click.stop="startPopoverEditDressCode" title="Clicca per modificare">
-                        <i class="ri-shirt-line me-1"></i>{{ selectedService.dress_code ? selectedService.dress_code.name : 'Nessun dress code' }}
-                    </div>
-                    <div v-else @click.stop>
-                        <select
-                            v-model="popoverEditingDressCodeValue"
-                            class="form-select form-select-sm"
-                            style="font-size: 0.75rem;"
-                            @change="savePopoverDressCode"
-                        >
-                            <option :value="null">Nessun dress code</option>
-                            <option v-for="dc in allDressCodes" :key="dc.id" :value="dc.id">
-                                {{ dc.name }}
-                            </option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Prezzo Totale -->
-                <div class="mb-2" v-if="!isDriver">
-                    <div class="text-muted small">Prezzo Totale</div>
-                    <div class="fw-bold">
-                        <span class="badge bg-success fs-6 px-2 py-1">&euro;{{ formatCurrency(selectedService.service_price || selectedService.price) }}</span>
+                        <div v-else-if="isDriver" class="small text-muted">—</div>
+                        <div v-else-if="!popoverEditingVehicle && selectedService.vehicle" class="popover-inline-editable" @click.stop="startPopoverEditVehicle" title="Clicca per modificare">
+                            <span class="popover-targa"><span class="popover-codice-targa">{{ selectedService.vehicle.license_plate }}</span></span>
+                            <div class="text-muted" style="font-size: 0.7rem;">{{ selectedService.vehicle.brand }} {{ selectedService.vehicle.model }}</div>
+                        </div>
+                        <div v-else-if="!popoverEditingVehicle" class="small text-muted popover-inline-editable" @click.stop="startPopoverEditVehicle" title="Clicca per assegnare">
+                            <i class="ri-add-line"></i> Assegna veicolo
+                        </div>
+                        <div v-else @click.stop>
+                            <select
+                                v-model="popoverEditingVehicleValue"
+                                class="form-select form-select-sm"
+                                style="font-size: 0.75rem;"
+                                @change="savePopoverVehicle"
+                            >
+                                <option value="">Seleziona veicolo</option>
+                                <option v-for="vehicle in allVehicles" :key="vehicle.id" :value="vehicle.id">
+                                    {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
+                                </option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -461,34 +486,165 @@
                     </div>
                 </div>
 
+                <!-- Reference number -->
+                <div class="text-muted text-center" style="font-size: 0.65rem; opacity: 0.6;">
+                    #{{ selectedService.reference_number || selectedService.id }}
+                </div>
+
                 <!-- Actions -->
-                <div class="d-flex gap-2 mt-3">
+                <div class="d-flex gap-2 mt-1">
                     <Link
-                        :href="route('easyncc.services.show', selectedService.id)"
+                        :href="calendarReturnUrl(route('easyncc.services.show', selectedService.id))"
                         class="btn btn-primary btn-sm flex-fill"
                     >
-                        Visualizza
+                        <i class="ri-eye-line me-1"></i>Visualizza
                     </Link>
                     <Link
                         v-if="!isDriver"
-                        :href="route('easyncc.services.edit', selectedService.id)"
+                        :href="calendarReturnUrl(route('easyncc.services.edit', selectedService.id))"
                         class="btn btn-info btn-sm flex-fill"
                     >
-                        Modifica
+                        <i class="ri-edit-line me-1"></i>Modifica
+                    </Link>
+                </div>
+                <div v-if="!isDriver" class="d-flex gap-2 mt-1">
+                    <button type="button" class="btn btn-info btn-sm flex-fill" @click="popoverDuplicate" title="Duplica servizio">
+                        <i class="ri-file-copy-line me-1"></i>Duplica
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm flex-fill" @click="popoverReturn" title="Crea ritorno">
+                        <i class="ri-arrow-go-back-line me-1"></i>Ritorno
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm flex-fill" @click="popoverDelete" title="Elimina servizio">
+                        <i class="ri-delete-bin-line me-1"></i>Elimina
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Unavailability Detail Popover - desktop only -->
+        <div
+            v-if="showUnavailPopover && selectedUnavail && !isMobile"
+            ref="unavailPopoverEl"
+            class="service-detail-popover"
+            :style="unavailPopoverStyle"
+            @click.stop
+        >
+            <div class="popover-header d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <div class="fw-bold">
+                        <template v-if="selectedUnavail.unavailabilityType === 'driver'">
+                            🚫 Indisponibilità Driver
+                        </template>
+                        <template v-else>
+                            🚗 Indisponibilità Veicolo
+                        </template>
+                    </div>
+                    <div class="small mt-1" style="opacity: 0.9;">
+                        <template v-if="selectedUnavail.unavailabilityType === 'driver'">
+                            {{ selectedUnavail.unavailData?.driver_name }}
+                        </template>
+                        <template v-else>
+                            {{ selectedUnavail.unavailData?.vehicle_plate }}
+                            <span v-if="selectedUnavail.unavailData?.vehicle_label" class="ms-1">{{ selectedUnavail.unavailData.vehicle_label }}</span>
+                        </template>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-2" @click="closeUnavailPopover"></button>
+            </div>
+            <div class="popover-body">
+                <!-- Periodo: inline editable -->
+                <div class="mb-2">
+                    <div class="text-muted small">Periodo</div>
+                    <div v-if="unavailEditingField !== 'dates'" class="fw-bold popover-inline-editable" @click="startUnavailFieldEdit('dates')">
+                        {{ formatUnavailDate(selectedUnavail.unavailData?.start_date, selectedUnavail.unavailData?.all_day) }} — {{ formatUnavailDate(selectedUnavail.unavailData?.end_date, selectedUnavail.unavailData?.all_day) }}
+                        <i class="ri-pencil-line ms-1 text-muted" style="font-size: 0.65rem;"></i>
+                    </div>
+                    <div v-else>
+                        <div class="d-flex gap-2 align-items-center mb-1">
+                            <input type="date" v-model="unavailEditValues.start_date" class="form-control form-control-sm" style="font-size: 0.8rem;" />
+                            <span class="text-muted">—</span>
+                            <input type="date" v-model="unavailEditValues.end_date" class="form-control form-control-sm" style="font-size: 0.8rem;" />
+                        </div>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-success py-0 px-2" @click="saveUnavailField('dates')" :disabled="unavailSaving" style="font-size: 0.7rem;">
+                                <i class="ri-check-line"></i>
+                            </button>
+                            <button class="btn btn-sm btn-secondary py-0 px-2" @click="unavailEditingField = null" style="font-size: 0.7rem;">
+                                <i class="ri-close-line"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tipologia: inline editable -->
+                <div class="mb-2">
+                    <div class="text-muted small">Tipologia</div>
+                    <div v-if="unavailEditingField !== 'type'" class="popover-inline-editable" @click="startUnavailFieldEdit('type')">
+                        {{ selectedUnavail.unavailData?.reason || '-' }}
+                        <i class="ri-pencil-line ms-1 text-muted" style="font-size: 0.65rem;"></i>
+                    </div>
+                    <div v-else>
+                        <select v-model="unavailEditValues.type_id" class="form-select form-select-sm" style="font-size: 0.8rem;" @change="saveUnavailField('type')">
+                            <option :value="null">-- Nessuna --</option>
+                            <template v-if="selectedUnavail.unavailabilityType === 'driver'">
+                                <option v-for="lt in allLeaveTypes" :key="lt.id" :value="lt.id">{{ lt.name }}</option>
+                            </template>
+                            <template v-else>
+                                <option v-for="vt in allVehicleUnavailabilityTypes" :key="vt.id" :value="vt.id">{{ vt.name }}</option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Note: inline editable -->
+                <div class="mb-2">
+                    <div class="text-muted small">Note</div>
+                    <div v-if="unavailEditingField !== 'notes'" class="popover-inline-editable small" @click="startUnavailFieldEdit('notes')">
+                        {{ selectedUnavail.unavailData?.notes || '-' }}
+                        <i class="ri-pencil-line ms-1 text-muted" style="font-size: 0.65rem;"></i>
+                    </div>
+                    <div v-else>
+                        <textarea v-model="unavailEditValues.notes" class="form-control form-control-sm" rows="2" style="font-size: 0.8rem;"></textarea>
+                        <div class="d-flex gap-1 mt-1">
+                            <button class="btn btn-sm btn-success py-0 px-2" @click="saveUnavailField('notes')" :disabled="unavailSaving" style="font-size: 0.7rem;">
+                                <i class="ri-check-line"></i>
+                            </button>
+                            <button class="btn btn-sm btn-secondary py-0 px-2" @click="unavailEditingField = null" style="font-size: 0.7rem;">
+                                <i class="ri-close-line"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Azioni -->
+                <div class="d-flex gap-2 mt-3 pt-2 border-top">
+                    <Link
+                        v-if="selectedUnavail.unavailabilityType === 'driver'"
+                        :href="'/easyncc/users/' + selectedUnavail.unavailData?.driver_id + '/edit'"
+                        class="btn btn-sm btn-soft-secondary"
+                    >
+                        <i class="ri-user-line me-1"></i>Scheda Driver
+                    </Link>
+                    <Link
+                        v-else
+                        :href="'/easyncc/vehicles/' + selectedUnavail.unavailData?.vehicle_id + '/edit'"
+                        class="btn btn-sm btn-soft-secondary"
+                    >
+                        <i class="ri-car-line me-1"></i>Scheda Veicolo
                     </Link>
                 </div>
             </div>
         </div>
-        <!-- Context Menu (right-click on event) -->
+
+        <!-- Context Menu (right-click on event) - desktop only -->
         <div
-            v-if="showContextMenu && !isDriver"
+            v-if="showContextMenu && !isDriver && !isMobile"
             class="context-menu"
             :style="contextMenuStyle"
             @click.stop
         >
             <ul class="list-unstyled mb-0">
                 <li>
-                    <Link :href="'/easyncc/services/' + contextMenuServiceId + '/edit'" class="context-menu-item">
+                    <Link :href="calendarReturnUrl('/easyncc/services/' + contextMenuServiceId + '/edit')" class="context-menu-item">
                         <i class="ri-pencil-line me-2"></i>Modifica
                     </Link>
                 </li>
@@ -511,9 +667,41 @@
             </ul>
         </div>
 
-        <!-- Context Menu (right-click on cell) -->
+        <!-- Context Menu (right-click on unavailability event) - desktop only -->
         <div
-            v-if="showCellContextMenu && !isDriver"
+            v-if="showUnavailContextMenu && !isDriver && contextMenuUnavailData && !isMobile"
+            class="context-menu"
+            :style="unavailContextMenuStyle"
+            @click.stop
+        >
+            <ul class="list-unstyled mb-0">
+                <li>
+                    <Link
+                        :href="contextMenuUnavailData.unavailabilityType === 'driver'
+                            ? '/easyncc/settings/driver-unavailabilities?driver_id=' + contextMenuUnavailData.unavailData?.driver_id
+                            : '/easyncc/settings/vehicle-unavailabilities?vehicle_id=' + contextMenuUnavailData.unavailData?.vehicle_id"
+                        class="context-menu-item"
+                    >
+                        <i class="ri-pencil-line me-2"></i>Modifica
+                    </Link>
+                </li>
+                <li>
+                    <a href="#" class="context-menu-item" @click.prevent="unavailContextMenuDuplicate">
+                        <i class="ri-file-copy-line me-2"></i>Duplica
+                    </a>
+                </li>
+                <li class="context-menu-divider"></li>
+                <li>
+                    <a href="#" class="context-menu-item text-danger" @click.prevent="unavailContextMenuDelete">
+                        <i class="ri-delete-bin-line me-2"></i>Elimina
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Context Menu (right-click on cell) - desktop only -->
+        <div
+            v-if="showCellContextMenu && !isDriver && !isMobile"
             class="context-menu"
             :style="cellContextMenuStyle"
             @click.stop
@@ -526,6 +714,406 @@
                 </li>
             </ul>
         </div>
+
+        <!-- ==================== MOBILE BOTTOM SHEETS ==================== -->
+
+        <!-- Filters Bottom Sheet -->
+        <BottomSheet v-model="showFiltersSheet" title="Filtri">
+            <div class="mb-3">
+                <label class="form-label">Autista</label>
+                <select v-model="filters.driver_id" class="form-select" @change="applyFilters">
+                    <option value="">Tutti gli autisti</option>
+                    <option v-for="driver in allDrivers" :key="driver.id" :value="driver.id">
+                        {{ driverLabel(driver) }}
+                    </option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Veicolo</label>
+                <select v-model="filters.vehicle_id" class="form-select" @change="applyFilters">
+                    <option value="">Tutti i veicoli</option>
+                    <option v-for="vehicle in allVehicles" :key="vehicle.id" :value="vehicle.id">
+                        {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
+                    </option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Nome Passeggero</label>
+                <input
+                    v-model="filters.passenger_name"
+                    type="text"
+                    class="form-control"
+                    placeholder="Cerca passeggero..."
+                    @input="debouncedApplyFilters"
+                />
+            </div>
+            <template #footer>
+                <div class="d-flex gap-2">
+                    <button v-if="hasActiveFilters" type="button" class="btn btn-secondary flex-fill" @click="resetFilters; showFiltersSheet = false">
+                        <i class="bx bx-refresh me-1"></i>Reset
+                    </button>
+                    <button type="button" class="btn btn-primary flex-fill" @click="showFiltersSheet = false">
+                        Chiudi
+                    </button>
+                </div>
+            </template>
+        </BottomSheet>
+
+        <!-- Driver Legend Bottom Sheet -->
+        <BottomSheet v-model="showLegendSheet" title="Calendari Driver">
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <span
+                    v-for="driver in allDrivers"
+                    :key="driver.id"
+                    class="btn btn-sm driver-legend-item d-inline-flex align-items-center gap-1"
+                    :style="getLegendStyle(driver)"
+                    @click="toggleDriverVisibility(driver.id)"
+                >
+                    <i :class="hiddenDriverIds.has(driver.id) ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                    <span>{{ driverLabel(driver) }}</span>
+                </span>
+            </div>
+            <hr>
+            <div class="d-flex flex-wrap gap-2">
+                <span
+                    class="btn btn-sm driver-legend-item d-inline-flex align-items-center gap-1"
+                    :style="{
+                        backgroundColor: showDriverUnavailabilities ? '#dc3545' : 'transparent',
+                        color: showDriverUnavailabilities ? '#fff' : '#dc3545',
+                        border: '2px solid #dc3545',
+                        opacity: showDriverUnavailabilities ? 1 : 0.5,
+                    }"
+                    @click="toggleDriverUnavailabilities"
+                >
+                    <i :class="showDriverUnavailabilities ? 'ri-eye-line' : 'ri-eye-off-line'"></i>
+                    Indisponibilità Driver
+                </span>
+                <span
+                    class="btn btn-sm driver-legend-item d-inline-flex align-items-center gap-1"
+                    :style="{
+                        backgroundColor: showVehicleUnavailabilities ? '#6c757d' : 'transparent',
+                        color: showVehicleUnavailabilities ? '#fff' : '#6c757d',
+                        border: '2px solid #6c757d',
+                        opacity: showVehicleUnavailabilities ? 1 : 0.5,
+                    }"
+                    @click="toggleVehicleUnavailabilities"
+                >
+                    <i :class="showVehicleUnavailabilities ? 'ri-eye-line' : 'ri-eye-off-line'"></i>
+                    Indisponibilità Veicoli
+                </span>
+            </div>
+            <template #footer>
+                <div class="d-flex gap-2">
+                    <button v-if="hiddenDriverIds.size > 0" class="btn btn-outline-secondary flex-fill" @click="showAllDrivers">
+                        <i class="ri-eye-line me-1"></i>Mostra Tutti
+                    </button>
+                    <button type="button" class="btn btn-primary flex-fill" @click="showLegendSheet = false">
+                        Chiudi
+                    </button>
+                </div>
+            </template>
+        </BottomSheet>
+
+        <!-- Service Detail Bottom Sheet (mobile) -->
+        <BottomSheet v-model="showDetailSheet" :full-height="true">
+            <template #header>
+                <div class="flex-grow-1" v-if="selectedService">
+                    <div v-if="selectedService.service_type" class="mb-1">
+                        <span class="badge" :style="{ ...serviceTypeBadgeStyle(selectedService.service_type, '#6c757d'), fontSize: '0.85rem' }">{{ selectedService.service_type }}</span>
+                    </div>
+                    <div class="fw-bold" v-if="selectedService.passengers && selectedService.passengers.length > 0">
+                        {{ selectedService.passengers[0].surname ? selectedService.passengers[0].surname.toUpperCase() : '' }} {{ selectedService.passengers[0].name || '' }}
+                    </div>
+                    <div class="fw-bold" v-else-if="selectedService.contact_name">{{ selectedService.contact_name }}</div>
+                    <div class="small text-muted">#{{ selectedService.reference_number || selectedService.id }}</div>
+                </div>
+            </template>
+            <template v-if="selectedService">
+                <!-- Telefono passeggero -->
+                <div v-if="selectedService.passengers && selectedService.passengers.length > 0 && selectedService.passengers[0].phone" class="mb-3">
+                    <a :href="'tel:' + selectedService.passengers[0].phone" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="ri-phone-line me-1"></i>{{ selectedService.passengers[0].phone }}
+                    </a>
+                </div>
+
+                <!-- Pax -->
+                <div class="small text-muted mb-2">
+                    <i class="ri-user-line me-1"></i>{{ selectedService.passenger_count || 0 }} pax
+                </div>
+
+                <!-- Pickup -->
+                <div class="mb-3">
+                    <div class="fw-bold text-success" style="font-size: 0.8rem;">Partenza:</div>
+                    <div v-if="isDriver || !popoverEditingDatetimes" :class="{ 'popover-inline-editable': !isDriver }" @click.stop="!isDriver && startPopoverEditDatetimes()">
+                        <div class="fw-bold">{{ formatDateTime(selectedService.pickup_datetime) }}</div>
+                        <div v-if="selectedService.pickup_location" class="fw-medium">{{ selectedService.pickup_location }}</div>
+                        <div class="text-truncate">{{ selectedService.pickup_address }}</div>
+                    </div>
+                    <div v-else @click.stop>
+                        <label class="text-muted small">Pickup</label>
+                        <input type="datetime-local" v-model="popoverEditingDatetimeValues.pickup_datetime" class="form-control form-control-sm mb-1" />
+                        <label class="text-muted small">Uscita mezzo</label>
+                        <input type="datetime-local" v-model="popoverEditingDatetimeValues.vehicle_departure_datetime" class="form-control form-control-sm" />
+                    </div>
+                </div>
+
+                <!-- Dropoff -->
+                <div class="mb-3">
+                    <div class="fw-bold text-danger" style="font-size: 0.8rem;">Arrivo:</div>
+                    <div v-if="isDriver || !popoverEditingDatetimes" :class="{ 'popover-inline-editable': !isDriver }" @click.stop="!isDriver && startPopoverEditDatetimes()">
+                        <div class="fw-bold">{{ formatDateTime(selectedService.dropoff_datetime) }}</div>
+                        <div v-if="selectedService.dropoff_location" class="fw-medium">{{ selectedService.dropoff_location }}</div>
+                        <div class="text-truncate">{{ selectedService.dropoff_address }}</div>
+                    </div>
+                    <div v-else @click.stop>
+                        <label class="text-muted small">Dropoff</label>
+                        <input type="datetime-local" v-model="popoverEditingDatetimeValues.dropoff_datetime" class="form-control form-control-sm mb-1" />
+                        <label class="text-muted small">Rientro mezzo</label>
+                        <input type="datetime-local" v-model="popoverEditingDatetimeValues.vehicle_return_datetime" class="form-control form-control-sm" />
+                        <div class="d-flex gap-1 mt-1">
+                            <button class="btn btn-sm btn-success" @click.stop="savePopoverDatetimes" :disabled="popoverSaving">
+                                <span v-if="popoverSaving" class="spinner-border spinner-border-sm" role="status"></span>
+                                <i v-else class="ri-check-line"></i> Salva
+                            </button>
+                            <button class="btn btn-sm btn-secondary" @click.stop="cancelPopoverEditDatetimes">
+                                <i class="ri-close-line"></i> Annulla
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Driver -->
+                <div class="mb-3" v-if="selectedService.drivers && selectedService.drivers.length > 0">
+                    <div class="text-muted small">Autista</div>
+                    <div v-if="isDriver || !popoverEditingDrivers">
+                        <div v-for="driver in selectedService.drivers" :key="driver.id" :class="{ 'popover-inline-editable': !isDriver }" @click.stop="!isDriver && startPopoverEditDrivers()">
+                            <span class="badge" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'};`">{{ driverLabel(driver) }}</span>
+                        </div>
+                    </div>
+                    <div v-else @click.stop>
+                        <select v-model="popoverEditingDriversValue" class="form-select form-select-sm" multiple size="4">
+                            <option v-for="driver in allDrivers" :key="driver.id" :value="driver.id">{{ driverLabel(driver) }}</option>
+                        </select>
+                        <div class="d-flex gap-1 mt-1">
+                            <button class="btn btn-sm btn-success" @click.stop="savePopoverDrivers" :disabled="popoverSaving">
+                                <span v-if="popoverSaving" class="spinner-border spinner-border-sm" role="status"></span>
+                                <i v-else class="ri-check-line"></i> Salva
+                            </button>
+                            <button class="btn btn-sm btn-secondary" @click.stop="cancelPopoverEditDrivers"><i class="ri-close-line"></i> Annulla</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Veicolo -->
+                <div class="mb-3">
+                    <div class="text-muted small">Veicolo</div>
+                    <div v-if="isDriver && selectedService.vehicle">{{ selectedService.vehicle.brand }} {{ selectedService.vehicle.model }} - {{ selectedService.vehicle.license_plate }}</div>
+                    <div v-else-if="isDriver" class="text-muted">—</div>
+                    <div v-else-if="!popoverEditingVehicle && selectedService.vehicle" class="popover-inline-editable" @click.stop="startPopoverEditVehicle">{{ selectedService.vehicle.brand }} {{ selectedService.vehicle.model }} - {{ selectedService.vehicle.license_plate }}</div>
+                    <div v-else-if="!popoverEditingVehicle" class="text-muted popover-inline-editable" @click.stop="startPopoverEditVehicle"><i class="ri-add-line"></i> Assegna veicolo</div>
+                    <div v-else @click.stop>
+                        <select v-model="popoverEditingVehicleValue" class="form-select form-select-sm" @change="savePopoverVehicle">
+                            <option value="">Seleziona veicolo</option>
+                            <option v-for="vehicle in allVehicles" :key="vehicle.id" :value="vehicle.id">{{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Dress Code -->
+                <div class="mb-3">
+                    <div class="text-muted small">Dress Code</div>
+                    <div v-if="isDriver"><i class="ri-shirt-line me-1"></i>{{ selectedService.dress_code ? selectedService.dress_code.name : 'Nessun dress code' }}</div>
+                    <div v-else-if="!popoverEditingDressCode" class="popover-inline-editable" @click.stop="startPopoverEditDressCode"><i class="ri-shirt-line me-1"></i>{{ selectedService.dress_code ? selectedService.dress_code.name : 'Nessun dress code' }}</div>
+                    <div v-else @click.stop>
+                        <select v-model="popoverEditingDressCodeValue" class="form-select form-select-sm" @change="savePopoverDressCode">
+                            <option :value="null">Nessun dress code</option>
+                            <option v-for="dc in allDressCodes" :key="dc.id" :value="dc.id">{{ dc.name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Prezzo Totale -->
+                <div class="mb-3" v-if="!isDriver && getServiceTotal(selectedService) > 0">
+                    <div class="text-muted small">Prezzo Totale</div>
+                    <div class="fw-bold"><span class="badge bg-success fs-6 px-2 py-1">&euro;{{ formatCurrency(getServiceTotal(selectedService)) }}</span></div>
+                </div>
+
+                <!-- Da Incassare (driver) -->
+                <div v-if="isDriver && selectedService.driver_must_collect" class="mb-3">
+                    <div class="alert alert-warning py-2 px-3 mb-0">
+                        <div class="fw-bold mb-1"><i class="ri-money-euro-circle-line me-1"></i>Da Incassare</div>
+                        <div class="d-flex justify-content-between"><span>Per cassa:</span><span class="fw-bold">&euro;{{ formatCurrency(selectedService.balance_taxable || 0) }}</span></div>
+                        <div class="d-flex justify-content-between"><span>Con Carta:</span><span class="fw-bold">&euro;{{ formatCurrency(selectedService.balance_card_fees || 0) }}</span></div>
+                    </div>
+                </div>
+
+                <!-- Sovrapposizioni -->
+                <div v-if="!isDriver && loadingDetail && hasSelectedServiceOverlapCounts" class="mb-2">
+                    <div class="text-warning small fw-bold"><i class="ri-alert-fill me-1"></i>Sovrapposizioni <span class="spinner-border spinner-border-sm ms-1" role="status"></span></div>
+                </div>
+                <div v-else-if="!isDriver && hasSelectedServiceOverlaps" class="mb-2">
+                    <div class="text-warning small fw-bold"><i class="ri-alert-fill me-1"></i>Sovrapposizioni</div>
+                    <div v-for="overlap in selectedServiceOverlaps" :key="overlap.id" class="small border-start border-warning ps-2 mt-1">
+                        <div class="fw-bold">#{{ overlap.related_service_reference || overlap.related_service_id }}</div>
+                        <div class="text-muted">
+                            <span v-if="overlap.overlap_type === 'vehicle'" class="badge bg-info me-1">Veicolo</span>
+                            <span v-else-if="overlap.overlap_type === 'driver'" class="badge bg-warning text-dark me-1">Autista</span>
+                            <span v-else-if="overlap.overlap_type === 'both'" class="badge bg-danger me-1">Entrambi</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conferma sovrapposizioni -->
+                <div v-if="!isDriver && showOverlapConfirmation && pendingOverlaps.length > 0" class="mb-2 border border-warning rounded p-2 bg-warning bg-opacity-10">
+                    <div class="text-warning small fw-bold mb-1"><i class="ri-alert-fill me-1"></i>Sovrapposizioni Rilevate</div>
+                    <div class="small mb-2">Confermare per salvare con sovrapposizioni:</div>
+                    <div v-for="(overlap, index) in pendingOverlaps" :key="index" class="small border-start ps-2 mt-1" :class="overlap.overlap_type.includes('unavailability') ? 'border-danger' : 'border-warning'">
+                        <template v-if="!overlap.overlap_type.includes('unavailability')">
+                            <div class="fw-bold">{{ overlap.overlapping_service_reference || ('#' + overlap.overlapping_service_id) }}</div>
+                            <div>
+                                <span v-if="overlap.overlap_type === 'vehicle'" class="badge bg-info me-1">Veicolo</span>
+                                <span v-else-if="overlap.overlap_type === 'driver'" class="badge bg-warning text-dark me-1">Autista</span>
+                                <span v-else-if="overlap.overlap_type === 'both'" class="badge bg-danger me-1">Entrambi</span>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <div class="fw-bold text-danger">
+                                <span v-if="overlap.overlap_type === 'driver_unavailability'">Autista non disponibile</span>
+                                <span v-else>Veicolo non disponibile</span>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="d-flex gap-1 mt-2">
+                        <button class="btn btn-sm btn-warning" @click.stop="confirmOverlapsAndSavePopover" :disabled="popoverSaving">
+                            <span v-if="popoverSaving" class="spinner-border spinner-border-sm" role="status"></span>
+                            <i v-else class="ri-check-line me-1"></i>Conferma
+                        </button>
+                        <button class="btn btn-sm btn-secondary" @click.stop="cancelOverlapConfirmationPopover">
+                            <i class="ri-close-line me-1"></i>Annulla
+                        </button>
+                    </div>
+                </div>
+            </template>
+            <template #footer v-if="selectedService">
+                <div class="d-flex flex-column gap-2">
+                    <div class="d-flex gap-2">
+                        <Link :href="calendarReturnUrl(route('easyncc.services.show', selectedService.id))" class="btn btn-primary flex-fill">
+                            <i class="ri-eye-line me-1"></i>Visualizza
+                        </Link>
+                        <Link v-if="!isDriver" :href="calendarReturnUrl(route('easyncc.services.edit', selectedService.id))" class="btn btn-info flex-fill">
+                            <i class="ri-pencil-line me-1"></i>Modifica
+                        </Link>
+                    </div>
+                    <div v-if="!isDriver" class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary btn-sm flex-fill" @click="mobileContextAction('duplicate')">
+                            <i class="ri-file-copy-line me-1"></i>Duplica
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm flex-fill" @click="mobileContextAction('return')">
+                            <i class="ri-arrow-go-back-line me-1"></i>Ritorno
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm flex-fill" @click="mobileContextAction('delete')">
+                            <i class="ri-delete-bin-line me-1"></i>Elimina
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </BottomSheet>
+
+        <!-- Unavailability Detail Bottom Sheet (mobile) -->
+        <BottomSheet v-model="showUnavailSheet" :title="selectedUnavail?.unavailabilityType === 'driver' ? 'Indisponibilità Driver' : 'Indisponibilità Veicolo'">
+            <template v-if="selectedUnavail">
+                <div class="fw-bold mb-3">
+                    <template v-if="selectedUnavail.unavailabilityType === 'driver'">{{ selectedUnavail.unavailData?.driver_name }}</template>
+                    <template v-else>{{ selectedUnavail.unavailData?.vehicle_plate }} <span v-if="selectedUnavail.unavailData?.vehicle_label" class="ms-1">{{ selectedUnavail.unavailData.vehicle_label }}</span></template>
+                </div>
+
+                <div class="mb-3">
+                    <div class="text-muted small">Periodo</div>
+                    <div v-if="unavailEditingField !== 'dates'" class="fw-bold popover-inline-editable" @click="startUnavailFieldEdit('dates')">
+                        {{ formatUnavailDate(selectedUnavail.unavailData?.start_date, selectedUnavail.unavailData?.all_day) }} — {{ formatUnavailDate(selectedUnavail.unavailData?.end_date, selectedUnavail.unavailData?.all_day) }}
+                        <i class="ri-pencil-line ms-1 text-muted"></i>
+                    </div>
+                    <div v-else>
+                        <div class="d-flex gap-2 align-items-center mb-1">
+                            <input type="date" v-model="unavailEditValues.start_date" class="form-control form-control-sm" />
+                            <span class="text-muted">—</span>
+                            <input type="date" v-model="unavailEditValues.end_date" class="form-control form-control-sm" />
+                        </div>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-success" @click="saveUnavailField('dates')" :disabled="unavailSaving"><i class="ri-check-line"></i></button>
+                            <button class="btn btn-sm btn-secondary" @click="unavailEditingField = null"><i class="ri-close-line"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="text-muted small">Tipologia</div>
+                    <div v-if="unavailEditingField !== 'type'" class="popover-inline-editable" @click="startUnavailFieldEdit('type')">
+                        {{ selectedUnavail.unavailData?.reason || '-' }} <i class="ri-pencil-line ms-1 text-muted"></i>
+                    </div>
+                    <div v-else>
+                        <select v-model="unavailEditValues.type_id" class="form-select form-select-sm" @change="saveUnavailField('type')">
+                            <option :value="null">-- Nessuna --</option>
+                            <template v-if="selectedUnavail.unavailabilityType === 'driver'">
+                                <option v-for="lt in allLeaveTypes" :key="lt.id" :value="lt.id">{{ lt.name }}</option>
+                            </template>
+                            <template v-else>
+                                <option v-for="vt in allVehicleUnavailabilityTypes" :key="vt.id" :value="vt.id">{{ vt.name }}</option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="text-muted small">Note</div>
+                    <div v-if="unavailEditingField !== 'notes'" class="popover-inline-editable" @click="startUnavailFieldEdit('notes')">
+                        {{ selectedUnavail.unavailData?.notes || '-' }} <i class="ri-pencil-line ms-1 text-muted"></i>
+                    </div>
+                    <div v-else>
+                        <textarea v-model="unavailEditValues.notes" class="form-control form-control-sm" rows="3"></textarea>
+                        <div class="d-flex gap-1 mt-1">
+                            <button class="btn btn-sm btn-success" @click="saveUnavailField('notes')" :disabled="unavailSaving"><i class="ri-check-line"></i></button>
+                            <button class="btn btn-sm btn-secondary" @click="unavailEditingField = null"><i class="ri-close-line"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <template #footer v-if="selectedUnavail">
+                <div class="d-flex flex-column gap-2">
+                    <div class="d-flex gap-2">
+                        <Link
+                            v-if="selectedUnavail.unavailabilityType === 'driver'"
+                            :href="'/easyncc/users/' + selectedUnavail.unavailData?.driver_id + '/edit'"
+                            class="btn btn-soft-secondary flex-fill"
+                        ><i class="ri-user-line me-1"></i>Scheda Driver</Link>
+                        <Link
+                            v-else
+                            :href="'/easyncc/vehicles/' + selectedUnavail.unavailData?.vehicle_id + '/edit'"
+                            class="btn btn-soft-secondary flex-fill"
+                        ><i class="ri-car-line me-1"></i>Scheda Veicolo</Link>
+                    </div>
+                    <div v-if="!isDriver" class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary btn-sm flex-fill" @click="mobileUnavailAction('duplicate')">
+                            <i class="ri-file-copy-line me-1"></i>Duplica
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm flex-fill" @click="mobileUnavailAction('delete')">
+                            <i class="ri-delete-bin-line me-1"></i>Elimina
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </BottomSheet>
+
+        <!-- Cell Context Menu Bottom Sheet (mobile) -->
+        <BottomSheet v-model="showCellContextSheet" title="Azioni">
+            <ul class="list-unstyled mb-0">
+                <li>
+                    <Link :href="'/easyncc/services/create?date=' + cellContextMenuDate" class="btn btn-outline-primary w-100 text-start">
+                        <i class="ri-add-line me-2"></i>Nuovo Servizio
+                    </Link>
+                </li>
+            </ul>
+        </BottomSheet>
     </Layout>
 </template>
 
@@ -533,16 +1121,38 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
 import Layout from '@/Layouts/vertical.vue';
-import PageHeader from '@/Components/page-header.vue';
+
+import BottomSheet from '@/Components/BottomSheet.vue';
 import axios from 'axios';
 import moment from 'moment';
-import Swal from 'sweetalert2';
+import { useNotify } from '@/composables/useNotify.js';
 import { driverLabel } from '@/composables/useDriverLabel.js';
 import { useServiceTypeColor } from '@/composables/useServiceTypeColor.js';
+import flatpickr from 'flatpickr';
+import 'flatpickr/dist/flatpickr.min.css';
+import { Italian as flatpickrIt } from 'flatpickr/dist/l10n/it.js';
+
+const notify = useNotify();
 
 // FullCalendar instance
 let calendarInstance;
 let debounceTimer = null;
+
+// Mobile detection
+const isMobile = ref(window.innerWidth < 768);
+const onResize = () => { isMobile.value = window.innerWidth < 768; };
+
+// Bottom sheet states (mobile)
+const showFiltersSheet = ref(false);
+const showLegendSheet = ref(false);
+const showDetailSheet = ref(false);
+const showUnavailSheet = ref(false);
+const showCellContextSheet = ref(false);
+
+// Long-press support for touch
+let longPressTimer = null;
+let longPressTriggered = false;
+const LONG_PRESS_DURATION = 500;
 
 const loading = ref(true);
 const error = ref('');
@@ -551,6 +1161,32 @@ const showFilters = ref(false);
 const showDriverLegend = ref(false);
 const currentUser = ref(null);
 const isDriver = computed(() => currentUser.value?.role === 'driver');
+
+// Build a return URL that preserves current calendar state (date + view)
+const calendarReturnUrl = (targetUrl) => {
+    let calDate = '';
+    let calView = '';
+    if (calendarInstance) {
+        calDate = moment(calendarInstance.getDate()).format('YYYY-MM-DD');
+        calView = calendarInstance.view?.type || '';
+    }
+    const returnPath = `/easyncc/services/calendar?date=${calDate}&view=${calView}`;
+    const separator = targetUrl.includes('?') ? '&' : '?';
+    return targetUrl + separator + 'returnUrl=' + encodeURIComponent(returnPath);
+};
+
+const popoverClientDiffersFromPassenger = computed(() => {
+    const svc = selectedService.value;
+    if (!svc?.client) return false;
+    if (!svc.passengers || svc.passengers.length === 0) return true;
+    const p = svc.passengers[0];
+    const normalize = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+    const cn = normalize(svc.client.name);
+    const cs = normalize(svc.client.surname);
+    const pn = normalize(p.name);
+    const ps = normalize(p.surname);
+    return !((cn === pn && cs === ps) || (cn === ps && cs === pn));
+});
 const acceptedStatusId = ref(null);
 
 // Filter state
@@ -595,18 +1231,23 @@ const toggleVehicleUnavailabilities = () => {
     updateUnavailabilityVisibility();
 };
 
+let unavailRequestCounter = 0;
+
 const loadUnavailabilities = async (start = null, end = null) => {
     if (!start || !end) return;
+    const thisRequest = ++unavailRequestCounter;
     try {
         const params = {
             start: moment(start).subtract(7, 'days').format('YYYY-MM-DD'),
             end: moment(end).add(7, 'days').format('YYYY-MM-DD'),
         };
         const response = await axios.get('/api/unavailabilities/calendar', { params });
+        if (thisRequest !== unavailRequestCounter) return;
         driverUnavailabilities.value = response.data.driver_unavailabilities || [];
         vehicleUnavailabilities.value = response.data.vehicle_unavailabilities || [];
         renderUnavailabilityEvents();
     } catch (err) {
+        if (thisRequest !== unavailRequestCounter) return;
         console.error('Error loading unavailabilities:', err);
     }
 };
@@ -627,22 +1268,29 @@ const renderUnavailabilityEvents = () => {
             // Skip if driver is hidden
             if (hiddenDriverIds.value.has(item.driver_id)) return;
 
-            const endDate = moment(item.end_date).add(1, 'day').format('YYYY-MM-DD');
+            const isAllDay = !!item.all_day;
+            const startStr = isAllDay ? moment(item.start_date).format('YYYY-MM-DD') : item.start_date;
+            const endStr = isAllDay ? moment(item.end_date).add(1, 'day').format('YYYY-MM-DD') : item.end_date;
+            const timeLabel = !isAllDay ? ` ${moment(item.start_date).format('HH:mm')}-${moment(item.end_date).format('HH:mm')}` : '';
+            const color = item.driver_color || '#dc3545';
+
             calendarInstance.addEvent({
                 id: item.id,
-                title: `🚫 ${item.driver_name} - ${item.reason}`,
-                start: item.start_date,
-                end: endDate,
-                allDay: true,
+                title: `🚫 ${item.driver_name} - ${item.reason}${timeLabel}`,
+                start: startStr,
+                end: endStr,
+                allDay: isAllDay,
                 display: 'auto',
-                backgroundColor: item.driver_color || '#dc3545',
-                borderColor: item.driver_color || '#dc3545',
+                backgroundColor: color,
+                borderColor: color,
                 textColor: '#fff',
                 classNames: ['fc-unavailability-driver'],
                 extendedProps: {
                     isUnavailability: true,
                     unavailabilityType: 'driver',
+                    unavailData: item,
                     driverId: item.driver_id,
+                    driverColors: [color],
                     notes: item.notes,
                 }
             });
@@ -652,13 +1300,17 @@ const renderUnavailabilityEvents = () => {
     // Add vehicle unavailabilities
     if (showVehicleUnavailabilities.value) {
         vehicleUnavailabilities.value.forEach(item => {
-            const endDate = moment(item.end_date).add(1, 'day').format('YYYY-MM-DD');
+            const isAllDay = !!item.all_day;
+            const startStr = isAllDay ? moment(item.start_date).format('YYYY-MM-DD') : item.start_date;
+            const endStr = isAllDay ? moment(item.end_date).add(1, 'day').format('YYYY-MM-DD') : item.end_date;
+            const timeLabel = !isAllDay ? ` ${moment(item.start_date).format('HH:mm')}-${moment(item.end_date).format('HH:mm')}` : '';
+
             calendarInstance.addEvent({
                 id: item.id,
-                title: `🚗 ${item.vehicle_plate} - ${item.reason}`,
-                start: item.start_date,
-                end: endDate,
-                allDay: true,
+                title: `🚗 ${item.vehicle_plate} - ${item.reason}${timeLabel}`,
+                start: startStr,
+                end: endStr,
+                allDay: isAllDay,
                 display: 'auto',
                 backgroundColor: '#6c757d',
                 borderColor: '#6c757d',
@@ -667,6 +1319,7 @@ const renderUnavailabilityEvents = () => {
                 extendedProps: {
                     isUnavailability: true,
                     unavailabilityType: 'vehicle',
+                    unavailData: item,
                     vehicleId: item.vehicle_id,
                     notes: item.notes,
                 }
@@ -677,6 +1330,11 @@ const renderUnavailabilityEvents = () => {
 
 const updateUnavailabilityVisibility = () => {
     renderUnavailabilityEvents();
+};
+
+const formatUnavailDate = (d, allDay) => {
+    if (!d) return '-';
+    return allDay ? moment(d).format('DD/MM/YYYY') : moment(d).format('DD/MM/YYYY HH:mm');
 };
 
 const updateEventVisibility = () => {
@@ -751,9 +1409,15 @@ const showCellContextMenu = ref(false);
 const cellContextMenuStyle = ref({});
 const cellContextMenuDate = ref('');
 
+// Unavailability context menu
+const showUnavailContextMenu = ref(false);
+const unavailContextMenuStyle = ref({});
+const contextMenuUnavailData = ref(null);
+
 const closeAllContextMenus = () => {
     showContextMenu.value = false;
     showCellContextMenu.value = false;
+    showUnavailContextMenu.value = false;
 };
 
 const openEventContextMenu = (e, serviceId) => {
@@ -786,7 +1450,7 @@ const contextMenuDuplicate = async () => {
     closeAllContextMenus();
     try {
         const { data } = await axios.post(`/api/services/${contextMenuServiceId.value}/duplicate`);
-        window.location.href = `/easyncc/services/${data.data.id}/edit`;
+        window.location.href = calendarReturnUrl(`/easyncc/services/${data.data.id}/edit`);
     } catch (err) {
         error.value = 'Errore nella duplicazione del servizio';
     }
@@ -796,7 +1460,7 @@ const contextMenuReturn = async () => {
     closeAllContextMenus();
     try {
         const { data } = await axios.post(`/api/services/${contextMenuServiceId.value}/return`);
-        window.location.href = `/easyncc/services/${data.data.id}/edit`;
+        window.location.href = calendarReturnUrl(`/easyncc/services/${data.data.id}/edit`);
     } catch (err) {
         error.value = 'Errore nella creazione del servizio di ritorno';
     }
@@ -804,22 +1468,14 @@ const contextMenuReturn = async () => {
 
 const contextMenuDelete = async () => {
     closeAllContextMenus();
-    const { isConfirmed } = await Swal.fire({
-        title: 'Conferma eliminazione',
-        html: 'Eliminando il servizio verranno rimossi anche:<ul class="text-start mt-2">'
+    const confirmed = await notify.confirm('Conferma eliminazione', 'Eliminando il servizio verranno rimossi anche:<ul class="text-start mt-2">'
             + '<li>Esperienze collegate</li>'
             + '<li>Task collegati</li>'
             + '<li>Movimenti contabili</li>'
             + '<li>Allegati</li>'
             + '<li>Passeggeri</li>'
-            + '</ul>Vuoi procedere?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Elimina tutto',
-        cancelButtonText: 'Annulla',
-    });
-    if (!isConfirmed) return;
+            + '</ul>Vuoi procedere?', { confirmText: 'Elimina tutto' });
+    if (!confirmed) return;
     try {
         await axios.delete(`/api/services/${contextMenuServiceId.value}`);
         closePopover();
@@ -829,6 +1485,228 @@ const contextMenuDelete = async () => {
         }
     } catch (err) {
         error.value = 'Errore nell\'eliminazione del servizio';
+    }
+};
+
+// Popover action buttons (reuse context menu logic)
+const popoverDuplicate = () => {
+    if (!selectedService.value) return;
+    contextMenuServiceId.value = selectedService.value.id;
+    contextMenuDuplicate();
+};
+
+const popoverReturn = () => {
+    if (!selectedService.value) return;
+    contextMenuServiceId.value = selectedService.value.id;
+    contextMenuReturn();
+};
+
+const popoverDelete = () => {
+    if (!selectedService.value) return;
+    contextMenuServiceId.value = selectedService.value.id;
+    contextMenuDelete();
+};
+
+// Unavailability context menu functions
+const openUnavailContextMenu = (e, extendedProps) => {
+    e.preventDefault();
+    closeAllContextMenus();
+    contextMenuUnavailData.value = extendedProps;
+    unavailContextMenuStyle.value = {
+        position: 'fixed',
+        top: `${e.clientY}px`,
+        left: `${e.clientX}px`,
+        zIndex: 9999,
+    };
+    showUnavailContextMenu.value = true;
+};
+
+const unavailContextMenuDuplicate = async () => {
+    const data = contextMenuUnavailData.value;
+    closeAllContextMenus();
+    try {
+        if (data.unavailabilityType === 'driver') {
+            const item = data.unavailData;
+            await axios.post(`/api/users/${item.driver_id}/unavailabilities`, {
+                leave_type_id: item.leave_type_id || null,
+                start_date: item.start_date,
+                end_date: item.end_date,
+                notes: item.notes ? `(Copia) ${item.notes}` : '(Copia)',
+            });
+        } else {
+            const item = data.unavailData;
+            await axios.post(`/api/vehicles/${item.vehicle_id}/unavailabilities`, {
+                vehicle_unavailability_type_id: item.vehicle_unavailability_type_id || null,
+                start_date: item.start_date,
+                end_date: item.end_date,
+                notes: item.notes ? `(Copia) ${item.notes}` : '(Copia)',
+            });
+        }
+        // Reload unavailabilities
+        if (calendarInstance) {
+            const view = calendarInstance.view;
+            loadUnavailabilities(view.activeStart, view.activeEnd);
+        }
+    } catch (err) {
+        error.value = 'Errore nella duplicazione dell\'indisponibilità';
+        console.error(err);
+    }
+};
+
+const unavailContextMenuDelete = async () => {
+    const data = contextMenuUnavailData.value;
+    closeAllContextMenus();
+    const label = data.unavailabilityType === 'driver'
+        ? `indisponibilità di ${data.unavailData.driver_name}`
+        : `indisponibilità veicolo ${data.unavailData.vehicle_plate}`;
+    const confirmed = await notify.confirm('Conferma eliminazione', `Eliminare ${label}?`, { confirmText: 'Elimina' });
+    if (!confirmed) return;
+    try {
+        const item = data.unavailData;
+        const realId = String(item.id).replace(/^(driver|vehicle)_unavail_/, '');
+        if (data.unavailabilityType === 'driver') {
+            await axios.delete(`/api/users/${item.driver_id}/unavailabilities/${realId}`);
+        } else {
+            await axios.delete(`/api/vehicles/${item.vehicle_id}/unavailabilities/${realId}`);
+        }
+        // Reload
+        if (calendarInstance) {
+            const view = calendarInstance.view;
+            loadUnavailabilities(view.activeStart, view.activeEnd);
+        }
+    } catch (err) {
+        error.value = 'Errore nell\'eliminazione dell\'indisponibilità';
+        console.error(err);
+    }
+};
+
+// Unavailability detail popover
+const showUnavailPopover = ref(false);
+const selectedUnavail = ref(null);
+const unavailPopoverEl = ref(null);
+const unavailPopoverStyle = ref({});
+const unavailEditingField = ref(null); // 'dates', 'type', 'notes'
+const selectedUnavailEvent = ref(null);
+const unavailEditValues = ref({ start_date: '', end_date: '', type_id: null, notes: '' });
+const unavailSaving = ref(false);
+
+const openUnavailPopover = (extendedProps, el, jsEvent) => {
+    closePopover();
+    closeAllContextMenus();
+    selectedUnavail.value = extendedProps;
+    selectedUnavailEvent.value = el;
+    showUnavailPopover.value = true;
+    unavailEditingField.value = null;
+
+    setTimeout(() => {
+        positionUnavailPopover(jsEvent);
+    }, 0);
+};
+
+const closeUnavailPopover = () => {
+    showUnavailPopover.value = false;
+    selectedUnavail.value = null;
+    selectedUnavailEvent.value = null;
+    unavailEditingField.value = null;
+};
+
+const positionUnavailPopover = (event) => {
+    if (!unavailPopoverEl.value || !event) return;
+
+    const rect = event.target.getBoundingClientRect();
+    const popoverWidth = 400;
+    const popoverHeight = unavailPopoverEl.value.offsetHeight;
+
+    let left = rect.left + window.scrollX;
+    let top = rect.bottom + window.scrollY + 5;
+
+    if (left + popoverWidth > window.innerWidth) {
+        left = rect.right - popoverWidth + window.scrollX;
+    }
+    if (top + popoverHeight > window.innerHeight + window.scrollY) {
+        top = rect.top + window.scrollY - popoverHeight - 5;
+    }
+
+    unavailPopoverStyle.value = {
+        position: 'absolute',
+        left: `${left}px`,
+        top: `${top}px`,
+        zIndex: 9999,
+    };
+};
+
+const startUnavailFieldEdit = (field) => {
+    const item = selectedUnavail.value?.unavailData;
+    if (!item) return;
+    const isDriverType = selectedUnavail.value.unavailabilityType === 'driver';
+    // Initialize edit values from current data
+    unavailEditValues.value = {
+        start_date: item.start_date,
+        end_date: item.end_date,
+        type_id: isDriverType ? (item.leave_type_id || null) : (item.vehicle_unavailability_type_id || null),
+        notes: item.notes || '',
+    };
+    unavailEditingField.value = field;
+};
+
+const saveUnavailField = async (field) => {
+    const data = selectedUnavail.value;
+    const item = data?.unavailData;
+    if (!item) return;
+
+    unavailSaving.value = true;
+    try {
+        const realId = String(item.id).replace(/^(driver|vehicle)_unavail_/, '');
+        let payload;
+
+        if (data.unavailabilityType === 'driver') {
+            payload = {
+                leave_type_id: unavailEditValues.value.type_id,
+                start_date: unavailEditValues.value.start_date,
+                end_date: unavailEditValues.value.end_date,
+                notes: unavailEditValues.value.notes,
+            };
+            await axios.put(`/api/users/${item.driver_id}/unavailabilities/${realId}`, payload);
+        } else {
+            payload = {
+                vehicle_unavailability_type_id: unavailEditValues.value.type_id,
+                start_date: unavailEditValues.value.start_date,
+                end_date: unavailEditValues.value.end_date,
+                notes: unavailEditValues.value.notes,
+            };
+            await axios.put(`/api/vehicles/${item.vehicle_id}/unavailabilities/${realId}`, payload);
+        }
+
+        // Update local data so popover reflects changes without closing
+        if (field === 'dates') {
+            item.start_date = unavailEditValues.value.start_date;
+            item.end_date = unavailEditValues.value.end_date;
+        } else if (field === 'type') {
+            if (data.unavailabilityType === 'driver') {
+                item.leave_type_id = unavailEditValues.value.type_id;
+                const found = allLeaveTypes.value.find(t => t.id === unavailEditValues.value.type_id);
+                item.reason = found?.name || '';
+            } else {
+                item.vehicle_unavailability_type_id = unavailEditValues.value.type_id;
+                const found = allVehicleUnavailabilityTypes.value.find(t => t.id === unavailEditValues.value.type_id);
+                item.reason = found?.name || '';
+            }
+        } else if (field === 'notes') {
+            item.notes = unavailEditValues.value.notes;
+        }
+
+        unavailEditingField.value = null;
+
+        // Reload calendar events in background
+        if (calendarInstance) {
+            const view = calendarInstance.view;
+            loadUnavailabilities(view.activeStart, view.activeEnd);
+        }
+    } catch (err) {
+        error.value = 'Errore nel salvataggio';
+        console.error(err);
+    } finally {
+        unavailSaving.value = false;
     }
 };
 
@@ -872,7 +1750,15 @@ const pendingSavePayload = ref(null);
 const allDrivers = ref([]);
 const allVehicles = ref([]);
 const allDressCodes = ref([]);
-const { loadServiceTypes, serviceTypeBadgeStyle } = useServiceTypeColor();
+const allLeaveTypes = ref([]);
+const allVehicleUnavailabilityTypes = ref([]);
+const { serviceTypes, loadServiceTypes, serviceTypeBadgeStyle } = useServiceTypeColor();
+
+const getServiceTypeAbbreviation = (serviceTypeName) => {
+    if (!serviceTypeName || !serviceTypes.value.length) return serviceTypeName || '';
+    const found = serviceTypes.value.find(st => st.name?.toLowerCase() === serviceTypeName.toLowerCase());
+    return found?.abbreviation || serviceTypeName;
+};
 
 // Track if we're currently loading to prevent duplicate requests
 let isLoadingServices = false;
@@ -882,7 +1768,7 @@ const mapServicesToEvents = (servicesList) => {
         const drivers = service.drivers || [];
         const pickupTime = moment.utc(service.pickup_datetime).format('HH:mm');
         const passengerCount = service.passenger_count || 0;
-        const serviceType = service.service_type || '';
+        const serviceType = getServiceTypeAbbreviation(service.service_type);
 
         // Passenger label: COGNOME + Nome from first passenger, fallback to contact_name
         let passengerLabel = '';
@@ -918,7 +1804,7 @@ const mapServicesToEvents = (servicesList) => {
         // Colorati se: driver assegnato O status = "Accettato dal Driver" (configurabile)
         const driverIds = drivers.map(d => d.id);
         const isAssignedToCurrentDriver = isDriver.value && currentUser.value
-            ? (driverIds.includes(currentUser.value.id) || (acceptedStatusId.value && service.status_id === acceptedStatusId.value))
+            ? driverIds.includes(currentUser.value.id)
             : true; // non-driver users: always "assigned" (normal view)
 
         if (isDriver.value && !isAssignedToCurrentDriver) {
@@ -975,11 +1861,12 @@ const loadServices = async (start = null, end = null) => {
             params.passenger_name = filters.value.passenger_name;
         }
 
-        const response = await axios.get('/api/services', { params });
-        services.value = response.data.data || [];
-
-        // Load unavailabilities in parallel (non-blocking)
-        loadUnavailabilities(start, end);
+        // Load services and unavailabilities in parallel
+        const [serviceResponse] = await Promise.all([
+            axios.get('/api/services', { params }),
+            loadUnavailabilities(start, end),
+        ]);
+        services.value = serviceResponse.data.data || [];
 
         // Update calendar events if calendar exists
         if (calendarInstance) {
@@ -1022,9 +1909,10 @@ const initializeCalendar = async () => {
 
             calendarInstance = new CalendarCore(calendarEl, {
                 plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
+                contentHeight: 'auto',
                 customButtons: {
                     goToDateBtn: {
-                        text: 'Vai a...',
+                        text: '',
                         click: function() {
                             // Handled by the injected date input
                         }
@@ -1035,7 +1923,8 @@ const initializeCalendar = async () => {
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,timeGridDay'
                 },
-                initialView: 'dayGridMonth',
+                initialView: new URLSearchParams(window.location.search).get('view') || 'dayGridMonth',
+                initialDate: new URLSearchParams(window.location.search).get('date') || undefined,
                 timeZone: 'UTC',
                 locale: 'it',
                 firstDay: 1,
@@ -1052,8 +1941,17 @@ const initializeCalendar = async () => {
                     loadServices(dateInfo.start, dateInfo.end);
                 },
                 eventDidMount: (info) => {
-                    // Applica pattern a strisce oblique ripetute per tutti gli eventi
-                    if (info.event.extendedProps.driverColors && info.event.extendedProps.driverColors.length > 0) {
+                    // Applica colore per eventi indisponibilità
+                    if (info.event.extendedProps?.isUnavailability) {
+                        const color = info.event.extendedProps.unavailabilityType === 'driver'
+                            ? (info.event.extendedProps.driverColors?.[0] || info.event.backgroundColor || '#dc3545')
+                            : (info.event.backgroundColor || '#6c757d');
+                        info.el.style.setProperty('background-color', color, 'important');
+                        info.el.style.setProperty('border-color', color, 'important');
+                        info.el.style.setProperty('color', '#fff', 'important');
+                    }
+                    // Applica pattern a strisce oblique ripetute per servizi
+                    else if (info.event.extendedProps.driverColors && info.event.extendedProps.driverColors.length > 0) {
                         const colors = info.event.extendedProps.driverColors;
                         info.el.style.background = createStripedGradient(colors);
                         info.el.style.color = '#fff';
@@ -1081,14 +1979,26 @@ const initializeCalendar = async () => {
                     info.el.addEventListener('mouseenter', (e) => handleEventHover(e, info));
                     info.el.addEventListener('mouseleave', handleEventLeave);
 
-                    // Context menu (right-click) on event
-                    if (!isDriver.value) {
+                    // Unavailability events: pointer cursor
+                    if (info.event.extendedProps?.isUnavailability) {
+                        info.el.style.cursor = 'pointer';
+                    }
+
+                    // Context menu (right-click) on event - desktop only
+                    if (!isDriver.value && !isMobile.value) {
                         info.el.addEventListener('contextmenu', (e) => {
                             e.stopPropagation();
-                            const serviceId = info.event.id;
-                            if (serviceId) {
+                            if (info.event.extendedProps?.isUnavailability) {
                                 closePopover();
-                                openEventContextMenu(e, serviceId);
+                                closeUnavailPopover();
+                                openUnavailContextMenu(e, info.event.extendedProps);
+                            } else {
+                                const serviceId = info.event.id;
+                                if (serviceId) {
+                                    closePopover();
+                                    closeUnavailPopover();
+                                    openEventContextMenu(e, serviceId);
+                                }
                             }
                         });
                     }
@@ -1103,7 +2013,29 @@ const initializeCalendar = async () => {
                     if (!isDriver.value) {
                         info.el.addEventListener('contextmenu', (e) => {
                             const dateStr = moment(info.date).format('YYYY-MM-DD');
-                            openCellContextMenu(e, dateStr);
+                            if (isMobile.value) {
+                                cellContextMenuDate.value = dateStr;
+                                showCellContextSheet.value = true;
+                            } else {
+                                openCellContextMenu(e, dateStr);
+                            }
+                        });
+
+                        // Long-press support on calendar cells for touch
+                        info.el.addEventListener('touchstart', (e) => {
+                            longPressTriggered = false;
+                            longPressTimer = setTimeout(() => {
+                                longPressTriggered = true;
+                                const dateStr = moment(info.date).format('YYYY-MM-DD');
+                                cellContextMenuDate.value = dateStr;
+                                showCellContextSheet.value = true;
+                            }, LONG_PRESS_DURATION);
+                        }, { passive: true });
+                        info.el.addEventListener('touchmove', () => {
+                            if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+                        });
+                        info.el.addEventListener('touchend', () => {
+                            if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
                         });
                     }
                 }
@@ -1111,25 +2043,74 @@ const initializeCalendar = async () => {
 
             calendarInstance.render();
 
-            // Replace the custom "goToDateBtn" button content with a date input
+            // Replace the custom "goToDateBtn" button content with flatpickr input
             await nextTick();
             const goToBtn = document.querySelector('.fc-goToDateBtn-button');
             if (goToBtn) {
+                const wrapper = document.createElement('div');
+                wrapper.style.cssText = 'display: inline-flex; align-items: center; gap: 4px;';
+
                 const dateInput = document.createElement('input');
-                dateInput.type = 'date';
+                dateInput.type = 'text';
                 dateInput.className = 'fc-goto-date-input';
-                dateInput.style.cssText = 'border: none; background: transparent; color: inherit; font-size: 0.85em; cursor: pointer; outline: none; width: 130px;';
-                dateInput.addEventListener('change', (e) => {
-                    if (e.target.value && calendarInstance) {
-                        calendarInstance.gotoDate(e.target.value);
-                    }
+                dateInput.placeholder = 'Vai a data...'
+                dateInput.title = 'Digita una data DD/MM/YYYY o clicca il calendario';
+                dateInput.style.cssText = 'border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.15); color: #fff; font-size: 0.8em; outline: none; width: 120px; padding: 2px 6px; border-radius: 3px;';
+
+                const calIcon = document.createElement('i');
+                calIcon.className = 'ri-calendar-line';
+                calIcon.style.cssText = 'cursor: pointer; font-size: 1rem; opacity: 0.8;';
+
+                wrapper.appendChild(dateInput);
+                wrapper.appendChild(calIcon);
+
+                goToBtn.textContent = '';
+                goToBtn.appendChild(wrapper);
+                goToBtn.style.padding = '0.2em 0.5em';
+
+                // Initialize flatpickr
+                const flatpickrInstance = flatpickr(dateInput, {
+                    dateFormat: 'd/m/Y',
+                    locale: flatpickrIt,
+                    allowInput: true,
+                    clickOpens: true,
+                    onChange: (selectedDates) => {
+                        if (selectedDates.length > 0 && calendarInstance) {
+                            const d = selectedDates[0];
+                            const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                            calendarInstance.gotoDate(dateStr);
+                        }
+                    },
                 });
+
+                // Click icon opens datepicker
+                calIcon.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    flatpickrInstance.open();
+                });
+
+                // Stop click propagation on input
                 dateInput.addEventListener('click', (e) => {
                     e.stopPropagation();
                 });
-                goToBtn.textContent = '';
-                goToBtn.appendChild(dateInput);
-                goToBtn.style.padding = '0.2em 0.5em';
+
+                // Handle manual typing with Enter
+                dateInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = dateInput.value.trim();
+                        // Parse DD/MM/YYYY
+                        const parts = val.split('/');
+                        if (parts.length === 3) {
+                            const parsed = new Date(parts[2], parts[1] - 1, parts[0]);
+                            if (!isNaN(parsed.getTime()) && calendarInstance) {
+                                const dateStr = parts[2] + '-' + parts[1].padStart(2, '0') + '-' + parts[0].padStart(2, '0');
+                                calendarInstance.gotoDate(dateStr);
+                                flatpickrInstance.setDate(parsed, false);
+                            }
+                        }
+                    }
+                });
             }
         }
     } catch (err) {
@@ -1162,20 +2143,29 @@ const createStripedGradient = (colors) => {
 };
 
 const handleEventClick = (info) => {
-    // Skip unavailability events
-    if (info.event.extendedProps?.isUnavailability) return;
+    // Unavailability events: open dedicated popover/bottom sheet
+    if (info.event.extendedProps?.isUnavailability) {
+        if (isMobile.value) {
+            selectedUnavail.value = info.event.extendedProps;
+            selectedUnavailEvent.value = info.el;
+            showUnavailSheet.value = true;
+        } else {
+            openUnavailPopover(info.event.extendedProps, info.el, info.jsEvent);
+        }
+        return;
+    }
 
     // Driver: non aprire popup per eventi non assegnati
     if (isDriver.value && !info.event.extendedProps.isAssignedToCurrentDriver) {
         return;
     }
 
-    // Chiudi l'hover popover se aperto
+    // Chiudi l'hover popover e il popover indisponibilità se aperti
     closeHoverPopover();
+    closeUnavailPopover();
 
     selectedService.value = info.event.extendedProps.service;
     selectedEvent.value = info.el;
-    showDetailPopover.value = true;
 
     // Reset editing and overlap state
     resetPopoverEditing();
@@ -1183,14 +2173,25 @@ const handleEventClick = (info) => {
     // Fetch full details (overlaps) in background
     fetchServiceDetail(info.event.extendedProps.service.id);
 
-    // Posiziona il popover vicino all'elemento cliccato
-    setTimeout(() => {
-        positionPopover(info.jsEvent);
-    }, 0);
+    if (isMobile.value) {
+        showDetailSheet.value = true;
+    } else {
+        showDetailPopover.value = true;
+        // Posiziona il popover vicino all'elemento cliccato (doppio posizionamento per altezza corretta)
+        const jsEvent = info.jsEvent;
+        setTimeout(() => {
+            positionPopover(jsEvent);
+            // Riposiziona dopo render completo del contenuto
+            setTimeout(() => positionPopover(jsEvent), 50);
+        }, 0);
+    }
 };
 
 const handleEventHover = (event, info) => {
-    // Skip unavailability events
+    // No hover popover on mobile
+    if (isMobile.value) return;
+
+    // Unavailability events: show simple tooltip via title attribute, no hover popover
     if (info.event.extendedProps?.isUnavailability) return;
 
     // Driver: non mostrare hover per eventi non assegnati
@@ -1203,12 +2204,12 @@ const handleEventHover = (event, info) => {
         clearTimeout(hoverTimeout);
     }
 
-    // Imposta timeout di 1 secondo prima di mostrare il popover
+    // Imposta timeout prima di mostrare il popover
     hoverTimeout = setTimeout(() => {
         hoverService.value = info.event.extendedProps.service;
         showHoverPopover.value = true;
         positionHoverPopover(event);
-    }, 1000);
+    }, 400);
 };
 
 const handleEventLeave = () => {
@@ -1248,27 +2249,41 @@ const positionPopover = (event) => {
     if (!popoverEl.value) return;
 
     const rect = event.target.getBoundingClientRect();
-    const popoverWidth = 320; // Larghezza fissa del popover
-    const popoverHeight = popoverEl.value.offsetHeight;
+    const popoverWidth = 400;
+    const margin = 10;
+    const maxPopoverHeight = window.innerHeight - margin * 2;
 
     let left = rect.left + window.scrollX;
     let top = rect.bottom + window.scrollY + 5;
 
-    // Se il popover esce dallo schermo a destra, posizionalo a sinistra
-    if (left + popoverWidth > window.innerWidth) {
-        left = rect.right - popoverWidth + window.scrollX;
+    // Se il popover esce dallo schermo a destra
+    if (left + popoverWidth > window.innerWidth - margin) {
+        left = window.innerWidth - popoverWidth - margin + window.scrollX;
+    }
+    // Non uscire a sinistra
+    if (left < margin + window.scrollX) {
+        left = margin + window.scrollX;
     }
 
-    // Se il popover esce dallo schermo in basso, posizionalo sopra
-    if (top + popoverHeight > window.innerHeight + window.scrollY) {
+    // Calcolo altezza dopo render
+    const popoverHeight = popoverEl.value.offsetHeight;
+
+    // Se il popover esce in basso, prova a posizionarlo sopra
+    if (top + popoverHeight > window.innerHeight + window.scrollY - margin) {
         top = rect.top + window.scrollY - popoverHeight - 5;
+    }
+    // Se anche sopra non entra, fissalo al top della viewport con scroll interno
+    if (top < window.scrollY + margin) {
+        top = window.scrollY + margin;
     }
 
     popoverStyle.value = {
         position: 'absolute',
         left: `${left}px`,
         top: `${top}px`,
-        zIndex: 9999
+        zIndex: 9999,
+        maxHeight: `${maxPopoverHeight}px`,
+        overflowY: 'auto',
     };
 };
 
@@ -1301,14 +2316,18 @@ const resetPopoverEditing = () => {
 
 const loadDictionaries = async () => {
     try {
-        const [driversRes, vehiclesRes, dressCodesRes] = await Promise.all([
+        const [driversRes, vehiclesRes, dressCodesRes, leaveTypesRes, vehicleUnavailTypesRes] = await Promise.all([
             axios.get('/api/users', { params: { role: 'driver', per_page: 200 } }),
             axios.get('/api/vehicles', { params: { per_page: 200 } }),
-            axios.get('/api/dictionaries/dress-codes')
+            axios.get('/api/dictionaries/dress-codes'),
+            axios.get('/api/dictionaries/leave-types'),
+            axios.get('/api/dictionaries/vehicle-unavailability-types'),
         ]);
         allDrivers.value = driversRes.data.data || [];
         allVehicles.value = vehiclesRes.data.data || [];
         allDressCodes.value = dressCodesRes.data.data || [];
+        allLeaveTypes.value = leaveTypesRes.data.data || [];
+        allVehicleUnavailabilityTypes.value = vehicleUnavailTypesRes.data.data || [];
         loadServiceTypes();
     } catch (err) {
         console.error('Error loading dictionaries:', err);
@@ -1566,10 +2585,30 @@ const formatCurrency = (value) => {
     return value ? parseFloat(value).toFixed(2) : '0.00';
 };
 
+const getDepositValue = (service) => {
+    switch (service.deposit_sale_type) {
+        case 'deposit_taxable': return parseFloat(service.deposit_taxable) || 0;
+        case 'deposit_handling_fees': return parseFloat(service.deposit_handling_fees) || 0;
+        default: return parseFloat(service.deposit_amount) || 0;
+    }
+};
+
+const getBalanceValue = (service) => {
+    switch (service.balance_sale_type) {
+        case 'balance_handling_fees': return parseFloat(service.balance_handling_fees) || 0;
+        case 'balance_card_fees': return parseFloat(service.balance_card_fees) || 0;
+        default: return parseFloat(service.balance_taxable) || 0;
+    }
+};
+
+const getServiceTotal = (service) => {
+    return getDepositValue(service) + getBalanceValue(service);
+};
+
 const getHoverEventTitle = (service) => {
     const pickupTime = moment.utc(service.pickup_datetime).format('HH:mm');
     const passengerCount = service.passenger_count || 0;
-    const serviceType = service.service_type || '';
+    const serviceType = getServiceTypeAbbreviation(service.service_type);
 
     let passengerLabel = '';
     if (service.passengers && service.passengers.length > 0) {
@@ -1591,6 +2630,86 @@ const getHoverEventTitle = (service) => {
     return titleParts.join(' | ');
 };
 
+// Mobile context actions from detail bottom sheet
+const mobileContextAction = async (action) => {
+    if (!selectedService.value) return;
+    const serviceId = selectedService.value.id;
+    showDetailSheet.value = false;
+
+    if (action === 'duplicate') {
+        try {
+            const { data } = await axios.post(`/api/services/${serviceId}/duplicate`);
+            window.location.href = calendarReturnUrl(`/easyncc/services/${data.data.id}/edit`);
+        } catch (err) {
+            notify.error('Errore durante la duplicazione');
+        }
+    } else if (action === 'return') {
+        try {
+            const { data } = await axios.post(`/api/services/${serviceId}/return`);
+            window.location.href = calendarReturnUrl(`/easyncc/services/${data.data.id}/edit`);
+        } catch (err) {
+            notify.error('Errore durante la creazione del ritorno');
+        }
+    } else if (action === 'delete') {
+        const confirmed = await notify.confirm('Conferma eliminazione', 'Vuoi eliminare questo servizio? L\'operazione non è reversibile.', { confirmText: 'Elimina' });
+        if (!confirmed) return;
+        try {
+            await axios.delete(`/api/services/${serviceId}`);
+            if (calendarInstance) {
+                const event = calendarInstance.getEventById(serviceId);
+                if (event) event.remove();
+            }
+        } catch (err) {
+            notify.error('Errore durante l\'eliminazione');
+        }
+    }
+};
+
+// Mobile unavailability actions from detail bottom sheet
+const mobileUnavailAction = async (action) => {
+    if (!selectedUnavail.value) return;
+    const data = selectedUnavail.value;
+    const item = data.unavailData;
+    if (!item) return;
+    showUnavailSheet.value = false;
+
+    if (action === 'duplicate') {
+        try {
+            const realId = String(item.id).replace(/^(driver|vehicle)_unavail_/, '');
+            const endpoint = data.unavailabilityType === 'driver'
+                ? `/api/driver-unavailabilities/${realId}/duplicate`
+                : `/api/vehicle-unavailabilities/${realId}/duplicate`;
+            await axios.post(endpoint);
+            // Reload unavailabilities
+            if (calendarInstance) {
+                const view = calendarInstance.view;
+                loadUnavailabilities(view.activeStart, view.activeEnd);
+            }
+        } catch (err) {
+            notify.error('Errore durante la duplicazione');
+        }
+    } else if (action === 'delete') {
+        const label = data.unavailabilityType === 'driver'
+            ? `indisponibilità di ${item.driver_name}`
+            : `indisponibilità del veicolo ${item.vehicle_plate}`;
+        const confirmed = await notify.confirm('Conferma eliminazione', `Vuoi eliminare ${label}?`, { confirmText: 'Elimina' });
+        if (!confirmed) return;
+        try {
+            const realId = String(item.id).replace(/^(driver|vehicle)_unavail_/, '');
+            const endpoint = data.unavailabilityType === 'driver'
+                ? `/api/driver-unavailabilities/${realId}`
+                : `/api/vehicle-unavailabilities/${realId}`;
+            await axios.delete(endpoint);
+            if (calendarInstance) {
+                const event = calendarInstance.getEventById(item.id);
+                if (event) event.remove();
+            }
+        } catch (err) {
+            notify.error('Errore durante l\'eliminazione');
+        }
+    }
+};
+
 // Chiudi il popover e context menu quando si clicca fuori
 const handleClickOutside = (event) => {
     // Close context menus on any click
@@ -1599,6 +2718,12 @@ const handleClickOutside = (event) => {
     if (showDetailPopover.value && popoverEl.value && !popoverEl.value.contains(event.target)) {
         if (!selectedEvent.value || !selectedEvent.value.contains(event.target)) {
             closePopover();
+        }
+    }
+
+    if (showUnavailPopover.value && unavailPopoverEl.value && !unavailPopoverEl.value.contains(event.target)) {
+        if (!selectedUnavailEvent.value || !selectedUnavailEvent.value.contains(event.target)) {
+            closeUnavailPopover();
         }
     }
 };
@@ -1630,6 +2755,7 @@ onMounted(async () => {
         }
     }
     document.addEventListener('click', handleClickOutside);
+    window.addEventListener('resize', onResize);
 });
 
 onUnmounted(() => {
@@ -1637,42 +2763,236 @@ onUnmounted(() => {
         calendarInstance.destroy();
     }
     document.removeEventListener('click', handleClickOutside);
+    window.removeEventListener('resize', onResize);
 });
 </script>
 
 <style scoped>
+/* Sticky header for calendar page */
+.calendar-sticky-header {
+    position: sticky;
+    top: 70px;
+    z-index: 1000;
+    background-color: var(--vz-secondary-bg, #fff);
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
 #calendar-container {
-    padding: 20px 0;
+    padding: 8px 0;
 }
 
 :deep(.fc) {
     font-family: inherit;
 }
 
-/* Assicura che ci sia una sola toolbar */
+/* Toolbar sticky - resta fissa durante lo scroll */
 :deep(.fc-header-toolbar) {
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.75rem;
+    position: sticky;
+    top: 120px; /* navbar 70px + sticky header ~50px */
+    z-index: 100;
+    background-color: #fff;
+    padding: 6px 0;
+    border-bottom: 1px solid #e9ecef;
 }
 
-:deep(.fc-button-primary) {
-    background-color: #007bff;
-    border-color: #007bff;
+/* Toolbar buttons: uniform height and indigo theme */
+:deep(.fc-button-primary),
+:deep(.fc .fc-button-primary),
+:deep(.fc .fc-today-button) {
+    background-color: #4b38b3 !important;
+    border-color: #4b38b3 !important;
+    color: #fff !important;
+    font-size: 0.85rem !important;
+    padding: 0.35rem 0.65rem !important;
+    line-height: 1.4 !important;
+    height: 34px !important;
+    box-sizing: border-box !important;
 }
 
 :deep(.fc-button-primary:hover) {
-    background-color: #0056b3;
-    border-color: #0056b3;
+    background-color: #3d2e93;
+    border-color: #3d2e93;
+}
+
+:deep(.fc-button-primary:focus) {
+    box-shadow: 0 0 0 0.2rem rgba(75, 56, 179, 0.35) !important;
+}
+
+:deep(.fc-button-primary:not(:disabled):active),
+:deep(.fc-button-primary.fc-button-active),
+:deep(.fc-button-primary:not(:disabled).fc-button-active),
+:deep(.fc-button-primary:not(:disabled):active:focus),
+:deep(.fc-button-primary.fc-button-active:focus),
+:deep(.fc .fc-button-primary:not(:disabled):active),
+:deep(.fc .fc-button-primary:not(:disabled).fc-button-active) {
+    background-color: #6350c8 !important;
+    border-color: #6350c8 !important;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.15) !important;
+    color: #fff !important;
+}
+
+:deep(.fc .fc-button-primary:hover),
+:deep(.fc .fc-today-button:hover) {
+    background-color: #3d2e93 !important;
+    border-color: #3d2e93 !important;
+}
+
+:deep(.fc .fc-button-primary:disabled),
+:deep(.fc .fc-today-button:disabled) {
+    background-color: #a8a1c7 !important;
+    border-color: #a8a1c7 !important;
+    opacity: 1 !important;
+    cursor: not-allowed !important;
 }
 
 :deep(.fc-button-primary:disabled) {
+    background-color: #4b38b3;
+    border-color: #4b38b3;
     opacity: 0.65;
+}
+
+/* Title in toolbar: match button height */
+:deep(.fc-toolbar-title) {
+    font-size: 1.1rem !important;
+    line-height: 34px;
+}
+
+/* Toolbar chunks alignment */
+:deep(.fc-toolbar-chunk) {
+    display: flex;
+    align-items: center;
+}
+
+/* GoToDate button: match height */
+:deep(.fc-goToDateBtn-button) {
+    height: 34px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+/* Flatpickr goto date input */
+:deep(.fc-goto-date-input) {
+    border: 1px solid rgba(255,255,255,0.5) !important;
+    background: rgba(255,255,255,0.2) !important;
+    color: #ffffff !important;
+    font-size: 0.9em !important;
+    font-weight: 500 !important;
+    width: 130px !important;
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+}
+
+:deep(.fc-goto-date-input::placeholder) {
+    color: rgba(255,255,255,0.85) !important;
+    font-weight: 400 !important;
 }
 
 :deep(.fc-event) {
     cursor: pointer;
-    padding: 2px 4px;
-    font-size: 0.7rem;
-    line-height: 1.3;
+    padding: 1px 3px;
+    font-size: 0.65rem;
+    line-height: 1.2;
+    margin-bottom: 1px !important;
+}
+
+/* ==================== MOBILE RESPONSIVE ==================== */
+
+@media (max-width: 767.98px) {
+    #calendar-container {
+        padding: 8px 0;
+    }
+
+    /* Compact FullCalendar toolbar on mobile */
+    :deep(.fc-header-toolbar) {
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 0.75rem;
+    }
+
+    :deep(.fc-header-toolbar .fc-toolbar-chunk) {
+        display: flex;
+        justify-content: center;
+    }
+
+    /* Title in center takes full width on its own line */
+    :deep(.fc-header-toolbar .fc-toolbar-chunk:nth-child(2)) {
+        order: -1;
+        flex: 0 0 100%;
+        margin-bottom: 4px;
+    }
+
+    :deep(.fc-toolbar-title) {
+        font-size: 1rem !important;
+    }
+
+    /* Smaller buttons on mobile */
+    :deep(.fc-button) {
+        padding: 0.2rem 0.4rem !important;
+        font-size: 0.75rem !important;
+    }
+
+    :deep(.fc-today-button) {
+        padding: 0.2rem 0.5rem !important;
+    }
+
+    /* Hide text labels in view buttons, show only first letter */
+    :deep(.fc-dayGridMonth-button) {
+        font-size: 0 !important;
+    }
+    :deep(.fc-dayGridMonth-button)::after {
+        content: 'M';
+        font-size: 0.75rem;
+    }
+    :deep(.fc-timeGridWeek-button) {
+        font-size: 0 !important;
+    }
+    :deep(.fc-timeGridWeek-button)::after {
+        content: 'S';
+        font-size: 0.75rem;
+    }
+    :deep(.fc-timeGridDay-button) {
+        font-size: 0 !important;
+    }
+    :deep(.fc-timeGridDay-button)::after {
+        content: 'G';
+        font-size: 0.75rem;
+    }
+
+    /* Go-to-date input smaller on mobile */
+    :deep(.fc-goto-date-input) {
+        width: 100px !important;
+        font-size: 0.75rem !important;
+    }
+
+    /* Tighter event display */
+    :deep(.fc-event) {
+        font-size: 0.6rem;
+        padding: 1px 2px;
+        line-height: 1.2;
+    }
+
+    /* Reduce day header size */
+    :deep(.fc-col-header-cell) {
+        font-size: 0.75rem;
+    }
+
+    /* Reduce day number size */
+    :deep(.fc-daygrid-day-number) {
+        font-size: 0.8rem;
+        padding: 2px 4px;
+    }
+
+    /* Card adjustments */
+    :deep(.card-body) {
+        padding: 0.5rem !important;
+    }
+
+    :deep(.card-header) {
+        padding: 0.5rem !important;
+    }
 }
 
 :deep(.fc-event.fc-event-overlap) {
@@ -1684,7 +3004,7 @@ onUnmounted(() => {
 }
 
 .service-detail-popover {
-    width: 320px;
+    width: 400px;
     background: #fff;
     border: 1px solid #dee2e6;
     border-radius: 0.375rem;
@@ -1700,13 +3020,34 @@ onUnmounted(() => {
 }
 
 .service-detail-popover .popover-body {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
     max-height: 600px;
     overflow-y: auto;
 }
 
 .service-detail-popover .btn-close-white {
     filter: brightness(0) invert(1);
+}
+
+/* Targa stile italiano nel popover */
+.popover-targa {
+    background: linear-gradient(to right, #003399 0%, #003399 8%, #ffffff 8%, #ffffff 92%, #003399 92%, #003399 100%);
+    border: 1px solid #000;
+    border-radius: 3px;
+    padding: 2px 6px;
+    display: inline-block;
+    font-family: 'Arial', sans-serif;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    min-width: 70px;
+}
+
+.popover-codice-targa {
+    font-size: 12px;
+    font-weight: bold;
+    color: #000;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .text-truncate {
@@ -1809,6 +3150,21 @@ onUnmounted(() => {
     font-weight: 600 !important;
     border-radius: 3px !important;
     cursor: default !important;
+}
+
+/* Force timed unavailability events to render as full block (like allDay) in month view */
+:deep(.fc-daygrid .fc-unavailability-driver),
+:deep(.fc-daygrid .fc-unavailability-vehicle) {
+    display: block !important;
+    padding: 1px 4px !important;
+}
+:deep(.fc-daygrid .fc-unavailability-driver .fc-daygrid-event-dot),
+:deep(.fc-daygrid .fc-unavailability-vehicle .fc-daygrid-event-dot) {
+    display: none !important;
+}
+:deep(.fc-daygrid .fc-unavailability-driver .fc-event-time),
+:deep(.fc-daygrid .fc-unavailability-vehicle .fc-event-time) {
+    display: none !important;
 }
 
 :deep(.fc-unavailability-driver) {

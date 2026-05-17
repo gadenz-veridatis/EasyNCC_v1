@@ -12,7 +12,10 @@ use App\Models\ServiceStatus;
 use App\Models\ServiceType;
 use App\Models\Settings;
 use App\Models\TransactionStatus;
+use App\Models\TelegramConfig;
+use App\Models\TelegramUser;
 use App\Services\ServiceOverlapService;
+use App\Services\TelegramAPI;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
@@ -65,6 +68,46 @@ class ServiceController extends Controller
      * Get all form initialization data in a single request.
      * Combines dictionaries + settings to reduce API calls on form load.
      */
+    /**
+     * Search users for filter autocomplete (clients, intermediaries).
+     */
+    public function filterUsers(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $companyId = $user->isSuperAdmin() && $request->filled('company_id')
+            ? $request->company_id
+            : $user->company_id;
+
+        $type = $request->get('type'); // 'client' or 'intermediary'
+        $search = $request->get('search', '');
+
+        $query = \App\Models\User::select('id', 'name', 'surname')
+            ->where('company_id', $companyId)
+            ->where('role', 'collaboratore');
+
+        if ($type === 'client') {
+            $query->whereHas('clientProfile', fn($q) => $q->where('is_committente', true));
+        } elseif ($type === 'intermediary') {
+            $query->where('is_intermediario', true);
+        }
+
+        if (strlen($search) >= 2) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ilike', "%{$search}%")
+                  ->orWhere('surname', 'ilike', "%{$search}%");
+            });
+        }
+
+        $users = $query->orderBy('surname')->orderBy('name')->limit(50)->get();
+
+        return response()->json([
+            'data' => $users->map(fn($u) => [
+                'value' => $u->id,
+                'label' => trim(($u->surname ?? '') . ' ' . ($u->name ?? '')),
+            ]),
+        ]);
+    }
+
     public function formData(Request $request): JsonResponse
     {
         $companyId = $request->user()->isSuperAdmin()
@@ -85,6 +128,7 @@ class ServiceController extends Controller
                 'accounting_entries' => AccountingEntry::where('company_id', $companyId)->orderBy('name')->get(),
                 'payment_types' => PaymentType::where('company_id', $companyId)->orderBy('name')->get(),
                 'transaction_statuses' => TransactionStatus::where('company_id', $companyId)->where('is_active', true)->orderBy('sort_order')->get(),
+                'activity_payment_types' => \App\Models\ActivityPaymentType::where('company_id', $companyId)->where('is_active', true)->orderBy('sort_order')->get(),
                 'settings' => Settings::where('company_id', $companyId)->with('defaultSupplier:id,name,surname,email')->first(),
             ],
         ]);
@@ -109,8 +153,11 @@ class ServiceController extends Controller
             },
             'dressCode:id,name',
             'passengers:id,service_id,name,surname,phone,nationality',
-            'activities.activityType:id,name',
-            'activities.supplier:id,name,surname',
+            'activities' => function ($query) {
+                $query->orderBy('sort_order', 'asc')
+                      ->orderBy('start_time', 'asc')
+                      ->with(['activityType:id,name', 'supplier:id,name,surname']);
+            },
         ]);
 
         // Add counts for notifications (lightweight counts only)
@@ -162,6 +209,11 @@ class ServiceController extends Controller
             $query->where('intermediary_id', $request->intermediary_id);
         }
 
+        // Filter by supplier (collega)
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->supplier_id);
+        }
+
         // Filter by service type (stored as string)
         if ($request->filled('service_type_id')) {
             $query->where('service_type', $request->service_type_id);
@@ -174,9 +226,20 @@ class ServiceController extends Controller
             });
         }
 
-        // Filter by reference name (contact_name)
+        // General search: reference_number, client name/surname, passenger name
         if ($request->filled('reference_name')) {
-            $query->where('contact_name', 'ilike', '%' . $request->reference_name . '%');
+            $search = $request->reference_name;
+            $query->where(function ($q) use ($search) {
+                $q->where('reference_number', 'ilike', "%{$search}%")
+                  ->orWhere('contact_name', 'ilike', "%{$search}%")
+                  ->orWhereHas('client', function ($c) use ($search) {
+                      $c->where('name', 'ilike', "%{$search}%")
+                        ->orWhere('surname', 'ilike', "%{$search}%");
+                  })
+                  ->orWhereHas('passengers', function ($p) use ($search) {
+                      $p->where('name', 'ilike', "%{$search}%");
+                  });
+            });
         }
 
         // Filter by date range overlap: services whose duration [pickup, dropoff]
@@ -225,6 +288,167 @@ class ServiceController extends Controller
     }
 
     /**
+     * Aggregated summary for filtered services (no pagination).
+     */
+    public function summary(Request $request): JsonResponse
+    {
+        $query = Service::query();
+
+        // Multi-tenancy
+        if ($request->user()->isSuperAdmin()) {
+            if ($request->filled('company_id')) {
+                $query->where('company_id', $request->company_id);
+            }
+        } else {
+            $query->where('company_id', $request->user()->company_id);
+        }
+
+        // Reuse same filters as index
+        if ($request->filled('status_id')) {
+            $query->where('status_id', $request->status_id);
+        } elseif ($request->filled('status')) {
+            $query->whereHas('status', fn($q) => $q->where('name', $request->status));
+        }
+        if ($request->filled('vehicle_id')) $query->where('vehicle_id', $request->vehicle_id);
+        if ($request->filled('client_id')) $query->where('client_id', $request->client_id);
+        if ($request->filled('intermediary_id')) $query->where('intermediary_id', $request->intermediary_id);
+        if ($request->filled('supplier_id')) $query->where('supplier_id', $request->supplier_id);
+        if ($request->filled('service_type_id')) $query->where('service_type', $request->service_type_id);
+        if ($request->filled('driver_id')) {
+            $query->whereHas('drivers', fn($q) => $q->where('service_driver.user_id', $request->driver_id));
+        }
+        if ($request->filled('reference_name')) {
+            $search = $request->reference_name;
+            $query->where(function ($q) use ($search) {
+                $q->where('reference_number', 'ilike', "%{$search}%")
+                  ->orWhere('contact_name', 'ilike', "%{$search}%")
+                  ->orWhereHas('client', fn($c) => $c->where('name', 'ilike', "%{$search}%")->orWhere('surname', 'ilike', "%{$search}%"))
+                  ->orWhereHas('passengers', fn($p) => $p->where('name', 'ilike', "%{$search}%"));
+            });
+        }
+        if ($request->filled('date_from') && $request->filled('date_to')) {
+            $query->where('pickup_datetime', '<=', $request->date_to . ' 23:59:59')
+                  ->where('dropoff_datetime', '>=', $request->date_from . ' 00:00:00');
+        } elseif ($request->filled('date_from')) {
+            $query->where('dropoff_datetime', '>=', $request->date_from . ' 00:00:00');
+        } elseif ($request->filled('date_to')) {
+            $query->where('pickup_datetime', '<=', $request->date_to . ' 23:59:59');
+        }
+
+        // Get service IDs matching filters
+        $serviceIds = $query->pluck('id');
+        $serviceCount = $serviceIds->count();
+
+        // Aggregate from accounting_transactions for these services
+        $transactions = \App\Models\AccountingTransaction::whereIn('service_id', $serviceIds)
+            ->where('status', '!=', 'cancelled')
+            ->selectRaw("
+                transaction_type,
+                installment,
+                status,
+                SUM(amount) as total_amount
+            ")
+            ->groupBy('transaction_type', 'installment', 'status')
+            ->get();
+
+        // Build aggregates
+        $result = [
+            'service_count' => $serviceCount,
+            'revenue_collected' => 0,
+            'revenue_to_collect' => 0,
+            'revenue_taxable' => 0,
+            'revenue_handling' => 0,
+            'revenue_card' => 0,
+            'commission_paid' => 0,
+            'commission_to_pay' => 0,
+            'driver_cost_paid' => 0,
+            'driver_cost_to_pay' => 0,
+            'driver_cost_total' => 0,
+            'colleague_cost_paid' => 0,
+            'colleague_cost_to_pay' => 0,
+            'colleague_cost_total' => 0,
+            'experience_cost' => 0,
+        ];
+
+        // Get settings for entry_id mapping
+        $companyId = $request->user()->isSuperAdmin() && $request->filled('company_id')
+            ? $request->company_id
+            : $request->user()->company_id;
+        $settings = \App\Models\Settings::where('company_id', $companyId)->first();
+
+        // Detailed aggregation by entry_id and status
+        $detailedTx = \App\Models\AccountingTransaction::whereIn('service_id', $serviceIds)
+            ->where('status', '!=', 'cancelled')
+            ->selectRaw("accounting_entry_id, status, SUM(amount) as total_amount")
+            ->groupBy('accounting_entry_id', 'status')
+            ->get();
+
+        $finalStatuses = ['paid', 'collected', 'collected_driver'];
+
+        foreach ($detailedTx as $tx) {
+            $isFinal = in_array($tx->status, $finalStatuses);
+            $amount = (float) $tx->total_amount;
+
+            if (!$settings) continue;
+
+            // Revenue (sale entries: deposit, balance, extra)
+            if (in_array($tx->accounting_entry_id, array_filter([
+                $settings->deposit_accounting_entry_id,
+                $settings->balance_accounting_entry_id,
+                $settings->extra_revenue_accounting_entry_id,
+            ]))) {
+                if ($isFinal) {
+                    $result['revenue_collected'] += $amount;
+                } else {
+                    $result['revenue_to_collect'] += $amount;
+                }
+            }
+
+            // Commissions (intermediation)
+            if ($tx->accounting_entry_id == $settings->commission_accounting_entry_id) {
+                $isFinal ? $result['commission_paid'] += $amount : $result['commission_to_pay'] += $amount;
+            }
+
+            // Driver cost
+            if ($tx->accounting_entry_id == $settings->driver_cost_accounting_entry_id) {
+                $result['driver_cost_total'] += $amount;
+                $isFinal ? $result['driver_cost_paid'] += $amount : $result['driver_cost_to_pay'] += $amount;
+            }
+
+            // Colleague cost
+            if ($tx->accounting_entry_id == $settings->colleague_cost_accounting_entry_id) {
+                $result['colleague_cost_total'] += $amount;
+                $isFinal ? $result['colleague_cost_paid'] += $amount : $result['colleague_cost_to_pay'] += $amount;
+            }
+
+            // Experience cost
+            if ($tx->accounting_entry_id == $settings->experience_accounting_entry_id) {
+                $result['experience_cost'] += $amount;
+            }
+        }
+
+        // Revenue breakdown by sale_type from services (not transactions)
+        $revenueBreakdown = Service::whereIn('id', $serviceIds)
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN deposit_sale_type = 'deposit_taxable' THEN deposit_taxable ELSE 0 END), 0)
+                + COALESCE(SUM(CASE WHEN balance_sale_type = 'balance_taxable' THEN balance_taxable ELSE 0 END), 0) as total_taxable,
+                COALESCE(SUM(CASE WHEN deposit_sale_type = 'deposit_handling_fees' THEN deposit_handling_fees ELSE 0 END), 0)
+                + COALESCE(SUM(CASE WHEN balance_sale_type = 'balance_handling_fees' THEN balance_handling_fees ELSE 0 END), 0) as total_handling,
+                COALESCE(SUM(CASE WHEN deposit_sale_type = 'deposit_card_fees' THEN deposit_amount ELSE 0 END), 0)
+                + COALESCE(SUM(CASE WHEN balance_sale_type = 'balance_card_fees' THEN balance_card_fees ELSE 0 END), 0) as total_card
+            ")
+            ->first();
+
+        if ($revenueBreakdown) {
+            $result['revenue_taxable'] = (float) $revenueBreakdown->total_taxable;
+            $result['revenue_handling'] = (float) $revenueBreakdown->total_handling;
+            $result['revenue_card'] = (float) $revenueBreakdown->total_card;
+        }
+
+        return response()->json(['success' => true, 'data' => $result]);
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request): JsonResponse
@@ -261,6 +485,7 @@ class ServiceController extends Controller
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
             'reference_number' => 'nullable|string|max:255',
+            'external_reference' => 'nullable|string|max:255',
             'service_type' => 'required|string|max:255',
             'passenger_count' => 'required|integer|min:0',
             'contact_name' => 'nullable|string|max:255',
@@ -318,6 +543,7 @@ class ServiceController extends Controller
             'deposit_taxable' => 'nullable|numeric|min:0',
             'deposit_handling_fees' => 'nullable|numeric|min:0',
             'deposit_amount' => 'nullable|numeric|min:0',
+            'deposit_sale_type' => 'nullable|string|in:deposit_taxable,deposit_handling_fees,deposit_card_fees',
             'balance_taxable' => 'nullable|numeric|min:0',
             'balance_handling_fees' => 'nullable|numeric|min:0',
             'balance_card_fees' => 'nullable|numeric|min:0',
@@ -325,6 +551,14 @@ class ServiceController extends Controller
             'driver_compensation' => 'nullable|numeric|min:0',
             'intermediary_commission' => 'nullable|numeric|min:0',
             'expenses' => 'nullable|numeric|min:0',
+            'extra_revenues' => 'nullable|array',
+            'extra_revenues.*.id' => 'nullable|string',
+            'extra_revenues.*.description' => 'required|string|max:255',
+            'extra_revenues.*.amount_taxable' => 'required|numeric|min:0',
+            'extra_revenues.*.amount_handling' => 'nullable|numeric|min:0',
+            'extra_revenues.*.amount_card' => 'nullable|numeric|min:0',
+            'extra_revenues.*.sale_type' => 'nullable|string|in:amount_taxable,amount_handling,amount_card',
+            'extra_revenues.*.accounting_transaction_id' => 'nullable|integer',
             'fuel_cost' => 'nullable|numeric|min:0',
             'toll_cost' => 'nullable|numeric|min:0',
             'parking_cost' => 'nullable|numeric|min:0',
@@ -386,7 +620,7 @@ class ServiceController extends Controller
             'activities' => function ($query) {
                 $query->orderBy('sort_order', 'asc')
                       ->orderBy('start_time', 'asc')
-                      ->with(['activityType', 'supplier']);
+                      ->with(['activityType', 'supplier', 'confirmationAssignee:id,name,surname']);
             },
             'accountingTransactions',
             'tasks.assignedUsers',
@@ -449,6 +683,7 @@ class ServiceController extends Controller
         $validated = $request->validate([
             'company_id' => 'sometimes|exists:companies,id',
             'reference_number' => 'sometimes|string|max:255',
+            'external_reference' => 'sometimes|nullable|string|max:255',
             'service_type' => 'sometimes|string|max:255',
             'passenger_count' => 'sometimes|integer|min:0',
             'contact_name' => 'nullable|string|max:255',
@@ -507,6 +742,7 @@ class ServiceController extends Controller
             'deposit_taxable' => 'nullable|numeric|min:0',
             'deposit_handling_fees' => 'nullable|numeric|min:0',
             'deposit_amount' => 'nullable|numeric|min:0',
+            'deposit_sale_type' => 'nullable|string|in:deposit_taxable,deposit_handling_fees,deposit_card_fees',
             'balance_taxable' => 'nullable|numeric|min:0',
             'balance_handling_fees' => 'nullable|numeric|min:0',
             'balance_card_fees' => 'nullable|numeric|min:0',
@@ -514,6 +750,14 @@ class ServiceController extends Controller
             'driver_compensation' => 'nullable|numeric|min:0',
             'intermediary_commission' => 'nullable|numeric|min:0',
             'expenses' => 'nullable|numeric|min:0',
+            'extra_revenues' => 'nullable|array',
+            'extra_revenues.*.id' => 'nullable|string',
+            'extra_revenues.*.description' => 'required|string|max:255',
+            'extra_revenues.*.amount_taxable' => 'required|numeric|min:0',
+            'extra_revenues.*.amount_handling' => 'nullable|numeric|min:0',
+            'extra_revenues.*.amount_card' => 'nullable|numeric|min:0',
+            'extra_revenues.*.sale_type' => 'nullable|string|in:amount_taxable,amount_handling,amount_card',
+            'extra_revenues.*.accounting_transaction_id' => 'nullable|integer',
             'fuel_cost' => 'nullable|numeric|min:0',
             'toll_cost' => 'nullable|numeric|min:0',
             'parking_cost' => 'nullable|numeric|min:0',
@@ -600,6 +844,7 @@ class ServiceController extends Controller
             'status_id' => 'nullable|exists:service_statuses,id',
             'dress_code_id' => 'nullable|exists:dress_codes,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
+            'service_type' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
         ];
 
@@ -779,17 +1024,21 @@ class ServiceController extends Controller
      */
     public function recalculateOverlaps(Request $request): JsonResponse
     {
+        set_time_limit(300);
+
         $user = $request->user();
         $companyId = $user->role === 'super-admin'
             ? ($request->input('company_id') ?? $user->company_id)
             : $user->company_id;
 
-        // Load all active services for the company
+        // Load current and future services for the company (from yesterday onwards)
+        $cutoffDate = now()->subDay()->startOfDay();
         $services = Service::withoutGlobalScopes()
             ->where('company_id', $companyId)
             ->whereNull('deleted_at')
             ->whereNotNull('vehicle_departure_datetime')
             ->whereNotNull('vehicle_return_datetime')
+            ->where('vehicle_departure_datetime', '>=', $cutoffDate)
             ->with('drivers')
             ->get();
 
@@ -899,5 +1148,93 @@ class ServiceController extends Controller
                 }
             }
         }
+    }
+
+    /**
+     * Send pickup or dropoff location to assigned drivers via Telegram.
+     */
+    public function sendLocationTelegram(Request $request, Service $service): JsonResponse
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:pickup,dropoff',
+        ]);
+
+        $type = $validated['type'];
+
+        // Get coordinates based on type
+        $latField = $type === 'pickup' ? 'pickup_latitude' : 'dropoff_latitude';
+        $lngField = $type === 'pickup' ? 'pickup_longitude' : 'dropoff_longitude';
+        $addressField = $type === 'pickup' ? 'pickup_address' : 'dropoff_address';
+        $locationField = $type === 'pickup' ? 'pickup_location' : 'dropoff_location';
+
+        $lat = $service->$latField;
+        $lng = $service->$lngField;
+
+        if (!$lat || !$lng) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Coordinate non disponibili per questo indirizzo.',
+            ], 422);
+        }
+
+        // Check telegram config
+        $config = TelegramConfig::where('company_id', $service->company_id)->first();
+        if (!$config || !$config->bot_token || !$config->webhook_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Telegram non è configurato o il webhook non è attivo.',
+            ], 422);
+        }
+
+        // Check status is allowed
+        $settings = Settings::where('company_id', $service->company_id)->first();
+        $allowedStatuses = $settings->telegram_location_status_ids ?? [];
+        if (!empty($allowedStatuses) && !in_array($service->status_id, $allowedStatuses)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lo stato attuale del servizio non consente l\'invio della posizione.',
+            ], 422);
+        }
+
+        $api = new TelegramAPI($config->bot_token);
+
+        // Get assigned drivers with telegram accounts
+        $driverIds = $service->drivers()->pluck('users.id');
+        $telegramUsers = TelegramUser::where('company_id', $service->company_id)
+            ->whereIn('user_id', $driverIds)
+            ->where('is_active', true)
+            ->get();
+
+        if ($telegramUsers->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nessun driver assegnato ha un account Telegram collegato.',
+            ], 422);
+        }
+
+        $typeLabel = $type === 'pickup' ? 'Pickup' : 'Dropoff';
+        $address = $service->$addressField ?? '';
+        $location = $service->$locationField ?? '';
+        $caption = "📍 <b>{$typeLabel}</b> — Servizio #{$service->id}";
+        if ($location) {
+            $caption .= "\n🏷 {$location}";
+        }
+        if ($address) {
+            $caption .= "\n📫 {$address}";
+        }
+
+        $sentCount = 0;
+        foreach ($telegramUsers as $tgUser) {
+            $result = $api->sendLocation($tgUser->telegram_chat_id, (float) $lat, (float) $lng, $caption);
+            if ($result && ($result['ok'] ?? false)) {
+                $sentCount++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Posizione {$typeLabel} inviata a {$sentCount} driver.",
+            'sent_count' => $sentCount,
+        ]);
     }
 }

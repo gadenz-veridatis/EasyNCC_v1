@@ -19,7 +19,7 @@
                                 {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
                                 <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
                             </button>
-                            <Link :href="route('easyncc.users.create')" class="btn btn-primary btn-sm">
+                            <Link :href="withReturnUrl(route('easyncc.users.create'))" class="btn btn-primary btn-sm">
                                 <i class="bx bx-plus me-1"></i>
                                 Nuovo Committente
                             </Link>
@@ -45,7 +45,7 @@
                                         type="text"
                                         class="form-control form-control-sm"
                                         placeholder="Nome, cognome, ragione sociale, email..."
-                                        @input="applyFilters"
+                                        @input="debouncedApplyFilters"
                                     />
                                 </BCol>
                                 <BCol :md="isSuperAdmin ? 3 : 4">
@@ -118,10 +118,10 @@
                                         <td>{{ committente.client_profile?.business_name || '-' }}</td>
                                         <td>{{ committente.client_profile?.vat_number || '-' }}</td>
                                         <td>
-                                            <Link :href="route('easyncc.users.show', committente.id)" class="btn btn-sm btn-soft-info me-1" title="Visualizza Dettagli">
+                                            <Link :href="withReturnUrl(route('easyncc.users.show', committente.id))" class="btn btn-sm btn-soft-info me-1" title="Visualizza Dettagli">
                                                 <i class="bx bx-show"></i>
                                             </Link>
-                                            <Link :href="route('easyncc.users.edit', committente.id)" class="btn btn-sm btn-soft-primary me-1" title="Modifica">
+                                            <Link :href="withReturnUrl(route('easyncc.users.edit', committente.id))" class="btn btn-sm btn-soft-primary me-1" title="Modifica">
                                                 <i class="bx bx-edit"></i>
                                             </Link>
                                             <button
@@ -253,8 +253,10 @@ import { Head, Link } from '@inertiajs/vue3';
 import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
-import Swal from 'sweetalert2';
+import { useNotify } from '@/composables/useNotify.js';
+import { useUrlFilters } from '@/composables/useUrlFilters.js';
 
+const notify = useNotify();
 const committenti = ref([]);
 const companies = ref([]);
 const loading = ref(false);
@@ -281,6 +283,12 @@ const filters = ref({
 // Sorting
 const sortField = ref('surname');
 const sortDirection = ref('asc');
+
+const { readFromUrl, withReturnUrl } = useUrlFilters(filters, { page: currentPage, sortField, sortDirection });
+
+// Debounce & request counter
+let searchTimer = null;
+let requestCounter = 0;
 
 // Computed
 const isSuperAdmin = computed(() => currentUser.value?.role === 'super-admin');
@@ -317,6 +325,7 @@ const loadCompanies = async () => {
 const loadCommittenti = async () => {
     loading.value = true;
     error.value = '';
+    const thisRequest = ++requestCounter;
 
     try {
         const params = {
@@ -330,6 +339,9 @@ const loadCommittenti = async () => {
         };
 
         const response = await axios.get('/api/users', { params });
+
+        if (thisRequest !== requestCounter) return;
+
         committenti.value = response.data.data || [];
 
         // Handle pagination metadata
@@ -346,10 +358,13 @@ const loadCommittenti = async () => {
             totalRecords.value = committenti.value.length;
         }
     } catch (err) {
+        if (thisRequest !== requestCounter) return;
         error.value = 'Errore nel caricamento dei committenti';
         console.error('Error loading committenti:', err);
     } finally {
-        loading.value = false;
+        if (thisRequest === requestCounter) {
+            loading.value = false;
+        }
     }
 };
 
@@ -358,7 +373,15 @@ const applyFilters = () => {
     loadCommittenti();
 };
 
+const debouncedApplyFilters = () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        applyFilters();
+    }, 300);
+};
+
 const resetFilters = () => {
+    clearTimeout(searchTimer);
     filters.value = {
         company_id: '',
         search: '',
@@ -391,24 +414,15 @@ const changePerPage = () => {
 };
 
 const deleteCommittente = async (id) => {
-    const result = await Swal.fire({
-        title: 'Sei sicuro?',
-        text: 'Vuoi eliminare questo committente?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Sì, elimina!',
-        cancelButtonText: 'Annulla'
-    });
+    const confirmed = await notify.confirm('Sei sicuro?', 'Vuoi eliminare questo committente?', { confirmText: 'Sì, elimina!' });
 
-    if (result.isConfirmed) {
+    if (confirmed) {
         try {
             await axios.delete(`/api/users/${id}`);
-            Swal.fire('Eliminato!', 'Il committente è stato eliminato.', 'success');
+            notify.success('Il committente è stato eliminato.');
             loadCommittenti();
         } catch (err) {
-            Swal.fire('Errore!', 'Si è verificato un errore durante l\'eliminazione.', 'error');
+            notify.error('Si è verificato un errore durante l\'eliminazione.');
             console.error('Error deleting committente:', err);
         }
     }
@@ -416,6 +430,7 @@ const deleteCommittente = async (id) => {
 
 onMounted(async () => {
     await loadCurrentUser();
+    readFromUrl();
     await loadCompanies();
     await loadCommittenti();
 });

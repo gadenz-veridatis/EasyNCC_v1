@@ -3,7 +3,7 @@ FROM php:8.3-fpm
 # Installa estensioni PHP necessarie per Laravel
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libpng-dev libonig-dev libxml2-dev \
-    libpq-dev \
+    libpq-dev cron \
     && docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd
 
 # Installa Composer
@@ -28,5 +28,8 @@ RUN chown -R www-data:www-data /var/www/html \
     && if [ -d /var/www/html/storage ]; then chown -R www-data:www-data /var/www/html/storage; fi \
     && if [ -d /var/www/html/bootstrap/cache ]; then chown -R www-data:www-data /var/www/html/bootstrap/cache; fi
 
+# Configura cron per Laravel scheduler
+RUN echo "* * * * * cd /var/www/html && php artisan schedule:run >> /var/www/html/storage/logs/scheduler.log 2>&1" | crontab -u www-data -
+
 EXPOSE 9000
-CMD ["php-fpm"]
+CMD service cron start && php-fpm

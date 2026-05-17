@@ -32,8 +32,8 @@
                                 {{ unavailability.unavailability_type?.name || unavailability.type || '-' }}
                             </span>
                         </td>
-                        <td>{{ formatDate(unavailability.start_date) }}</td>
-                        <td>{{ formatDate(unavailability.end_date) }}</td>
+                        <td>{{ formatDateTime(unavailability.start_date, unavailability.all_day) }}</td>
+                        <td>{{ formatDateTime(unavailability.end_date, unavailability.all_day) }}</td>
                         <td>
                             <small>{{ unavailability.notes || '-' }}</small>
                         </td>
@@ -88,34 +88,33 @@
                         </small>
                     </BCol>
 
-                    <BCol md="6" class="mb-3">
-                        <label for="start_date" class="form-label">Data Inizio *</label>
-                        <input
-                            id="start_date"
-                            v-model="formData.start_date"
-                            type="date"
-                            class="form-control"
-                            :class="{ 'is-invalid': formErrors.start_date }"
-                            required
-                        />
-                        <small v-if="formErrors.start_date" class="text-danger">
-                            {{ formErrors.start_date[0] }}
-                        </small>
+                    <BCol cols="12" class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" v-model="formData.all_day" id="allDayToggleVehicle" />
+                            <label class="form-check-label" for="allDayToggleVehicle">Tutto il giorno</label>
+                        </div>
                     </BCol>
 
-                    <BCol md="6" class="mb-3">
+                    <BCol :md="formData.all_day ? 6 : 3" class="mb-3">
+                        <label for="start_date" class="form-label">Data Inizio *</label>
+                        <input id="start_date" v-model="formStartDate" type="date" class="form-control" :class="{ 'is-invalid': formErrors.start_date }" required />
+                        <small v-if="formErrors.start_date" class="text-danger">{{ formErrors.start_date[0] }}</small>
+                    </BCol>
+
+                    <BCol md="3" class="mb-3" v-if="!formData.all_day">
+                        <label class="form-label">Ora Inizio *</label>
+                        <input type="time" v-model="formStartTime" class="form-control" required />
+                    </BCol>
+
+                    <BCol :md="formData.all_day ? 6 : 3" class="mb-3">
                         <label for="end_date" class="form-label">Data Fine *</label>
-                        <input
-                            id="end_date"
-                            v-model="formData.end_date"
-                            type="date"
-                            class="form-control"
-                            :class="{ 'is-invalid': formErrors.end_date }"
-                            required
-                        />
-                        <small v-if="formErrors.end_date" class="text-danger">
-                            {{ formErrors.end_date[0] }}
-                        </small>
+                        <input id="end_date" v-model="formEndDate" type="date" class="form-control" :class="{ 'is-invalid': formErrors.end_date }" required />
+                        <small v-if="formErrors.end_date" class="text-danger">{{ formErrors.end_date[0] }}</small>
+                    </BCol>
+
+                    <BCol md="3" class="mb-3" v-if="!formData.all_day">
+                        <label class="form-label">Ora Fine *</label>
+                        <input type="time" v-model="formEndTime" class="form-control" required />
                     </BCol>
 
                     <BCol cols="12" class="mb-3">
@@ -177,8 +176,24 @@ const formData = ref({
     vehicle_unavailability_type_id: '',
     start_date: '',
     end_date: '',
+    all_day: true,
     notes: '',
 });
+
+const formStartDate = ref('');
+const formStartTime = ref('00:00');
+const formEndDate = ref('');
+const formEndTime = ref('23:59');
+
+const composeDatetimes = () => {
+    if (formData.value.all_day) {
+        formData.value.start_date = formStartDate.value + ' 00:00:00';
+        formData.value.end_date = formEndDate.value + ' 23:59:59';
+    } else {
+        formData.value.start_date = formStartDate.value + ' ' + (formStartTime.value || '00:00') + ':00';
+        formData.value.end_date = formEndDate.value + ' ' + (formEndTime.value || '23:59') + ':00';
+    }
+};
 
 const loadUnavailabilities = async () => {
     try {
@@ -201,6 +216,7 @@ const loadUnavailabilityTypes = async () => {
 const submitForm = async () => {
     submitting.value = true;
     formErrors.value = {};
+    composeDatetimes();
 
     try {
         if (editingUnavailability.value) {
@@ -231,12 +247,18 @@ const submitForm = async () => {
 
 const editUnavailability = (unavailability) => {
     editingUnavailability.value = unavailability;
+    const allDay = unavailability.all_day !== false;
     formData.value = {
         vehicle_unavailability_type_id: unavailability.vehicle_unavailability_type_id || '',
-        start_date: unavailability.start_date,
-        end_date: unavailability.end_date,
+        start_date: '',
+        end_date: '',
+        all_day: allDay,
         notes: unavailability.notes || '',
     };
+    formStartDate.value = moment(unavailability.start_date).format('YYYY-MM-DD');
+    formEndDate.value = moment(unavailability.end_date).format('YYYY-MM-DD');
+    formStartTime.value = allDay ? '00:00' : moment(unavailability.start_date).format('HH:mm');
+    formEndTime.value = allDay ? '23:59' : moment(unavailability.end_date).format('HH:mm');
     showAddModal.value = true;
 };
 
@@ -257,18 +279,22 @@ const deleteUnavailability = async (unavailability) => {
 const closeModal = () => {
     showAddModal.value = false;
     editingUnavailability.value = null;
-    formData.value = {
-        vehicle_unavailability_type_id: '',
-        start_date: '',
-        end_date: '',
-        notes: '',
-    };
+    formData.value = { vehicle_unavailability_type_id: '', start_date: '', end_date: '', all_day: true, notes: '' };
+    formStartDate.value = '';
+    formEndDate.value = '';
+    formStartTime.value = '00:00';
+    formEndTime.value = '23:59';
     formErrors.value = {};
 };
 
 const formatDate = (date) => {
     if (!date) return '-';
     return moment(date).format('DD/MM/YYYY');
+};
+
+const formatDateTime = (date, allDay) => {
+    if (!date) return '-';
+    return allDay ? moment(date).format('DD/MM/YYYY') : moment(date).format('DD/MM/YYYY HH:mm');
 };
 
 onMounted(() => {

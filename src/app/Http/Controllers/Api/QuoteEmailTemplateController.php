@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\QuoteEmailTemplate;
 use App\Services\QuoteTemplateService;
+use App\Services\ServiceTemplateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,11 +15,16 @@ class QuoteEmailTemplateController extends Controller
     {
         $companyId = $this->getCompanyId($request);
 
-        $templates = QuoteEmailTemplate::withoutGlobalScopes()
+        $query = QuoteEmailTemplate::withoutGlobalScopes()
             ->where('company_id', $companyId)
-            ->with(['creator:id,name,surname', 'updater:id,name,surname'])
-            ->orderBy('name')
-            ->get();
+            ->with(['creator:id,name,surname', 'updater:id,name,surname']);
+
+        // Filter by type if provided
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        $templates = $query->orderBy('name')->get();
 
         return response()->json(['data' => $templates]);
     }
@@ -29,22 +35,26 @@ class QuoteEmailTemplateController extends Controller
             'name' => 'required|string|max:255',
             'subject' => 'required|string|max:500',
             'body_html' => 'required|string',
+            'type' => 'sometimes|string|in:quote,service_assignment,service_closure',
             'is_default' => 'boolean',
         ]);
 
         $user = Auth::user();
         $companyId = $this->getCompanyId($request);
+        $type = $validated['type'] ?? 'quote';
 
-        // If setting as default, unset other defaults
+        // If setting as default, unset other defaults of the same type
         if (!empty($validated['is_default'])) {
             QuoteEmailTemplate::withoutGlobalScopes()
                 ->where('company_id', $companyId)
+                ->where('type', $type)
                 ->where('is_default', true)
                 ->update(['is_default' => false]);
         }
 
         $template = QuoteEmailTemplate::create(array_merge($validated, [
             'company_id' => $companyId,
+            'type' => $type,
             'created_by' => $user->id,
             'updated_by' => $user->id,
         ]));
@@ -84,10 +94,11 @@ class QuoteEmailTemplateController extends Controller
 
         $user = Auth::user();
 
-        // If setting as default, unset other defaults
+        // If setting as default, unset other defaults of the same type
         if (!empty($validated['is_default'])) {
             QuoteEmailTemplate::withoutGlobalScopes()
                 ->where('company_id', $companyId)
+                ->where('type', $template->type)
                 ->where('is_default', true)
                 ->where('id', '!=', $id)
                 ->update(['is_default' => false]);
@@ -131,9 +142,10 @@ class QuoteEmailTemplateController extends Controller
             ->where('company_id', $companyId)
             ->firstOrFail();
 
-        // Unset all defaults
+        // Unset all defaults of the same type
         QuoteEmailTemplate::withoutGlobalScopes()
             ->where('company_id', $companyId)
+            ->where('type', $template->type)
             ->where('is_default', true)
             ->update(['is_default' => false]);
 
@@ -149,8 +161,16 @@ class QuoteEmailTemplateController extends Controller
     /**
      * Get available placeholders for templates.
      */
-    public function placeholders()
+    public function placeholders(Request $request)
     {
+        $type = $request->get('type', 'quote');
+
+        if (in_array($type, ['service_assignment', 'service_closure'])) {
+            return response()->json([
+                'data' => ServiceTemplateService::getAvailablePlaceholders($type),
+            ]);
+        }
+
         return response()->json([
             'data' => QuoteTemplateService::getAvailablePlaceholders(),
         ]);

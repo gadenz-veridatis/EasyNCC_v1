@@ -6,6 +6,7 @@ use App\Http\Controllers\EasyNCC\ServiceWebController;
 use App\Http\Controllers\EasyNCC\UserWebController;
 use App\Http\Controllers\EasyNCC\QuoteWebController;
 use App\Http\Controllers\EasyNCC\QuoteEmailTemplateWebController;
+use App\Http\Controllers\ServiceEmailActionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -19,25 +20,32 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Public routes for service email actions (no auth required)
+Route::get('/service-action/{token}', [ServiceEmailActionController::class, 'handle']);
+Route::post('/service-action/{token}/confirm', [ServiceEmailActionController::class, 'confirm']);
+
 Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified', 'active'])->group(function () {
 
     // EasyNCC Routes
     Route::prefix('easyncc')->name('easyncc.')->group(function () {
 
-        // Dashboard (currently disabled - calendar is the landing page)
-        // Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+        // Dashboard
+        Route::get('/dashboard', function () {
+            return inertia('EasyNCC/Dashboard/Index');
+        })->name('dashboard')->middleware('role:super-admin,admin,operator');
 
         // Vehicles
-        Route::prefix('vehicles')->name('vehicles.')->middleware('role:super-admin,admin,operator')->group(function () {
-            Route::get('/', [VehicleWebController::class, 'index'])->name('index');
-            Route::get('/create', [VehicleWebController::class, 'create'])->name('create');
-            Route::get('/{id}', [VehicleWebController::class, 'show'])->name('show');
-            Route::get('/{id}/edit', [VehicleWebController::class, 'edit'])->name('edit');
+        Route::prefix('vehicles')->name('vehicles.')->group(function () {
+            Route::get('/', [VehicleWebController::class, 'index'])->name('index')->middleware('role:super-admin,admin,operator,driver');
+            Route::get('/{id}', [VehicleWebController::class, 'show'])->name('show')->middleware('role:super-admin,admin,operator,driver');
+            Route::get('/create', [VehicleWebController::class, 'create'])->name('create')->middleware('role:super-admin,admin,operator');
+            Route::get('/{id}/edit', [VehicleWebController::class, 'edit'])->name('edit')->middleware('role:super-admin,admin,operator');
         });
 
         // Services
         Route::prefix('services')->name('services.')->group(function () {
             Route::get('/', [ServiceWebController::class, 'index'])->name('index');
+            Route::get('/compact', [ServiceWebController::class, 'compactIndex'])->name('compact');
             Route::get('/calendar', [ServiceWebController::class, 'calendar'])->name('calendar');
             Route::get('/create', [ServiceWebController::class, 'create'])->name('create')->middleware('role:super-admin,admin,operator');
             Route::get('/{id}', [ServiceWebController::class, 'show'])->name('show');
@@ -57,6 +65,16 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
             return inertia('EasyNCC/Contacts/Index');
         })->name('contacts.index')->middleware('role:super-admin,admin,operator');
 
+        // Richieste
+        Route::prefix('richieste')->name('richieste.')->middleware('role:super-admin,admin,operator')->group(function () {
+            Route::get('/', function () {
+                return inertia('EasyNCC/Richieste/Index');
+            })->name('index');
+            Route::get('/{id}', function ($id) {
+                return inertia('EasyNCC/Richieste/Show');
+            })->name('show');
+        });
+
         // Quotes (Preventivi)
         Route::prefix('quotes')->name('quotes.')->middleware('role:super-admin,admin,operator')->group(function () {
             Route::get('/', [QuoteWebController::class, 'index'])->name('index');
@@ -71,7 +89,7 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
             ->middleware('role:super-admin,admin,operator');
 
         // Drivers
-        Route::prefix('drivers')->name('drivers.')->middleware('role:super-admin,admin,operator')->group(function () {
+        Route::prefix('drivers')->name('drivers.')->middleware('role:super-admin,admin,operator,driver')->group(function () {
             Route::get('/', function () {
                 return inertia('EasyNCC/Drivers/Index');
             })->name('index');
@@ -147,6 +165,27 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
             })->name('edit');
         });
 
+        // Accounting Reports
+        Route::prefix('accounting-reports')->name('accounting-reports.')->middleware('role:super-admin,admin,operator')->group(function () {
+            Route::get('/driver-costs', function () {
+                return inertia('EasyNCC/AccountingReports/DriverCosts');
+            })->name('driver-costs');
+            Route::get('/client-revenue', function () {
+                return inertia('EasyNCC/AccountingReports/ClientRevenue');
+            })->name('client-revenue');
+            Route::get('/intermediary-costs', function () {
+                return inertia('EasyNCC/AccountingReports/IntermediaryCosts');
+            })->name('intermediary-costs');
+            Route::get('/supplier-costs', function () {
+                return inertia('EasyNCC/AccountingReports/SupplierCosts');
+            })->name('supplier-costs');
+        });
+
+        // Accounting Trends - admin only
+        Route::get('/accounting-reports/trends', function () {
+            return inertia('EasyNCC/AccountingReports/Trends');
+        })->name('accounting-reports.trends')->middleware('role:super-admin,admin');
+
         // Dictionaries
         Route::prefix('dictionaries')->name('dictionaries.')->middleware('role:super-admin,admin')->group(function () {
             Route::get('/dress-codes', function () {
@@ -176,6 +215,10 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
             Route::get('/activity-types', function () {
                 return inertia('EasyNCC/Dictionaries/ActivityTypes');
             })->name('activity-types');
+
+            Route::get('/activity-payment-types', function () {
+                return inertia('EasyNCC/Dictionaries/ActivityPaymentTypes');
+            })->name('activity-payment-types');
 
             Route::get('/service-types', function () {
                 return inertia('EasyNCC/Dictionaries/ServiceTypes');

@@ -20,6 +20,11 @@ class GmailAccount extends Model
         'access_token',
         'token_expires_at',
         'is_active',
+        'label_richieste',
+        'label_richieste_id',
+        'subject_tag',
+        'history_id',
+        'ingestion_attiva',
     ];
 
     protected $hidden = [
@@ -31,5 +36,11 @@ class GmailAccount extends Model
     protected $casts = [
         'token_expires_at' => 'datetime',
         'is_active' => 'boolean',
+        'ingestion_attiva' => 'boolean',
     ];
+
+    public function threadEmails(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ThreadEmail::class, 'mailbox_id');
+    }
 }

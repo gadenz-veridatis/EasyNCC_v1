@@ -19,7 +19,7 @@
                                 {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
                                 <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
                             </button>
-                            <Link :href="route('easyncc.users.create')" class="btn btn-primary btn-sm">
+                            <Link v-if="canManage" :href="withReturnUrl(route('easyncc.users.create'))" class="btn btn-primary btn-sm">
                                 <i class="bx bx-plus me-1"></i>
                                 Nuovo Driver
                             </Link>
@@ -45,7 +45,7 @@
                                         type="text"
                                         class="form-control form-control-sm"
                                         placeholder="Nome, cognome, username, email..."
-                                        @input="applyFilters"
+                                        @input="debouncedApplyFilters"
                                     />
                                 </BCol>
                                 <BCol :md="isSuperAdmin ? 3 : 4">
@@ -199,13 +199,14 @@
                                                 </button>
                                             </template>
                                             <template v-else>
-                                                <Link :href="route('easyncc.users.show', driver.id)" class="btn btn-sm btn-soft-info me-1" title="Visualizza Dettagli">
+                                                <Link :href="withReturnUrl(route('easyncc.users.show', driver.id))" class="btn btn-sm btn-soft-info me-1" title="Visualizza Dettagli">
                                                     <i class="bx bx-show"></i>
                                                 </Link>
-                                                <Link :href="route('easyncc.users.edit', driver.id)" class="btn btn-sm btn-soft-primary me-1" title="Modifica">
+                                                <Link v-if="canManage" :href="withReturnUrl(route('easyncc.users.edit', driver.id))" class="btn btn-sm btn-soft-primary me-1" title="Modifica">
                                                     <i class="bx bx-edit"></i>
                                                 </Link>
                                                 <button
+                                                    v-if="canManage"
                                                     class="btn btn-sm btn-soft-danger"
                                                     @click="deleteDriver(driver.id)"
                                                     title="Elimina"
@@ -351,8 +352,10 @@ import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import moment from 'moment';
-import Swal from 'sweetalert2';
+import { useNotify } from '@/composables/useNotify.js';
+import { useUrlFilters } from '@/composables/useUrlFilters.js';
 
+const notify = useNotify();
 const drivers = ref([]);
 const companies = ref([]);
 const loading = ref(false);
@@ -386,8 +389,16 @@ const filters = ref({
 const sortField = ref('surname');
 const sortDirection = ref('asc');
 
+const { readFromUrl, withReturnUrl } = useUrlFilters(filters, { sortField, sortDirection });
+
+// Debounce & request counter
+let searchTimer = null;
+let requestCounter = 0;
+
 // Computed
 const isSuperAdmin = computed(() => currentUser.value?.role === 'super-admin');
+const isDriver = computed(() => currentUser.value?.role === 'driver');
+const canManage = computed(() => ['super-admin', 'admin', 'operator'].includes(currentUser.value?.role));
 
 const hasActiveFilters = computed(() => {
     return Object.values(filters.value).some(value => value !== '');
@@ -435,6 +446,7 @@ const loadCompanies = async () => {
 const loadDrivers = async () => {
     loading.value = true;
     error.value = '';
+    const thisRequest = ++requestCounter;
 
     try {
         const params = {
@@ -446,12 +458,18 @@ const loadDrivers = async () => {
         };
 
         const response = await axios.get('/api/users', { params });
+
+        if (thisRequest !== requestCounter) return;
+
         drivers.value = response.data.data || [];
     } catch (err) {
+        if (thisRequest !== requestCounter) return;
         error.value = 'Errore nel caricamento dei driver';
         console.error('Error loading drivers:', err);
     } finally {
-        loading.value = false;
+        if (thisRequest === requestCounter) {
+            loading.value = false;
+        }
     }
 };
 
@@ -459,7 +477,15 @@ const applyFilters = () => {
     loadDrivers();
 };
 
+const debouncedApplyFilters = () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        applyFilters();
+    }, 300);
+};
+
 const resetFilters = () => {
+    clearTimeout(searchTimer);
     filters.value = {
         company_id: '',
         search: '',
@@ -480,48 +506,30 @@ const sortBy = (field) => {
 };
 
 const deleteDriver = async (id) => {
-    const result = await Swal.fire({
-        title: 'Sei sicuro?',
-        text: 'Vuoi eliminare questo driver?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Sì, elimina!',
-        cancelButtonText: 'Annulla'
-    });
+    const confirmed = await notify.confirm('Sei sicuro?', 'Vuoi eliminare questo driver?', { confirmText: 'Sì, elimina!' });
 
-    if (result.isConfirmed) {
+    if (confirmed) {
         try {
             await axios.delete(`/api/users/${id}`);
-            Swal.fire('Eliminato!', 'Il driver è stato eliminato.', 'success');
+            notify.success('Il driver è stato eliminato.');
             loadDrivers();
         } catch (err) {
-            Swal.fire('Errore!', 'Si è verificato un errore durante l\'eliminazione.', 'error');
+            notify.error('Si è verificato un errore durante l\'eliminazione.');
             console.error('Error deleting driver:', err);
         }
     }
 };
 
 const restoreDriver = async (id) => {
-    const result = await Swal.fire({
-        title: 'Ripristina driver?',
-        text: 'Vuoi ripristinare questo driver?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#28a745',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sì, ripristina!',
-        cancelButtonText: 'Annulla'
-    });
+    const confirmed = await notify.confirmInfo('Ripristina driver?', 'Vuoi ripristinare questo driver?', { confirmText: 'Sì, ripristina!', confirmColor: '#28a745' });
 
-    if (result.isConfirmed) {
+    if (confirmed) {
         try {
             await axios.post(`/api/users/${id}/restore`);
-            Swal.fire('Ripristinato!', 'Il driver è stato ripristinato.', 'success');
+            notify.success('Il driver è stato ripristinato.');
             loadDrivers();
         } catch (err) {
-            Swal.fire('Errore!', 'Si è verificato un errore durante il ripristino.', 'error');
+            notify.error('Si è verificato un errore durante il ripristino.');
             console.error('Error restoring driver:', err);
         }
     }
@@ -535,7 +543,7 @@ const showDocumentsModal = async (driver) => {
         showDocumentsModalFlag.value = true;
     } catch (err) {
         console.error('Error loading driver documents:', err);
-        Swal.fire('Errore!', 'Errore nel caricamento dei documenti.', 'error');
+        notify.error('Errore nel caricamento dei documenti.');
     }
 };
 
@@ -556,7 +564,7 @@ const previewAttachment = async (driverId, attachment) => {
     } catch (err) {
         console.error('Error loading attachment preview:', err);
         previewUrl.value = null;
-        Swal.fire('Errore', 'Impossibile caricare l\'anteprima del documento.', 'error');
+        notify.error('Impossibile caricare l\'anteprima del documento.');
         showPreviewModalFlag.value = false;
     } finally {
         previewLoading.value = false;
@@ -579,7 +587,7 @@ const downloadAttachment = async (driverId, attachment) => {
         URL.revokeObjectURL(url);
     } catch (err) {
         console.error('Error downloading attachment:', err);
-        Swal.fire('Errore', 'Impossibile scaricare il documento.', 'error');
+        notify.error('Impossibile scaricare il documento.');
     }
 };
 
@@ -622,6 +630,7 @@ const getExpiryColorClass = (expiryDate) => {
 
 onMounted(async () => {
     await loadCurrentUser();
+    readFromUrl();
     await loadCompanies();
     await loadDrivers();
 });

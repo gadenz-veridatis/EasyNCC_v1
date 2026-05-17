@@ -29,7 +29,12 @@ class UserController extends Controller
             }
 
             if ($request->filled('role')) {
-                $query->where('role', $request->role);
+                $roles = explode(',', $request->role);
+                if (count($roles) > 1) {
+                    $query->whereIn('role', $roles);
+                } else {
+                    $query->where('role', $request->role);
+                }
             }
             if ($request->boolean('is_intermediario')) {
                 $query->where('is_intermediario', true);
@@ -40,6 +45,19 @@ class UserController extends Controller
             if ($request->boolean('is_fornitore')) {
                 $query->whereHas('clientProfile', fn($q) => $q->where('is_fornitore', true));
             }
+            if ($request->boolean('is_collega')) {
+                $query->whereHas('clientProfile', fn($q) => $q->where('is_collega', true));
+            }
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('name', 'ilike', "%{$search}%")
+                      ->orWhere('surname', 'ilike', "%{$search}%")
+                      ->orWhere('nickname', 'ilike', "%{$search}%")
+                      ->orWhere('email', 'ilike', "%{$search}%");
+                });
+            }
 
             $perPage = $request->input('per_page', 200);
             return response()->json($query->orderBy('surname')->paginate($perPage));
@@ -48,7 +66,7 @@ class UserController extends Controller
         // For list view, load company, clientProfile for collaboratore users, and driverProfile for drivers
         $relationships = [
             'company:id,name',
-            'clientProfile:user_id,is_committente,is_fornitore',
+            'clientProfile:user_id,is_committente,is_fornitore,is_collega',
             'driverProfile:user_id,color,fiscal_code,vat_number,allow_overlapping',
         ];
 
@@ -78,7 +96,12 @@ class UserController extends Controller
 
         // Filter by role (only if not empty)
         if ($request->filled('role')) {
-            $query->where('role', $request->role);
+            $roles = explode(',', $request->role);
+            if (count($roles) > 1) {
+                $query->whereIn('role', $roles);
+            } else {
+                $query->where('role', $request->role);
+            }
         }
 
         // Filter by active status (only if not empty)
@@ -102,6 +125,13 @@ class UserController extends Controller
         if ($request->filled('is_fornitore')) {
             $query->whereHas('clientProfile', function($q) use ($request) {
                 $q->where('is_fornitore', $request->boolean('is_fornitore'));
+            });
+        }
+
+        // Filter by is_collega (for collaboratore role)
+        if ($request->filled('is_collega')) {
+            $query->whereHas('clientProfile', function($q) use ($request) {
+                $q->where('is_collega', $request->boolean('is_collega'));
             });
         }
 
@@ -134,7 +164,7 @@ class UserController extends Controller
         $query->orderBy($sortBy, $sortOrder);
 
         // Pagination
-        $perPage = $request->get('per_page', 15);
+        $perPage = $request->get('per_page', 25);
         $users = $query->paginate($perPage);
 
         return response()->json($users);

@@ -32,10 +32,13 @@ use App\Http\Controllers\Api\SumupConfigController;
 use App\Http\Controllers\Api\GmailAccountController;
 use App\Http\Controllers\Api\SumUpWebhookController;
 use App\Http\Controllers\Api\PricingDestinationController;
+use App\Http\Controllers\Api\AccountingReportController;
 use App\Http\Controllers\Api\UnavailabilityCalendarController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\VehicleMileageEntryController;
 use App\Http\Controllers\Api\TrashController;
+use App\Http\Controllers\Api\ServiceEmailController;
+use App\Http\Controllers\Api\RichiestaController;
 
 /*
 |--------------------------------------------------------------------------
@@ -70,20 +73,21 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
     // Global Search - accessible to all authenticated users
     Route::get('search', [GlobalSearchController::class, 'search']);
 
-    // Dashboard - accessible to all authenticated users
-    Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
-    Route::get('/dashboard/upcoming-services', [DashboardController::class, 'upcomingServices']);
+    // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 
     // Companies - only super-admin and admin
     Route::middleware(['role:super-admin,admin'])->group(function () {
         Route::apiResource('companies', CompanyController::class);
     });
 
-    // Users - admin and operator can CRU, only admin can delete
-    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+    // Users - read access for drivers too
+    Route::middleware(['role:super-admin,admin,operator,driver'])->group(function () {
         Route::get('users', [UserController::class, 'index']);
-        Route::post('users', [UserController::class, 'store']);
         Route::get('users/{user}', [UserController::class, 'show']);
+    });
+    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+        Route::post('users', [UserController::class, 'store']);
         Route::put('users/{user}', [UserController::class, 'update']);
         Route::patch('users/{user}', [UserController::class, 'update']);
     });
@@ -104,10 +108,13 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
     });
 
     // Vehicles - admin and operator can CRU, only admin can delete
-    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+    // Vehicles - read access for drivers too
+    Route::middleware(['role:super-admin,admin,operator,driver'])->group(function () {
         Route::get('vehicles', [VehicleController::class, 'index']);
-        Route::post('vehicles', [VehicleController::class, 'store']);
         Route::get('vehicles/{vehicle}', [VehicleController::class, 'show']);
+    });
+    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+        Route::post('vehicles', [VehicleController::class, 'store']);
         Route::put('vehicles/{vehicle}', [VehicleController::class, 'update']);
         Route::patch('vehicles/{vehicle}', [VehicleController::class, 'update']);
     });
@@ -117,11 +124,13 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::post('vehicles/{vehicle}/restore', [VehicleController::class, 'restore']);
     });
 
-    // Vehicle Attachments - admin and operator can manage
-    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+    // Vehicle Attachments - read access for drivers, write for admin/operator
+    Route::middleware(['role:super-admin,admin,operator,driver'])->group(function () {
         Route::get('vehicles/{vehicle}/attachments', [VehicleAttachmentController::class, 'index']);
-        Route::post('vehicles/{vehicle}/attachments', [VehicleAttachmentController::class, 'store']);
         Route::get('vehicles/{vehicle}/attachments/{attachment}/download', [VehicleAttachmentController::class, 'download']);
+    });
+    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+        Route::post('vehicles/{vehicle}/attachments', [VehicleAttachmentController::class, 'store']);
         Route::put('vehicles/{vehicle}/attachments/{attachment}', [VehicleAttachmentController::class, 'update']);
         Route::patch('vehicles/{vehicle}/attachments/{attachment}', [VehicleAttachmentController::class, 'update']);
         Route::delete('vehicles/{vehicle}/attachments/{attachment}', [VehicleAttachmentController::class, 'destroy']);
@@ -166,7 +175,9 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
 
     // Services - all can view, admin/operator can manage
     Route::get('services', [ServiceController::class, 'index']);
+    Route::get('services/summary', [ServiceController::class, 'summary']);
     Route::get('services/form-data', [ServiceController::class, 'formData']);
+    Route::get('services/filter-users', [ServiceController::class, 'filterUsers']);
     Route::get('services/{service}', [ServiceController::class, 'show']);
 
     Route::middleware(['role:super-admin,admin,operator'])->group(function () {
@@ -179,6 +190,11 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::delete('services/{service}', [ServiceController::class, 'destroy']);
         Route::post('services/{service}/duplicate', [ServiceController::class, 'duplicate']);
         Route::post('services/{service}/return', [ServiceController::class, 'returnService']);
+        Route::post('services/{service}/send-location-telegram', [ServiceController::class, 'sendLocationTelegram']);
+        // Service email notification endpoints
+        Route::get('services/{service}/check-email-flow', [ServiceEmailController::class, 'checkEmailFlow']);
+        Route::post('services/{service}/prepare-email', [ServiceEmailController::class, 'prepareEmail']);
+        Route::post('services/{service}/send-email', [ServiceEmailController::class, 'sendEmail']);
         // Service Attachments
         Route::get('services/{service}/attachments', [ServiceAttachmentController::class, 'index']);
         Route::post('services/{service}/attachments', [ServiceAttachmentController::class, 'store']);
@@ -186,7 +202,7 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::delete('services/{service}/attachments/{attachment}', [ServiceAttachmentController::class, 'destroy']);
     });
 
-    // Activities - admin and operator can CRU, only admin can delete
+    // Activities - admin and operator can CRUD
     Route::middleware(['role:super-admin,admin,operator'])->group(function () {
         Route::get('activities', [ActivityController::class, 'index']);
         Route::post('activities', [ActivityController::class, 'store']);
@@ -194,13 +210,10 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::put('activities/{activity}', [ActivityController::class, 'update']);
         Route::patch('activities/{activity}', [ActivityController::class, 'update']);
         Route::post('activities/reorder', [ActivityController::class, 'reorder']);
-    });
-
-    Route::middleware(['role:super-admin,admin'])->group(function () {
         Route::delete('activities/{activity}', [ActivityController::class, 'destroy']);
     });
 
-    // Accounting Transactions - admin and operator can CRU, only admin can delete
+    // Accounting Transactions - admin and operator can CRUD
     Route::middleware(['role:super-admin,admin,operator'])->group(function () {
         Route::get('accounting-transactions', [AccountingTransactionController::class, 'index']);
         Route::get('accounting-transactions/summary', [AccountingTransactionController::class, 'summary']);
@@ -208,16 +221,31 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::get('accounting-transactions/counterparts', [AccountingTransactionController::class, 'counterpartsForDropdown']);
         Route::post('accounting-transactions', [AccountingTransactionController::class, 'store']);
         Route::post('accounting-transactions/batch', [AccountingTransactionController::class, 'batchUpsert']);
+        Route::post('accounting-transactions/cancel-balance/{service}', [AccountingTransactionController::class, 'cancelBalanceTransactions']);
         Route::get('accounting-transactions/{accountingTransaction}', [AccountingTransactionController::class, 'show']);
         Route::put('accounting-transactions/{accountingTransaction}', [AccountingTransactionController::class, 'update']);
         Route::patch('accounting-transactions/{accountingTransaction}', [AccountingTransactionController::class, 'update']);
-    });
-
-    Route::middleware(['role:super-admin,admin'])->group(function () {
         Route::delete('accounting-transactions/{accountingTransaction}', [AccountingTransactionController::class, 'destroy']);
     });
 
-    // Tasks - all authenticated users can view, admin/operator can CRU, only admin can delete
+    // Accounting Reports - admin and operator can view
+    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+        Route::get('accounting-reports/driver-costs', [AccountingReportController::class, 'driverCosts']);
+        Route::get('accounting-reports/driver-costs/{driverId}', [AccountingReportController::class, 'driverCostDetails']);
+        Route::get('accounting-reports/client-revenue', [AccountingReportController::class, 'clientRevenue']);
+        Route::get('accounting-reports/client-revenue/{clientId}', [AccountingReportController::class, 'clientRevenueDetails']);
+        Route::get('accounting-reports/intermediary-costs', [AccountingReportController::class, 'intermediaryCosts']);
+        Route::get('accounting-reports/intermediary-costs/{intermediaryId}', [AccountingReportController::class, 'intermediaryCostDetails']);
+        Route::get('accounting-reports/supplier-costs', [AccountingReportController::class, 'supplierCosts']);
+        Route::get('accounting-reports/supplier-costs/{supplierId}', [AccountingReportController::class, 'supplierCostDetails']);
+    });
+
+    // Accounting Trends - admin only
+    Route::middleware(['role:super-admin,admin'])->group(function () {
+        Route::get('accounting-reports/trends', [AccountingReportController::class, 'trends']);
+    });
+
+    // Tasks - all authenticated users can view, admin/operator can CRUD
     Route::middleware(['role:super-admin,admin,operator,driver,accountant'])->group(function () {
         Route::get('tasks', [TaskController::class, 'index']);
         Route::get('tasks/{task}', [TaskController::class, 'show']);
@@ -227,11 +255,11 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
 
     Route::middleware(['role:super-admin,admin,operator'])->group(function () {
         Route::post('tasks', [TaskController::class, 'store']);
-    });
-
-    Route::middleware(['role:super-admin,admin'])->group(function () {
         Route::delete('tasks/{task}', [TaskController::class, 'destroy']);
     });
+
+    // Flight tracking
+    Route::post('flights/track', [\App\Http\Controllers\Api\FlightTrackingController::class, 'track']);
 
     // Dictionaries - admin can manage, others can read
     Route::get('dictionaries/{type}', [DictionaryController::class, 'index']);
@@ -267,6 +295,7 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::post('quotes/{quote}/create-version', [QuoteController::class, 'createVersion']);
         Route::get('quotes/{quote}/versions', [QuoteController::class, 'getVersions']);
         Route::post('quotes/{quote}/restore-version', [QuoteController::class, 'restoreVersion']);
+        Route::post('quotes/from-richiesta/{richiesta}', [QuoteController::class, 'createFromRichiesta']);
     });
 
     // Quote Email Templates - admin can manage
@@ -295,6 +324,36 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::put('gmail-accounts/{id}', [GmailAccountController::class, 'update']);
         Route::delete('gmail-accounts/{id}', [GmailAccountController::class, 'destroy']);
         Route::post('gmail-accounts/{id}/test-connection', [GmailAccountController::class, 'testConnection']);
+        Route::post('gmail-accounts/fetch-all', [GmailAccountController::class, 'fetchAll']);
+        Route::post('gmail-accounts/{id}/resolve-label', [GmailAccountController::class, 'resolveLabel']);
+        Route::post('gmail-accounts/{id}/fetch-now', [GmailAccountController::class, 'fetchNow']);
+    });
+
+    // Richieste - admin and operator can manage
+    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+        Route::get('richieste', [RichiestaController::class, 'index']);
+        Route::post('richieste', [RichiestaController::class, 'store']);
+        Route::get('richieste/{richiesta}', [RichiestaController::class, 'show']);
+        Route::put('richieste/{richiesta}', [RichiestaController::class, 'update']);
+        Route::patch('richieste/{richiesta}', [RichiestaController::class, 'update']);
+        Route::delete('richieste/{richiesta}', [RichiestaController::class, 'destroy']);
+        Route::post('richieste/{richiesta}/mark-read', [RichiestaController::class, 'markRead']);
+        Route::post('richieste/{richiesta}/take-charge', [RichiestaController::class, 'takeCharge']);
+        Route::post('richieste/{richiesta}/transition', [RichiestaController::class, 'transition']);
+        Route::get('richieste/{richiesta}/transitions', [RichiestaController::class, 'getTransitions']);
+        Route::get('richieste/{richiesta}/thread-emails', [RichiestaController::class, 'getThreadEmails']);
+        Route::post('richieste/{richiesta}/reply', [RichiestaController::class, 'reply']);
+        Route::post('richieste/{richiesta}/draft-ai', [RichiestaController::class, 'draftAi']);
+        Route::post('richieste/{richiesta}/add-riga-from-estratta', [RichiestaController::class, 'addRigaFromEstratta']);
+        Route::post('richieste/{richiesta}/update-riga-from-estratta', [RichiestaController::class, 'updateRigaFromEstratta']);
+        Route::post('richieste/{richiesta}/add-riga-manuale', [RichiestaController::class, 'addRigaManuale']);
+        Route::put('richieste/{richiesta}/righe/{riga}', [RichiestaController::class, 'updateRiga']);
+        Route::delete('richieste/{richiesta}/righe/{riga}', [RichiestaController::class, 'removeRiga']);
+        Route::post('richieste/{richiesta}/split', [RichiestaController::class, 'split']);
+        Route::post('richieste/merge', [RichiestaController::class, 'merge']);
+        Route::get('thread-emails/unlinked', [RichiestaController::class, 'unlinkedThreadEmails']);
+        Route::post('thread-emails/{threadEmail}/collega', [RichiestaController::class, 'collegaThread']);
+        Route::post('thread-emails/{threadEmail}/scollega', [RichiestaController::class, 'scollegaThread']);
     });
 
     // Pricing Destinations - admin can manage, operator can read

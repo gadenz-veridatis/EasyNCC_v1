@@ -1,0 +1,200 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Vehicle;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class VehicleController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        // Light mode: minimal data for dropdowns (no heavy relations)
+        if ($request->boolean('light')) {
+            $query = Vehicle::select('id', 'license_plate', 'brand', 'model', 'company_id');
+
+            if ($request->user()->isSuperAdmin()) {
+                if ($request->filled('company_id')) {
+                    $query->where('company_id', $request->company_id);
+                }
+            } else {
+                $query->where('company_id', $request->user()->company_id);
+            }
+
+            $perPage = $request->input('per_page', 200);
+            return response()->json($query->orderBy('license_plate')->paginate($perPage));
+        }
+
+        // For list view, load essential relationships including attachments and unavailabilities
+        // Include soft-deleted vehicles if requested (for admin views)
+        if ($request->boolean('with_trashed')) {
+            $query = Vehicle::withTrashed()->with(['company:id,name', 'vehicleAttachments', 'unavailabilities']);
+        } else {
+            $query = Vehicle::with(['company:id,name', 'vehicleAttachments', 'unavailabilities']);
+        }
+
+        // Multi-tenancy: Filter by company
+        // Super-admin can see all companies or filter by company_id
+        if ($request->user()->isSuperAdmin()) {
+            if ($request->filled('company_id')) {
+                $query->where('company_id', $request->company_id);
+            }
+            // If no company_id specified, show all vehicles
+        } else {
+            // Other users see only their company's vehicles
+            $query->where('company_id', $request->user()->company_id);
+        }
+
+        // Filter by status (only if not empty)
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Search on license_plate, brand, model (only if not empty)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('license_plate', 'ilike', "%{$search}%")
+                  ->orWhere('brand', 'ilike', "%{$search}%")
+                  ->orWhere('model', 'ilike', "%{$search}%");
+            });
+        }
+
+        // Filter by expiring attachments
+        if ($request->filled('expiring')) {
+            $days = (int) $request->expiring;
+            if ($days > 0) {
+                $query->whereHas('vehicleAttachments', function($q) use ($days) {
+                    $q->whereNotNull('expiration_date')
+                      ->where('expiration_date', '<=', now()->addDays($days))
+                      ->where('expiration_date', '>=', now());
+                });
+            }
+        }
+
+        // Ordinamento
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+        $query->orderBy($sortBy, $sortOrder);
+
+        // Paginazione
+        $perPage = $request->get('per_page', 15);
+        $vehicles = $query->paginate($perPage);
+
+        return response()->json($vehicles);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'company_id' => $request->user()->isSuperAdmin() ? 'required|exists:companies,id' : 'nullable',
+            'license_plate' => 'required|string|unique:vehicles,license_plate',
+            'brand' => 'required|string',
+            'model' => 'required|string',
+            'passenger_capacity' => 'required|integer|min:1',
+            'purchase_date' => 'nullable|date',
+            'ncc_license_number' => 'nullable|string',
+            'telepass_license_number' => 'nullable|string',
+            'license_city' => 'nullable|string',
+            'allow_overlapping' => 'boolean',
+            'status' => 'required|in:in_service,maintenance,out_of_service',
+            'notes' => 'nullable|string',
+        ]);
+
+        // Set company_id if not super-admin
+        if (!$request->user()->isSuperAdmin()) {
+            $validated['company_id'] = $request->user()->company_id;
+        }
+
+        // Set audit fields
+        $currentUser = $request->user();
+        if (!$currentUser) {
+            \Log::error('VehicleController@store: No authenticated user found when creating vehicle');
+            throw new \Exception('Authentication required to create vehicle');
+        }
+        $validated['created_by'] = $currentUser->id;
+        $validated['updated_by'] = $currentUser->id;
+
+        $vehicle = Vehicle::create($validated);
+
+        return response()->json($vehicle->load(['company', 'creator', 'updater']), 201);
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(Vehicle $vehicle): JsonResponse
+    {
+        return response()->json($vehicle->load(['company', 'assignedDrivers', 'services', 'vehicleAttachments', 'unavailabilities', 'creator', 'updater']));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Vehicle $vehicle): JsonResponse
+    {
+        $validated = $request->validate([
+            'company_id' => $request->user()->isSuperAdmin() ? 'sometimes|exists:companies,id' : 'nullable',
+            'license_plate' => 'sometimes|string|unique:vehicles,license_plate,' . $vehicle->id,
+            'brand' => 'sometimes|string',
+            'model' => 'sometimes|string',
+            'passenger_capacity' => 'sometimes|integer|min:1',
+            'purchase_date' => 'nullable|date',
+            'ncc_license_number' => 'nullable|string',
+            'telepass_license_number' => 'nullable|string',
+            'license_city' => 'nullable|string',
+            'allow_overlapping' => 'boolean',
+            'status' => 'sometimes|in:in_service,maintenance,out_of_service',
+            'notes' => 'nullable|string',
+        ]);
+
+        // Don't allow non-super-admin to change company_id
+        if (!$request->user()->isSuperAdmin() && isset($validated['company_id'])) {
+            unset($validated['company_id']);
+        }
+
+        // Set audit field
+        $currentUser = $request->user();
+        if (!$currentUser) {
+            \Log::error('VehicleController@update: No authenticated user found when updating vehicle');
+            throw new \Exception('Authentication required to update vehicle');
+        }
+        $validated['updated_by'] = $currentUser->id;
+
+        $vehicle->update($validated);
+
+        // Force update of updated_at timestamp
+        $vehicle->touch();
+
+        return response()->json($vehicle->load(['company', 'creator', 'updater']));
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Vehicle $vehicle): JsonResponse
+    {
+        $vehicle->delete();
+
+        return response()->json(['message' => 'Vehicle deleted successfully'], 200);
+    }
+
+    /**
+     * Restore a soft-deleted vehicle.
+     */
+    public function restore(int $id): JsonResponse
+    {
+        $vehicle = Vehicle::withTrashed()->findOrFail($id);
+        $vehicle->restore();
+
+        return response()->json(['message' => 'Vehicle restored successfully', 'data' => $vehicle]);
+    }
+}

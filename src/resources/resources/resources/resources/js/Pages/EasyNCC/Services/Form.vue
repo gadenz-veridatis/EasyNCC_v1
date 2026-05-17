@@ -17,42 +17,42 @@
                                     <span class="text-muted small me-2" title="Navigazione Rapida">
                                         <i class="ri-navigation-line"></i>
                                     </span>
-                                    <a href="#section-identificativi" class="btn btn-sm btn-soft-primary px-2 py-1" title="Identificativi">
-                                        <i class="ri-file-list-3-line"></i>
-                                    </a>
-                                    <a href="#section-passeggeri" class="btn btn-sm btn-soft-primary px-2 py-1" title="Passeggeri">
-                                        <i class="ri-user-3-line"></i>
-                                    </a>
-                                    <a href="#section-committenti" class="btn btn-sm btn-soft-primary px-2 py-1" title="Committenti">
-                                        <i class="ri-building-line"></i>
-                                    </a>
-                                    <a href="#section-intermediari" class="btn btn-sm btn-soft-primary px-2 py-1" title="Intermediari">
-                                        <i class="ri-links-line"></i>
-                                    </a>
-                                    <a href="#section-veicolo" class="btn btn-sm btn-soft-primary px-2 py-1" title="Veicolo">
-                                        <i class="ri-car-line"></i>
-                                    </a>
-                                    <a href="#section-driver" class="btn btn-sm btn-soft-primary px-2 py-1" title="Driver">
-                                        <i class="ri-user-settings-line"></i>
-                                    </a>
-                                    <a href="#section-bagagli" class="btn btn-sm btn-soft-primary px-2 py-1" title="Bagagli">
-                                        <i class="ri-suitcase-line"></i>
-                                    </a>
-                                    <a href="#section-piano" class="btn btn-sm btn-soft-primary px-2 py-1" title="Piano Servizio">
-                                        <i class="ri-map-pin-line"></i>
-                                    </a>
-                                    <a href="#section-note" class="btn btn-sm btn-soft-primary px-2 py-1" title="Note">
-                                        <i class="ri-file-text-line"></i>
-                                    </a>
-                                    <a href="#section-prezzi" class="btn btn-sm btn-soft-primary px-2 py-1" title="Economics">
-                                        <i class="ri-money-euro-box-line"></i>
-                                    </a>
-                                    <a href="#section-contabilita" class="btn btn-sm btn-soft-primary px-2 py-1" title="Contabilità">
-                                        <i class="ri-calculator-line"></i>
-                                    </a>
-                                    <a href="#section-tasks" class="btn btn-sm btn-soft-primary px-2 py-1" title="Tasks">
-                                        <i class="ri-task-line"></i>
-                                    </a>
+                                    <button type="button" @click="scrollToSection('section-identificativi')" class="btn btn-sm btn-soft-primary px-2 py-1" title="Identificativi">
+                                        <i class="ri-file-list-3-line"></i><span class="d-none d-lg-inline ms-1">Identificativi</span>
+                                    </button>
+                                    <button type="button" @click="scrollToSection('section-passeggeri')" class="btn btn-sm btn-soft-primary px-2 py-1" title="Passeggeri">
+                                        <i class="ri-user-3-line"></i><span class="d-none d-lg-inline ms-1">Passeggeri</span>
+                                    </button>
+                                    <button type="button" @click="scrollToSection('section-committenti')" class="btn btn-sm btn-soft-primary px-2 py-1" title="Committenti">
+                                        <i class="ri-building-line"></i><span class="d-none d-lg-inline ms-1">Committenti</span>
+                                    </button>
+                                    <button type="button" @click="scrollToSection('section-intermediari')" class="btn btn-sm btn-soft-primary px-2 py-1" title="Intermediari">
+                                        <i class="ri-links-line"></i><span class="d-none d-lg-inline ms-1">Intermediari</span>
+                                    </button>
+                                    <button type="button" @click="scrollToSection('section-veicolo')" class="btn btn-sm btn-soft-primary px-2 py-1" title="Veicolo">
+                                        <i class="ri-car-line"></i><span class="d-none d-lg-inline ms-1">Veicolo</span>
+                                    </button>
+                                    <button type="button" @click="scrollToSection('section-driver')" class="btn btn-sm btn-soft-primary px-2 py-1" title="Driver">
+                                        <i class="ri-user-settings-line"></i><span class="d-none d-lg-inline ms-1">Driver</span>
+                                    </button>
+                                    <button type="button" @click="scrollToSection('section-bagagli')" class="btn btn-sm btn-soft-primary px-2 py-1" title="Bagagli">
+                                        <i class="ri-suitcase-line"></i><span class="d-none d-lg-inline ms-1">Bagagli</span>
+                                    </button>
+                                    <button type="button" @click="scrollToSection('section-piano')" class="btn btn-sm btn-soft-primary px-2 py-1" title="Piano Servizio">
+                                        <i class="ri-map-pin-line"></i><span class="d-none d-lg-inline ms-1">Piano</span>
+                                    </button>
+                                    <button type="button" @click="scrollToSection('section-note')" class="btn btn-sm btn-soft-primary px-2 py-1" title="Note">
+                                        <i class="ri-file-text-line"></i><span class="d-none d-lg-inline ms-1">Note</span>
+                                    </button>
+                                    <button type="button" @click="scrollToSection('section-prezzi')" class="btn btn-sm btn-soft-primary px-2 py-1" title="Economics">
+                                        <i class="ri-money-euro-box-line"></i><span class="d-none d-lg-inline ms-1">Economics</span>
+                                    </button>
+                                    <button type="button" @click="scrollToSection('section-contabilita')" class="btn btn-sm btn-soft-primary px-2 py-1" title="Contabilità">
+                                        <i class="ri-calculator-line"></i><span class="d-none d-lg-inline ms-1">Contabilità</span>
+                                    </button>
+                                    <button type="button" @click="scrollToSection('section-tasks')" class="btn btn-sm btn-soft-primary px-2 py-1" title="Tasks">
+                                        <i class="ri-task-line"></i><span class="d-none d-lg-inline ms-1">Tasks</span>
+                                    </button>
                                 </div>
                             </div>
                         </BCardHeader>
@@ -316,7 +316,7 @@
                                     </legend>
                                     <BRow>
                                         <BCol md="6" class="mb-3">
-                                            <label for="supplier_id" class="form-label">Fornitore</label>
+                                            <label for="supplier_id" class="form-label">Collega</label>
                                             <div class="d-flex gap-2">
                                                 <Multiselect
                                                     :key="fornitoriKey"
@@ -329,8 +329,8 @@
                                                     :min-chars="0"
                                                     :delay="300"
                                                     :resolve-on-load="true"
-                                                    placeholder="Cerca fornitore..."
-                                                    no-options-text="Nessun fornitore trovato"
+                                                    placeholder="Cerca collega..."
+                                                    no-options-text="Nessun collega trovato"
                                                     no-results-text="Nessun risultato"
                                                     @change="onSupplierChange"
                                                     class="flex-grow-1"
@@ -340,7 +340,7 @@
                                                     type="button"
                                                     class="btn btn-soft-primary"
                                                     @click="openNewFornitoreModal"
-                                                    title="Aggiungi nuovo fornitore"
+                                                    title="Aggiungi nuovo collega"
                                                 >
                                                     <i class="ri-add-line"></i>
                                                 </button>
@@ -684,25 +684,35 @@
                                                 <label for="dropoff_location" class="form-label fw-bold text-danger fs-5">
                                                     <i class="ri-map-pin-line me-1"></i>Luogo Dropoff *
                                                 </label>
-                                                <input
-                                                    id="dropoff_location"
-                                                    v-model="form.dropoff_location"
-                                                    type="text"
-                                                    class="form-control form-control-lg border-danger"
-                                                    placeholder="Es. Stazione Termini, Ufficio Cliente..."
-                                                    required
-                                                />
+                                                <div class="input-group">
+                                                    <input
+                                                        id="dropoff_location"
+                                                        v-model="form.dropoff_location"
+                                                        type="text"
+                                                        class="form-control form-control-lg border-danger"
+                                                        placeholder="Es. Stazione Termini, Ufficio Cliente..."
+                                                        required
+                                                    />
+                                                    <button type="button" class="btn btn-outline-danger" @click="form.dropoff_location = form.pickup_location" title="Copia da Pickup">
+                                                        <i class="ri-file-copy-line"></i>
+                                                    </button>
+                                                </div>
                                             </BCol>
                                             <BCol md="12" class="mb-3">
                                                 <label for="dropoff_address" class="form-label">Indirizzo Completo Dropoff *</label>
-                                                <input
-                                                    id="dropoff_address"
-                                                    v-model="form.dropoff_address"
-                                                    type="text"
-                                                    class="form-control"
-                                                    placeholder="Via, numero civico, città, CAP"
-                                                    required
-                                                />
+                                                <div class="input-group">
+                                                    <input
+                                                        id="dropoff_address"
+                                                        v-model="form.dropoff_address"
+                                                        type="text"
+                                                        class="form-control"
+                                                        placeholder="Via, numero civico, città, CAP"
+                                                        required
+                                                    />
+                                                    <button type="button" class="btn btn-outline-secondary" @click="form.dropoff_address = form.pickup_address" title="Copia da Pickup">
+                                                        <i class="ri-file-copy-line"></i>
+                                                    </button>
+                                                </div>
                                             </BCol>
                                             <BCol md="6" class="mb-3">
                                                 <label for="vehicle_return_datetime" class="form-label">Data/Ora Rientro Mezzo *</label>
@@ -761,6 +771,7 @@
                                                 <table class="table table-sm table-hover mb-0">
                                                     <thead>
                                                         <tr>
+                                                            <th style="width: 60px" class="text-center">Ordine</th>
                                                             <th>Inizio</th>
                                                             <th>Fine</th>
                                                             <th>Descrizione Esperienza</th>
@@ -773,7 +784,27 @@
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        <tr v-for="activity in form.activities" :key="activity.id">
+                                                        <tr v-for="(activity, index) in form.activities" :key="activity.id">
+                                                            <td class="text-center">
+                                                                <button
+                                                                    type="button"
+                                                                    class="btn btn-sm btn-soft-secondary p-0 px-1"
+                                                                    :disabled="index === 0"
+                                                                    @click="moveActivity(index, -1)"
+                                                                    title="Sposta su"
+                                                                >
+                                                                    <i class="ri-arrow-up-s-line"></i>
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    class="btn btn-sm btn-soft-secondary p-0 px-1"
+                                                                    :disabled="index === form.activities.length - 1"
+                                                                    @click="moveActivity(index, 1)"
+                                                                    title="Sposta giù"
+                                                                >
+                                                                    <i class="ri-arrow-down-s-line"></i>
+                                                                </button>
+                                                            </td>
                                                             <td>{{ formatDateTime(activity.start_time) }}</td>
                                                             <td>{{ formatDateTime(activity.end_time) }}</td>
                                                             <td>{{ activity.name }}</td>
@@ -1701,7 +1732,7 @@
                         </BCardBody>
                         <BCardFooter class="service-form-footer">
                             <div class="d-flex justify-content-between align-items-center">
-                                <Link :href="route('easyncc.services.index')" class="btn btn-secondary">
+                                <Link :href="returnUrl || route('easyncc.services.index')" class="btn btn-secondary">
                                     <i class="ri-arrow-left-line me-1"></i>Annulla
                                 </Link>
                                 <div>
@@ -2826,10 +2857,10 @@
             </form>
         </BModal>
 
-        <!-- Modal: Nuovo Fornitore -->
+        <!-- Modal: Nuovo Collega -->
         <BModal
             v-model="showNewFornitoreModal"
-            title="Nuovo Fornitore"
+            title="Nuovo Collega"
             size="lg"
             hide-footer
             @hidden="resetFornitoreForm"
@@ -3000,7 +3031,7 @@
                 <!-- Info Message -->
                 <div class="alert alert-info mb-3 mt-3">
                     <i class="ri-information-line me-2"></i>
-                    Sarà creato un utente fornitore non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
+                    Sarà creato un utente collega non attivo. Potrai aggiungere maggiori dati dalla sezione Utenti. Per permettere all'utente l'ingresso in easyNCC potrai attivarlo dalla sezione Utenti dopo la verifica dei dati.
                 </div>
 
                 <!-- Action Buttons -->
@@ -3011,10 +3042,59 @@
                     <button type="submit" class="btn btn-primary" :disabled="savingNewFornitore">
                         <span v-if="savingNewFornitore" class="spinner-border spinner-border-sm me-2"></span>
                         <i v-else class="ri-add-line me-1"></i>
-                        Crea Fornitore
+                        Crea Collega
                     </button>
                 </div>
             </form>
+        </BModal>
+        <!-- Email Notification Modal -->
+        <BModal
+            v-model="showEmailModal"
+            title="Invia Notifica Email al Collega"
+            size="xl"
+            hide-footer
+            @hidden="closeEmailModal"
+        >
+            <div v-if="emailModalData">
+                <BRow class="mb-3">
+                    <BCol md="6">
+                        <label class="form-label fw-bold">Destinatario</label>
+                        <input
+                            v-model="emailModalData.to"
+                            type="email"
+                            class="form-control"
+                            readonly
+                        />
+                    </BCol>
+                    <BCol md="6">
+                        <label class="form-label fw-bold">Oggetto</label>
+                        <input
+                            v-model="emailModalData.subject"
+                            type="text"
+                            class="form-control"
+                        />
+                    </BCol>
+                </BRow>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Corpo Email</label>
+                    <div class="border rounded p-2" style="min-height: 300px;">
+                        <div v-html="emailModalData.body" contenteditable="true" @input="onEmailBodyEdit" class="email-body-editor" style="min-height: 280px; outline: none;"></div>
+                    </div>
+                    <small class="text-muted">Il foglio di servizio PDF verrà allegato automaticamente.</small>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light" @click="closeEmailModal" :disabled="emailSending">
+                        Annulla
+                    </button>
+                    <button type="button" class="btn btn-primary" @click="sendServiceEmail" :disabled="emailSending">
+                        <span v-if="emailSending" class="spinner-border spinner-border-sm me-1"></span>
+                        <i v-else class="ri-send-plane-line me-1"></i>
+                        Invia Email
+                    </button>
+                </div>
+            </div>
         </BModal>
     </Layout>
 </template>
@@ -3040,14 +3120,27 @@ const props = defineProps({
 });
 
 const isEdit = computed(() => !!props.service);
+
+const scrollToSection = (sectionId) => {
+    const el = document.getElementById(sectionId);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+};
 const loading = ref(false);
 const submitting = ref(false);
 const exitAfterSave = ref(true); // Default: Salva ed Esci
 const pendingExitAfterSave = ref(true); // Store exit preference when overlaps are detected
+const returnUrl = ref(new URLSearchParams(window.location.search).get('returnUrl') || '');
 const showActivityModal = ref(false);
 const showTransactionModal = ref(false);
 const showTaskModal = ref(false);
 const showOverlapModal = ref(false);
+// Email notification modal
+const showEmailModal = ref(false);
+const emailModalData = ref({ subject: '', body: '', to: '', gmail_account_id: null, token: '' });
+const emailSending = ref(false);
+const pendingEmailServiceId = ref(null);
 const detectedOverlaps = ref([]);
 
 // Computed: split detected overlaps into service overlaps and unavailability conflicts
@@ -3399,6 +3492,7 @@ const newFornitoreForm = ref({
     company_id: null,
     is_committente: false,
     is_fornitore: true,
+    is_collega: true,
     is_intermediario: false
 });
 
@@ -3706,6 +3800,7 @@ const searchFornitori = async (query) => {
     try {
         const params = {
             is_fornitore: 1,
+            is_collega: 1,
             per_page: 30,
             company_id: isSuperAdmin.value ? form.value.company_id : undefined
         };
@@ -4298,13 +4393,15 @@ const openActivityModal = (activity = null) => {
         };
     } else {
         // Create mode - reset form with default dates from service
+        const defaultStart = form.value.pickup_datetime || '';
+        const defaultEnd = form.value.dropoff_datetime || '';
         activityForm.value = {
             id: null,
             name: '',
             activity_type_id: '',
             supplier_id: '',
-            start_time: '',
-            end_time: '',
+            start_time: defaultStart,
+            end_time: defaultEnd,
             cost: 0,
             cost_per_person: 0,
             payment_type: '',
@@ -4379,6 +4476,36 @@ const saveActivity = async () => {
     } catch (error) {
         console.error('Error saving activity:', error);
         alert('Errore durante il salvataggio dell\'esperienza');
+    }
+};
+
+const moveActivity = async (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= form.value.activities.length) return;
+
+    // Swap in local array
+    const activities = form.value.activities;
+    const temp = activities[index];
+    activities[index] = activities[newIndex];
+    activities[newIndex] = temp;
+
+    // Update sort_order for all activities
+    const reorderPayload = activities.map((a, i) => ({
+        id: a.id,
+        sort_order: i + 1
+    }));
+
+    try {
+        await axios.post('/api/activities/reorder', {
+            activities: reorderPayload,
+            company_id: form.value.company_id
+        });
+    } catch (error) {
+        console.error('Error reordering activities:', error);
+        // Revert swap on error
+        const temp2 = activities[index];
+        activities[index] = activities[newIndex];
+        activities[newIndex] = temp2;
     }
 };
 
@@ -5852,6 +5979,48 @@ const removeAccountingTransactions = async () => {
     }
 };
 
+// Send service email notification
+const sendServiceEmail = async () => {
+    emailSending.value = true;
+    try {
+        const response = await axios.post(`/api/services/${props.service.id}/send-email`, {
+            to: emailModalData.value.to,
+            subject: emailModalData.value.subject,
+            body: emailModalData.value.body,
+            gmail_account_id: emailModalData.value.gmail_account_id,
+        });
+
+        if (response.data.success) {
+            showEmailModal.value = false;
+            await Swal.fire({
+                title: 'Email Inviata',
+                text: 'La notifica email è stata inviata con successo al collega.',
+                icon: 'success',
+                confirmButtonText: 'OK',
+            });
+            // Reload page
+            router.visit(route('easyncc.services.edit', props.service.id));
+        }
+    } catch (error) {
+        console.error('Error sending email:', error);
+        const msg = error.response?.data?.message || 'Errore durante l\'invio dell\'email';
+        await Swal.fire({ title: 'Errore', text: msg, icon: 'error' });
+    } finally {
+        emailSending.value = false;
+    }
+};
+
+const onEmailBodyEdit = (event) => {
+    emailModalData.value.body = event.target.innerHTML;
+};
+
+const closeEmailModal = () => {
+    showEmailModal.value = false;
+    pendingEmailServiceId.value = null;
+    // Reload page since service was already saved
+    router.visit(route('easyncc.services.edit', props.service.id));
+};
+
 // Function to handle "Salva" button (save and stay)
 const saveAndStay = async () => {
     exitAfterSave.value = false;
@@ -5865,11 +6034,73 @@ const saveAndExit = async () => {
 };
 
 const submitForm = async (confirmOverlaps = false) => {
-    // Check if status is changing to "assegnato" - warn about Telegram notification
+    // Check if status is changing to trigger status - determine Telegram vs Email flow
     if (isEdit.value && form.value.status_id && props.service.status_id !== form.value.status_id) {
         const newStatus = serviceStatuses.value.find(s => s.id === form.value.status_id);
-        const newStatusName = newStatus?.name?.toLowerCase() || '';
-        if (newStatusName.includes('assegnato')) {
+        const triggerStatusId = settings.value?.telegram_trigger_status_id;
+        const isTriggering = triggerStatusId && form.value.status_id === triggerStatusId;
+
+        if (isTriggering && form.value.supplier_id) {
+            const defaultSupplierId = settings.value?.default_supplier_id;
+
+            if (defaultSupplierId && form.value.supplier_id !== defaultSupplierId) {
+                // Email flow: check supplier operational email
+                try {
+                    const checkRes = await axios.get(`/api/services/${props.service.id}/check-email-flow`);
+                    const { supplier_email, supplier_name } = checkRes.data;
+
+                    if (!supplier_email) {
+                        await Swal.fire({
+                            title: 'Email non disponibile',
+                            html: `Il collega <strong>${supplier_name || 'selezionato'}</strong> non ha l'email operativa configurata nella scheda anagrafica.<br><br>Impossibile inviare la notifica via email.`,
+                            icon: 'error',
+                            confirmButtonText: 'OK',
+                        });
+                        return;
+                    }
+
+                    const result = await Swal.fire({
+                        title: 'Notifica via Email',
+                        html: `Il fornitore <strong>${supplier_name}</strong> è diverso dal fornitore di default.<br><br>Verrà inviata una email a <strong>${supplier_email}</strong> con il foglio di servizio e il link per accettare.<br><br>Vuoi procedere?`,
+                        icon: 'info',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sì, procedi',
+                        cancelButtonText: 'Annulla',
+                    });
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+                    // Mark that we need to open email modal after save
+                    pendingEmailServiceId.value = props.service.id;
+                } catch (error) {
+                    console.error('Error checking email flow:', error);
+                    await Swal.fire({
+                        title: 'Errore',
+                        text: 'Errore durante la verifica del flusso email',
+                        icon: 'error',
+                    });
+                    return;
+                }
+            } else {
+                // Telegram flow (default supplier or no supplier)
+                const result = await Swal.fire({
+                    title: 'Notifica al Driver',
+                    html: 'Cambiando lo stato in <strong>"Assegnato"</strong> verrà inviato un messaggio Telegram al driver per richiedere la conferma del servizio.<br><br>Vuoi procedere?',
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sì, procedi',
+                    cancelButtonText: 'Annulla',
+                });
+                if (!result.isConfirmed) {
+                    return;
+                }
+            }
+        } else if (isTriggering) {
+            // No supplier set, use Telegram flow
             const result = await Swal.fire({
                 title: 'Notifica al Driver',
                 html: 'Cambiando lo stato in <strong>"Assegnato"</strong> verrà inviato un messaggio Telegram al driver per richiedere la conferma del servizio.<br><br>Vuoi procedere?',
@@ -5942,10 +6173,29 @@ const submitForm = async (confirmOverlaps = false) => {
             await Promise.all(postSavePromises);
         }
 
+        // If email flow is pending, open the email modal instead of navigating
+        if (pendingEmailServiceId.value) {
+            try {
+                const emailRes = await axios.post(`/api/services/${pendingEmailServiceId.value}/prepare-email`);
+                if (emailRes.data.success) {
+                    emailModalData.value = emailRes.data.data;
+                    showEmailModal.value = true;
+                    pendingEmailServiceId.value = null;
+                    submitting.value = false;
+                    return; // Don't navigate - stay on page with email modal open
+                }
+            } catch (emailError) {
+                console.error('Error preparing email:', emailError);
+                const msg = emailError.response?.data?.message || 'Errore durante la preparazione dell\'email';
+                await Swal.fire({ title: 'Errore Email', text: msg, icon: 'error' });
+                pendingEmailServiceId.value = null;
+            }
+        }
+
         // Decide where to go based on exitAfterSave flag
         if (exitAfterSave.value) {
-            // Salva ed Esci: go to services list
-            router.visit(route('easyncc.services.index'));
+            // Salva ed Esci: return to origin or services list
+            router.visit(returnUrl.value || route('easyncc.services.index'));
         } else {
             // Salva: reload current page
             if (isEdit.value) {

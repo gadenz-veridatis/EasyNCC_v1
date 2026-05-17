@@ -32,51 +32,55 @@ class UnavailabilityCalendarController extends Controller
         $start = $validated['start'];
         $end = $validated['end'];
 
-        // Driver unavailabilities: join with users to filter by company
-        $driverQuery = DriverUnavailability::join('users', 'driver_unavailabilities.user_id', '=', 'users.id');
+        // Driver unavailabilities: direct company_id filter (no JOIN needed)
+        $driverQuery = DriverUnavailability::query();
         if ($companyId) {
-            $driverQuery->where('users.company_id', $companyId);
+            $driverQuery->where('company_id', $companyId);
         }
         $driverUnavailabilities = $driverQuery
-            ->where('driver_unavailabilities.start_date', '<=', $end)
-            ->where('driver_unavailabilities.end_date', '>=', $start)
-            ->with(['user:id,name,surname', 'user.driverProfile:id,user_id,color', 'leaveType:id,name'])
-            ->select('driver_unavailabilities.*')
+            ->where('start_date', '<=', $end)
+            ->where('end_date', '>=', $start)
+            ->with(['user:id,name,surname,nickname', 'user.driverProfile:user_id,color', 'leaveType:id,name'])
             ->get()
             ->map(function ($item) {
+                $allDay = (bool) $item->all_day;
                 return [
                     'id' => 'driver_unavail_' . $item->id,
                     'type' => 'driver_unavailability',
-                    'start_date' => $item->start_date->format('Y-m-d'),
-                    'end_date' => $item->end_date->format('Y-m-d'),
+                    'start_date' => $allDay ? $item->start_date->format('Y-m-d') : $item->start_date->format('Y-m-d\TH:i:s'),
+                    'end_date' => $allDay ? $item->end_date->format('Y-m-d') : $item->end_date->format('Y-m-d\TH:i:s'),
+                    'all_day' => $allDay,
                     'driver_id' => $item->user_id,
                     'driver_name' => $item->user->display_name ?? '',
                     'driver_color' => $item->user->driverProfile->color ?? '#6c757d',
+                    'leave_type_id' => $item->leave_type_id,
                     'reason' => $item->leaveType->name ?? '',
                     'notes' => $item->notes,
                 ];
             });
 
-        // Vehicle unavailabilities: filter by company
-        $vehicleQuery = VehicleUnavailability::join('vehicles', 'vehicle_unavailabilities.vehicle_id', '=', 'vehicles.id');
+        // Vehicle unavailabilities: direct company_id filter (no JOIN needed)
+        $vehicleQuery = VehicleUnavailability::query();
         if ($companyId) {
-            $vehicleQuery->where('vehicles.company_id', $companyId);
+            $vehicleQuery->where('company_id', $companyId);
         }
         $vehicleUnavailabilities = $vehicleQuery
-            ->where('vehicle_unavailabilities.start_date', '<=', $end)
-            ->where('vehicle_unavailabilities.end_date', '>=', $start)
+            ->where('start_date', '<=', $end)
+            ->where('end_date', '>=', $start)
             ->with(['vehicle:id,license_plate,brand,model', 'unavailabilityType:id,name'])
-            ->select('vehicle_unavailabilities.*')
             ->get()
             ->map(function ($item) {
+                $allDay = (bool) $item->all_day;
                 return [
                     'id' => 'vehicle_unavail_' . $item->id,
                     'type' => 'vehicle_unavailability',
-                    'start_date' => $item->start_date->format('Y-m-d'),
-                    'end_date' => $item->end_date->format('Y-m-d'),
+                    'start_date' => $allDay ? $item->start_date->format('Y-m-d') : $item->start_date->format('Y-m-d\TH:i:s'),
+                    'end_date' => $allDay ? $item->end_date->format('Y-m-d') : $item->end_date->format('Y-m-d\TH:i:s'),
+                    'all_day' => $allDay,
                     'vehicle_id' => $item->vehicle_id,
                     'vehicle_plate' => $item->vehicle->license_plate ?? '',
                     'vehicle_label' => trim(($item->vehicle->brand ?? '') . ' ' . ($item->vehicle->model ?? '')),
+                    'vehicle_unavailability_type_id' => $item->vehicle_unavailability_type_id,
                     'reason' => $item->unavailabilityType->name ?? '',
                     'notes' => $item->notes,
                 ];

@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\UnavailabilityCalendarController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\VehicleMileageEntryController;
 use App\Http\Controllers\Api\TrashController;
+use App\Http\Controllers\Api\ServiceEmailController;
 
 /*
 |--------------------------------------------------------------------------
@@ -104,10 +105,13 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
     });
 
     // Vehicles - admin and operator can CRU, only admin can delete
-    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+    // Vehicles - read access for drivers too
+    Route::middleware(['role:super-admin,admin,operator,driver'])->group(function () {
         Route::get('vehicles', [VehicleController::class, 'index']);
-        Route::post('vehicles', [VehicleController::class, 'store']);
         Route::get('vehicles/{vehicle}', [VehicleController::class, 'show']);
+    });
+    Route::middleware(['role:super-admin,admin,operator'])->group(function () {
+        Route::post('vehicles', [VehicleController::class, 'store']);
         Route::put('vehicles/{vehicle}', [VehicleController::class, 'update']);
         Route::patch('vehicles/{vehicle}', [VehicleController::class, 'update']);
     });
@@ -179,6 +183,10 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::delete('services/{service}', [ServiceController::class, 'destroy']);
         Route::post('services/{service}/duplicate', [ServiceController::class, 'duplicate']);
         Route::post('services/{service}/return', [ServiceController::class, 'returnService']);
+        // Service email notification endpoints
+        Route::get('services/{service}/check-email-flow', [ServiceEmailController::class, 'checkEmailFlow']);
+        Route::post('services/{service}/prepare-email', [ServiceEmailController::class, 'prepareEmail']);
+        Route::post('services/{service}/send-email', [ServiceEmailController::class, 'sendEmail']);
         // Service Attachments
         Route::get('services/{service}/attachments', [ServiceAttachmentController::class, 'index']);
         Route::post('services/{service}/attachments', [ServiceAttachmentController::class, 'store']);
@@ -193,6 +201,7 @@ Route::middleware(['auth:sanctum', 'active', 'company.context'])->group(function
         Route::get('activities/{activity}', [ActivityController::class, 'show']);
         Route::put('activities/{activity}', [ActivityController::class, 'update']);
         Route::patch('activities/{activity}', [ActivityController::class, 'update']);
+        Route::post('activities/reorder', [ActivityController::class, 'reorder']);
     });
 
     Route::middleware(['role:super-admin,admin'])->group(function () {

@@ -340,7 +340,7 @@
                         Crea ed Esci
                     </button>
                 </template>
-                <Link :href="route('easyncc.vehicles.index')" class="btn btn-secondary">
+                <Link :href="returnUrl || route('easyncc.vehicles.index')" class="btn btn-secondary">
                     Esci
                 </Link>
             </div>
@@ -470,6 +470,7 @@ const loading = ref(false);
 const submitting = ref(false);
 const error = ref('');
 const errors = ref({});
+const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') || '';
 const companies = ref([]);
 
 // ZTL state
@@ -515,16 +516,12 @@ const submitForm = async (stayOnPage = false) => {
         const response = await axios[method](url, form.value);
 
         if (isEdit.value) {
-            // After editing, return to the vehicles list
-            router.visit(route('easyncc.vehicles.index'));
+            router.visit(returnUrl || route('easyncc.vehicles.index'));
         } else {
-            // For new creation
             if (stayOnPage && response.data?.id) {
-                // Redirect to edit page
                 router.visit(route('easyncc.vehicles.edit', response.data.id));
             } else {
-                // Redirect to index
-                router.visit(route('easyncc.vehicles.index'));
+                router.visit(returnUrl || route('easyncc.vehicles.index'));
             }
         }
     } catch (err) {

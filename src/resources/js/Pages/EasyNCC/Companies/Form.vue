@@ -188,6 +188,9 @@ import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import Layout from '@/Layouts/main.vue';
 import PageHeader from '@/Components/page-header.vue';
+import { useNotify } from '@/composables/useNotify.js';
+
+const notify = useNotify();
 
 const props = defineProps({
     company: {
@@ -246,7 +249,7 @@ const submitForm = async () => {
             errors.value = error.response.data.errors || {};
         } else {
             console.error('Error saving company:', error);
-            alert('Si è verificato un errore durante il salvataggio');
+            notify.error('Si è verificato un errore durante il salvataggio');
         }
     }
 };

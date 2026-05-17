@@ -1,6 +1,6 @@
 <template>
     <Layout>
-        <PageHeader title="Template Email Preventivi" pageTitle="Impostazioni" />
+        <PageHeader title="Template Email" pageTitle="Impostazioni" />
         <BRow>
             <BCol lg="8">
                 <BCard no-body>
@@ -35,17 +35,23 @@
                             </BCol>
                         </BRow>
 
+                        <!-- Type filter -->
+                        <BRow v-if="selectedCompanyId && !loading" class="mb-3">
+                            <BCol md="6">
+                                <label class="form-label fw-bold">Tipologia Template</label>
+                                <select v-model="selectedType" class="form-select" @change="loadTemplates">
+                                    <option value="quote">Preventivi</option>
+                                    <option value="service_assignment">Assegnazione Servizio</option>
+                                    <option value="service_closure">Chiusura Servizio</option>
+                                </select>
+                            </BCol>
+                        </BRow>
+
                         <!-- Alert errori -->
                         <div v-if="errors.length > 0" class="alert alert-danger">
                             <ul class="mb-0">
                                 <li v-for="(error, index) in errors" :key="index">{{ error }}</li>
                             </ul>
-                        </div>
-
-                        <!-- Alert successo -->
-                        <div v-if="successMessage" class="alert alert-success alert-dismissible fade show">
-                            {{ successMessage }}
-                            <button type="button" class="btn-close" @click="successMessage = ''"></button>
                         </div>
 
                         <!-- Templates Table -->
@@ -108,11 +114,11 @@
                     </BCardHeader>
                     <BCardBody>
                         <p class="text-muted small mb-3">
-                            Usa questi segnaposto nell'oggetto e nel corpo del template. Verranno sostituiti con i dati del preventivo.
+                            Usa questi segnaposto nell'oggetto e nel corpo del template. Verranno sostituiti con i dati reali.
                         </p>
 
-                        <!-- Quote-level placeholders -->
-                        <h6 class="text-uppercase text-muted small fw-bold mb-2">Preventivo</h6>
+                        <!-- Placeholders -->
+                        <h6 class="text-uppercase text-muted small fw-bold mb-2">Segnaposto</h6>
                         <div class="table-responsive">
                             <table class="table table-sm table-borderless mb-0">
                                 <tbody>
@@ -231,6 +237,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
+import { useNotify } from '@/composables/useNotify.js';
 import { ClassicEditor, Essentials, Bold, Italic, Underline, Strikethrough, Font, Link as CKLink, List, BlockQuote, Table, TableToolbar, Heading, Paragraph, Undo, Alignment } from 'ckeditor5';
 import { Ckeditor } from '@ckeditor/ckeditor5-vue';
 import 'ckeditor5/ckeditor5.css';
@@ -242,6 +249,10 @@ export default {
         Layout,
         PageHeader,
         Ckeditor,
+    },
+    setup() {
+        const notify = useNotify();
+        return { notify };
     },
     props: {
         availablePlaceholders: {
@@ -256,9 +267,10 @@ export default {
             modalSaving: false,
             errors: [],
             modalErrors: [],
-            successMessage: '',
             companies: [],
             selectedCompanyId: '',
+            selectedType: 'quote',
+            availablePlaceholders: [],
             templates: [],
             editingTemplate: null,
             modalForm: {
@@ -338,12 +350,18 @@ export default {
 
             this.loading = true;
             this.errors = [];
-            this.successMessage = '';
 
             try {
-                const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
-                const response = await axios.get('/api/quote-email-templates', { params });
-                this.templates = response.data.data || [];
+                const params = {
+                    type: this.selectedType,
+                    ...(this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {}),
+                };
+                const [templatesRes, placeholdersRes] = await Promise.all([
+                    axios.get('/api/quote-email-templates', { params }),
+                    axios.get('/api/quote-email-templates/placeholders', { params: { type: this.selectedType } }),
+                ]);
+                this.templates = templatesRes.data.data || [];
+                this.availablePlaceholders = placeholdersRes.data.data || [];
             } catch (error) {
                 console.error('Error loading templates:', error);
                 this.errors = ['Errore nel caricamento dei template'];
@@ -383,17 +401,17 @@ export default {
             this.modalErrors = [];
 
             try {
-                const payload = { ...this.modalForm };
+                const payload = { ...this.modalForm, type: this.selectedType };
                 if (this.isSuperAdmin) {
                     payload.company_id = this.selectedCompanyId;
                 }
 
                 if (this.editingTemplate) {
                     await axios.put(`/api/quote-email-templates/${this.editingTemplate.id}`, payload);
-                    this.successMessage = 'Template aggiornato con successo';
+                    this.notify.success('Template aggiornato con successo');
                 } else {
                     await axios.post('/api/quote-email-templates', payload);
-                    this.successMessage = 'Template creato con successo';
+                    this.notify.success('Template creato con successo');
                 }
 
                 this.showModal = false;
@@ -416,7 +434,7 @@ export default {
             try {
                 const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
                 await axios.post(`/api/quote-email-templates/${id}/set-default`, params);
-                this.successMessage = 'Template impostato come predefinito';
+                this.notify.success('Template impostato come predefinito');
                 await this.loadTemplates();
             } catch (error) {
                 this.errors = [error.response?.data?.message || 'Errore nell\'impostazione del default'];
@@ -425,7 +443,8 @@ export default {
             }
         },
         async deleteTemplate(template) {
-            if (!confirm(`Eliminare il template "${template.name}"?`)) return;
+            const confirmed = await this.notify.confirm('Conferma eliminazione', `Eliminare il template "${template.name}"?`);
+            if (!confirmed) return;
 
             this.actionLoading = true;
             this.errors = [];
@@ -433,7 +452,7 @@ export default {
             try {
                 const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
                 await axios.delete(`/api/quote-email-templates/${template.id}`, { params });
-                this.successMessage = 'Template eliminato con successo';
+                this.notify.success('Template eliminato con successo');
                 await this.loadTemplates();
             } catch (error) {
                 this.errors = [error.response?.data?.message || 'Errore nell\'eliminazione del template'];
@@ -454,8 +473,7 @@ export default {
         },
         copyPlaceholder(key) {
             navigator.clipboard.writeText(key).then(() => {
-                this.successMessage = `Segnaposto ${key} copiato negli appunti`;
-                setTimeout(() => { this.successMessage = ''; }, 2000);
+                this.notify.info(`Segnaposto ${key} copiato negli appunti`);
             }).catch(() => {
                 // Fallback: just show the key
             });

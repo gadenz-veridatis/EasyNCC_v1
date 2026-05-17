@@ -19,9 +19,9 @@ class GmailService
     /**
      * Create a draft email.
      */
-    public function createDraft(string $to, string $subject, string $htmlBody): array
+    public function createDraft(string $to, string $subject, string $htmlBody, array $attachments = []): array
     {
-        $raw = $this->buildMimeMessage($to, $this->account->email_address, $subject, $htmlBody);
+        $raw = $this->buildMimeMessage($to, $this->account->email_address, $subject, $htmlBody, $attachments);
 
         $response = $this->call('POST', '/drafts', [
             'message' => [
@@ -32,6 +32,23 @@ class GmailService
         return [
             'draft_id' => $response['id'] ?? null,
             'thread_id' => $response['message']['threadId'] ?? null,
+        ];
+    }
+
+    /**
+     * Send an email directly (without creating a draft first).
+     */
+    public function sendDirect(string $to, string $subject, string $htmlBody, array $attachments = []): array
+    {
+        $raw = $this->buildMimeMessage($to, $this->account->email_address, $subject, $htmlBody, $attachments);
+
+        $response = $this->call('POST', '/messages/send', [
+            'raw' => $raw,
+        ]);
+
+        return [
+            'message_id' => $response['id'] ?? null,
+            'thread_id' => $response['threadId'] ?? null,
         ];
     }
 
@@ -140,22 +157,220 @@ class GmailService
 
     /**
      * Build a base64url-encoded MIME message.
+     *
+     * @param array $attachments Array of ['path' => '/path/to/file', 'name' => 'filename.pdf', 'mime' => 'application/pdf']
      */
-    private function buildMimeMessage(string $to, string $from, string $subject, string $htmlBody): string
+    private function buildMimeMessage(string $to, string $from, string $subject, string $htmlBody, array $attachments = []): string
     {
         $boundary = uniqid('boundary_');
         $mime = "From: {$from}\r\n";
         $mime .= "To: {$to}\r\n";
         $mime .= "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\n";
         $mime .= "MIME-Version: 1.0\r\n";
-        $mime .= "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n\r\n";
-        $mime .= "--{$boundary}\r\n";
-        $mime .= "Content-Type: text/html; charset=UTF-8\r\n";
-        $mime .= "Content-Transfer-Encoding: base64\r\n\r\n";
-        $mime .= chunk_split(base64_encode($htmlBody));
-        $mime .= "--{$boundary}--";
+
+        if (empty($attachments)) {
+            // Simple HTML-only message
+            $mime .= "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n\r\n";
+            $mime .= "--{$boundary}\r\n";
+            $mime .= "Content-Type: text/html; charset=UTF-8\r\n";
+            $mime .= "Content-Transfer-Encoding: base64\r\n\r\n";
+            $mime .= chunk_split(base64_encode($htmlBody));
+            $mime .= "--{$boundary}--";
+        } else {
+            // Mixed message with attachments
+            $mime .= "Content-Type: multipart/mixed; boundary=\"{$boundary}\"\r\n\r\n";
+
+            // HTML body part
+            $mime .= "--{$boundary}\r\n";
+            $mime .= "Content-Type: text/html; charset=UTF-8\r\n";
+            $mime .= "Content-Transfer-Encoding: base64\r\n\r\n";
+            $mime .= chunk_split(base64_encode($htmlBody));
+
+            // Attachment parts
+            foreach ($attachments as $attachment) {
+                $filePath = $attachment['path'];
+                $fileName = $attachment['name'] ?? basename($filePath);
+                $mimeType = $attachment['mime'] ?? 'application/octet-stream';
+
+                if (!file_exists($filePath)) {
+                    continue;
+                }
+
+                $fileContent = file_get_contents($filePath);
+                $mime .= "--{$boundary}\r\n";
+                $mime .= "Content-Type: {$mimeType}; name=\"{$fileName}\"\r\n";
+                $mime .= "Content-Disposition: attachment; filename=\"{$fileName}\"\r\n";
+                $mime .= "Content-Transfer-Encoding: base64\r\n\r\n";
+                $mime .= chunk_split(base64_encode($fileContent));
+            }
+
+            $mime .= "--{$boundary}--";
+        }
 
         return rtrim(strtr(base64_encode($mime), '+/', '-_'), '=');
+    }
+
+    /**
+     * List labels for the account. Used to resolve label name → label ID.
+     */
+    public function listLabels(): array
+    {
+        $response = $this->call('GET', '/labels');
+        return $response['labels'] ?? [];
+    }
+
+    /**
+     * Resolve a label name to its Gmail internal ID.
+     * Returns null if not found.
+     */
+    public function resolveLabelId(string $labelName): ?string
+    {
+        $labels = $this->listLabels();
+        foreach ($labels as $label) {
+            if (strcasecmp($label['name'] ?? '', $labelName) === 0) {
+                return $label['id'];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Fetch new messages since the given historyId.
+     *
+     * Detects two types of events:
+     * 1. labelAdded: new emails tagged with the configured label (new richieste)
+     * 2. messageAdded: new messages in threads we already track (replies to existing richieste)
+     *
+     * @param string $startHistoryId Gmail history cursor
+     * @param string $labelId Label ID to watch for new richieste
+     * @param array $knownThreadIds Gmail thread IDs we already track in thread_emails
+     * @return array message_ids to process + new history_id
+     */
+    public function fetchNewMessages(string $startHistoryId, string $labelId, array $knownThreadIds = []): array
+    {
+        $messageIds = [];
+        $pageToken = null;
+
+        do {
+            $params = [
+                'startHistoryId' => $startHistoryId,
+            ];
+            if ($pageToken) {
+                $params['pageToken'] = $pageToken;
+            }
+
+            $response = $this->call('GET', '/history', $params);
+
+            $histories = $response['history'] ?? [];
+            foreach ($histories as $history) {
+                // 1. New label applied → new richiesta
+                $labelsAdded = $history['labelsAdded'] ?? [];
+                foreach ($labelsAdded as $event) {
+                    $msgLabels = $event['labelIds'] ?? [];
+                    if (in_array($labelId, $msgLabels)) {
+                        $msgId = $event['message']['id'] ?? null;
+                        if ($msgId && !in_array($msgId, $messageIds)) {
+                            $messageIds[] = $msgId;
+                        }
+                    }
+                }
+
+                // 2. New message in a known thread → reply to existing richiesta
+                $messagesAdded = $history['messagesAdded'] ?? [];
+                foreach ($messagesAdded as $event) {
+                    $msgId = $event['message']['id'] ?? null;
+                    $threadId = $event['message']['threadId'] ?? null;
+                    if ($msgId && $threadId && in_array($threadId, $knownThreadIds)) {
+                        if (!in_array($msgId, $messageIds)) {
+                            $messageIds[] = $msgId;
+                        }
+                    }
+                }
+            }
+
+            $pageToken = $response['nextPageToken'] ?? null;
+        } while ($pageToken);
+
+        $latestHistoryId = $response['historyId'] ?? $startHistoryId;
+
+        return [
+            'message_ids' => $messageIds,
+            'history_id' => $latestHistoryId,
+        ];
+    }
+
+    /**
+     * Get full message details including RFC headers and body.
+     */
+    public function getMessageDetail(string $messageId): array
+    {
+        $response = $this->call('GET', "/messages/{$messageId}", [
+            'format' => 'full',
+        ]);
+
+        $headers = [];
+        foreach ($response['payload']['headers'] ?? [] as $header) {
+            $name = strtolower($header['name']);
+            $headers[$name] = $header['value'];
+        }
+
+        $body = $this->extractBody($response['payload'] ?? []);
+
+        return [
+            'id' => $response['id'] ?? null,
+            'thread_id' => $response['threadId'] ?? null,
+            'label_ids' => $response['labelIds'] ?? [],
+            'internal_date' => isset($response['internalDate'])
+                ? \Carbon\Carbon::createFromTimestampMs($response['internalDate'])
+                : null,
+            'headers' => $headers,
+            'message_id_rfc' => $headers['message-id'] ?? null,
+            'in_reply_to' => $headers['in-reply-to'] ?? null,
+            'references' => $headers['references'] ?? null,
+            'from' => $headers['from'] ?? null,
+            'to' => $headers['to'] ?? null,
+            'subject' => $headers['subject'] ?? null,
+            'body_text' => $body['text'] ?? null,
+            'body_html' => $body['html'] ?? null,
+        ];
+    }
+
+    /**
+     * Get the current profile (includes historyId).
+     */
+    public function getProfile(): array
+    {
+        return $this->call('GET', '/profile');
+    }
+
+    /**
+     * Extract text and html body from message payload.
+     */
+    private function extractBody(array $payload): array
+    {
+        $result = ['text' => null, 'html' => null];
+
+        $mimeType = $payload['mimeType'] ?? '';
+        $bodyData = $payload['body']['data'] ?? null;
+
+        if ($bodyData && $mimeType === 'text/plain') {
+            $result['text'] = base64_decode(strtr($bodyData, '-_', '+/'));
+        } elseif ($bodyData && $mimeType === 'text/html') {
+            $result['html'] = base64_decode(strtr($bodyData, '-_', '+/'));
+        }
+
+        // Recurse into parts
+        foreach ($payload['parts'] ?? [] as $part) {
+            $partResult = $this->extractBody($part);
+            if ($partResult['text'] && !$result['text']) {
+                $result['text'] = $partResult['text'];
+            }
+            if ($partResult['html'] && !$result['html']) {
+                $result['html'] = $partResult['html'];
+            }
+        }
+
+        return $result;
     }
 
     /**

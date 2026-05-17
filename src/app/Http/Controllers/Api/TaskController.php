@@ -17,7 +17,10 @@ class TaskController extends Controller
         $query = Task::with([
             'assignedUsers:id,name,surname,email,role',
             'company:id,name',
-            'service:id,reference_number'
+            'service:id,reference_number,client_id,pickup_datetime',
+            'service.client:id,name,surname',
+            'service.drivers:id,name,surname',
+            'service.drivers.driverProfile:id,user_id,color',
         ]);
 
         // Multi-tenancy: Filter by company
@@ -46,12 +49,36 @@ class TaskController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Search on name and notes
+        // Filter by service
+        if ($request->filled('service_id')) {
+            $query->where('service_id', $request->service_id);
+        }
+
+        // Filter by client (via service)
+        if ($request->filled('client_id')) {
+            $query->whereHas('service', function ($q) use ($request) {
+                $q->where('client_id', $request->client_id);
+            });
+        }
+
+        // Filter by driver (via service)
+        if ($request->filled('driver_id')) {
+            $query->whereHas('service', function ($q) use ($request) {
+                $q->whereHas('drivers', function ($dq) use ($request) {
+                    $dq->where('users.id', $request->driver_id);
+                });
+            });
+        }
+
+        // Search on name, notes, and service reference_number
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('name', 'ilike', "%{$search}%")
-                  ->orWhere('notes', 'ilike', "%{$search}%");
+                  ->orWhere('notes', 'ilike', "%{$search}%")
+                  ->orWhereHas('service', function ($sq) use ($search) {
+                      $sq->where('reference_number', 'ilike', "%{$search}%");
+                  });
             });
         }
 
@@ -63,8 +90,18 @@ class TaskController extends Controller
             $query->whereDate('due_date', '<=', $request->end_date);
         }
 
+        // Filter overdue: due_date < today AND status = to_complete
+        if ($request->boolean('overdue')) {
+            $query->whereDate('due_date', '<', now()->toDateString())
+                  ->where('status', 'to_complete');
+        }
+
         // Sorting
+        $allowedSorts = ['due_date', 'name', 'status', 'created_at'];
         $sortBy = $request->get('sort_by', 'due_date');
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'due_date';
+        }
         $sortOrder = $request->get('sort_order', 'asc');
         $query->orderBy($sortBy, $sortOrder);
 
@@ -90,8 +127,9 @@ class TaskController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:500',
             'service_id' => 'nullable|exists:services,id',
+            'activity_id' => 'nullable|exists:activities,id',
             'due_date' => 'nullable|date',
             'assigned_users' => 'nullable|array',
             'assigned_users.*' => 'exists:users,id',
@@ -191,8 +229,9 @@ class TaskController extends Controller
         } else {
             // Admin, operator, super-admin can update all fields
             $validated = $request->validate([
-                'name' => 'sometimes|required|string|max:255',
+                'name' => 'sometimes|required|string|max:500',
                 'service_id' => 'nullable|exists:services,id',
+                'activity_id' => 'nullable|exists:activities,id',
                 'due_date' => 'nullable|date',
                 'assigned_users' => 'nullable|array',
                 'assigned_users.*' => 'exists:users,id',

@@ -8,9 +8,11 @@ use App\Models\Task;
 use App\Models\TelegramConfig;
 use App\Models\TelegramMessage;
 use App\Models\TelegramNotification;
+use App\Models\TelegramPendingAction;
 use App\Models\TelegramUser;
 use App\Models\VehicleMileageEntry;
 use App\Services\TelegramAPI;
+use App\Services\TelegramServiceLabel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -82,8 +84,45 @@ class TelegramWebhookController extends Controller
             return;
         }
 
+        // Check for pending actions in the new table first
+        $pendingAction = TelegramPendingAction::where('telegram_user_id', $telegramUser->id)
+            ->orderBy('created_at', 'asc')
+            ->first();
+
+        if ($pendingAction) {
+            $this->handlePendingActionText($text, $pendingAction, $telegramUser, $chatId, $message, $api);
+            return;
+        }
+
+        // Legacy: check old pending_action field for backward compatibility
+        if ($telegramUser->pending_action) {
+            if (str_starts_with($telegramUser->pending_action, 'awaiting_ko_comment:')) {
+                $serviceId = (int) str_replace('awaiting_ko_comment:', '', $telegramUser->pending_action);
+                // Migrate to new table
+                $telegramUser->update(['pending_action' => null]);
+                $action = TelegramPendingAction::create([
+                    'telegram_user_id' => $telegramUser->id,
+                    'service_id' => $serviceId,
+                    'action_type' => 'ko_comment',
+                ]);
+                $this->handlePendingActionText($text, $action, $telegramUser, $chatId, $message, $api);
+                return;
+            }
+            if (str_starts_with($telegramUser->pending_action, 'awaiting_mileage:')) {
+                $serviceId = (int) str_replace('awaiting_mileage:', '', $telegramUser->pending_action);
+                $telegramUser->update(['pending_action' => null]);
+                $action = TelegramPendingAction::create([
+                    'telegram_user_id' => $telegramUser->id,
+                    'service_id' => $serviceId,
+                    'action_type' => 'mileage',
+                ]);
+                $this->handlePendingActionText($text, $action, $telegramUser, $chatId, $message, $api);
+                return;
+            }
+        }
+
         // Generic text message
-        $this->handleTextMessage($telegramUser, $chatId, $text, $message, $api);
+        $this->handleGenericTextMessage($telegramUser, $chatId, $text, $message, $api);
     }
 
     /**
@@ -130,22 +169,36 @@ class TelegramWebhookController extends Controller
     }
 
     /**
-     * Handle generic text message.
+     * Route a text message to the correct handler based on pending action type.
      */
-    private function handleTextMessage(TelegramUser $telegramUser, int $chatId, string $text, array $message, TelegramAPI $api): void
+    private function handlePendingActionText(string $text, TelegramPendingAction $action, TelegramUser $telegramUser, int $chatId, array $message, TelegramAPI $api): void
     {
-        // Check for pending conversational actions
-        if ($telegramUser->pending_action) {
-            if (str_starts_with($telegramUser->pending_action, 'awaiting_ko_comment:')) {
-                $this->handleKoComment($text, $telegramUser, $chatId, $message, $api);
-                return;
-            }
-            if (str_starts_with($telegramUser->pending_action, 'awaiting_mileage:')) {
-                $this->handleMileageReading($text, $telegramUser, $chatId, $message, $api);
-                return;
-            }
+        switch ($action->action_type) {
+            case 'ko_comment':
+                $this->handleComment($text, $action, $telegramUser, $chatId, $message, $api, 'ko');
+                break;
+            case 'ok_comment':
+                $this->handleComment($text, $action, $telegramUser, $chatId, $message, $api, 'ok');
+                break;
+            case 'cancel_comment':
+                $this->handleComment($text, $action, $telegramUser, $chatId, $message, $api, 'cancel');
+                break;
+            case 'mileage':
+                $this->handleMileageReading($text, $action, $telegramUser, $chatId, $message, $api);
+                break;
+            default:
+                // Unknown action, clean it up
+                $action->delete();
+                $this->handleGenericTextMessage($telegramUser, $chatId, $text, $message, $api);
+                break;
         }
+    }
 
+    /**
+     * Handle generic text message (no pending action).
+     */
+    private function handleGenericTextMessage(TelegramUser $telegramUser, int $chatId, string $text, array $message, TelegramAPI $api): void
+    {
         // Save inbound message
         $savedMessage = TelegramMessage::create([
             'company_id' => $telegramUser->company_id,
@@ -237,6 +290,30 @@ class TelegramWebhookController extends Controller
             return;
         }
 
+        // Handle "write comment" button
+        if (str_starts_with($data, 'write_comment:')) {
+            $this->handleWriteCommentButton($data, $telegramUser, $chatId, $messageId, $callbackId, $api);
+            return;
+        }
+
+        // Handle "skip comment" button
+        if (str_starts_with($data, 'skip_comment:')) {
+            $this->handleSkipCommentButton($data, $telegramUser, $chatId, $messageId, $callbackId, $api);
+            return;
+        }
+
+        // Handle "enter mileage" button
+        if (str_starts_with($data, 'enter_mileage:')) {
+            $this->handleEnterMileageButton($data, $telegramUser, $chatId, $messageId, $callbackId, $api);
+            return;
+        }
+
+        // Handle "skip mileage" button
+        if (str_starts_with($data, 'skip_mileage:')) {
+            $this->handleSkipMileageButton($data, $telegramUser, $chatId, $messageId, $callbackId, $api);
+            return;
+        }
+
         // Unknown callback - just acknowledge
         $api->answerCallbackQuery($callbackId, 'Azione ricevuta');
     }
@@ -249,11 +326,10 @@ class TelegramWebhookController extends Controller
         $serviceId = (int) str_replace('accetta_servizio:', '', $data);
 
         try {
-            // Find the service
             $service = \App\Models\Service::withoutGlobalScopes()
                 ->where('id', $serviceId)
                 ->where('company_id', $telegramUser->company_id)
-                ->with(['status', 'drivers'])
+                ->with(['status', 'drivers', 'passengers'])
                 ->first();
 
             if (!$service) {
@@ -261,83 +337,62 @@ class TelegramWebhookController extends Controller
                 return;
             }
 
-            // Check if the Telegram user is associated to a driver
+            $serviceLabel = TelegramServiceLabel::getHtml($service);
+
             if (!$telegramUser->user_id) {
                 $api->answerCallbackQuery($callbackId, 'Il tuo account Telegram non è associato a un driver. Contatta l\'amministrazione.');
                 return;
             }
 
-            // Check if this driver is actually assigned to this service
             $isAssigned = $service->drivers->contains('id', $telegramUser->user_id);
             if (!$isAssigned) {
                 $api->answerCallbackQuery($callbackId, 'Non sei assegnato a questo servizio.');
                 return;
             }
 
-            // Check if the service is already accepted/confirmed
             $currentStatusName = strtolower(trim($service->status->name ?? ''));
             if (str_contains($currentStatusName, 'confermato')) {
                 $api->answerCallbackQuery($callbackId, 'Servizio già accettato');
-
-                // Remove inline keyboard
                 $api->editMessageReplyMarkup($chatId, $messageId, null);
                 return;
             }
 
-            // Check if service is in a state that can be accepted (only "preventivo" or similar)
             $nonAcceptableStatuses = ['completato', 'cancellato', 'no-show', 'in corso'];
             if (in_array($currentStatusName, $nonAcceptableStatuses)) {
                 $api->answerCallbackQuery($callbackId, "Impossibile accettare: il servizio è in stato \"{$service->status->name}\"");
                 return;
             }
 
-            // Load company settings to get acceptance status
             $settings = \App\Models\Settings::withoutGlobalScopes()
                 ->where('company_id', $telegramUser->company_id)
                 ->first();
 
-            // If no accepted status configured, acknowledge but don't change status
             if (!$settings || !$settings->telegram_accepted_status_id) {
                 $api->answerCallbackQuery($callbackId, 'Servizio registrato come accettato');
-
-                // Still remove the button
                 $api->editMessageReplyMarkup($chatId, $messageId, null);
 
                 Log::channel('telegram')->warning('Service accepted but no status configured', [
                     'service_id' => $serviceId,
                     'company_id' => $telegramUser->company_id,
                 ]);
-
-                // Continue to send confirmation message (will be handled after this block)
             } else {
-                // Update service status to configured acceptance status
                 $service->status_id = $settings->telegram_accepted_status_id;
                 $service->save();
 
-                // Acknowledge the callback
                 $api->answerCallbackQuery($callbackId, 'Servizio accettato!');
-
-                // Remove the button
                 $api->editMessageReplyMarkup($chatId, $messageId, null);
             }
 
-            // Send confirmation message
             $timestamp = now()->format('d/m/Y H:i');
             $driverName = trim(($telegramUser->first_name ?? '') . ' ' . ($telegramUser->last_name ?? ''));
 
-            $pickupDate = $service->pickup_datetime
-                ? \Carbon\Carbon::parse($service->pickup_datetime)->format('d/m/Y H:i')
-                : '';
-
-            $confirmText = "<b>SERVIZIO ACCETTATO</b>\n\n"
-                . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n"
-                . "<b>Pickup:</b> {$pickupDate}\n"
+            $confirmText = "<b>✅ SERVIZIO ACCETTATO</b>\n\n"
+                . "<b>Servizio:</b> {$serviceLabel}\n"
                 . "<b>Accettato da:</b> {$driverName}\n"
                 . "<b>Data/Ora:</b> {$timestamp}";
 
             $result = $api->sendMessage($chatId, $confirmText);
 
-            // Save confirmation as outbound message
             TelegramMessage::create([
                 'company_id' => $telegramUser->company_id,
                 'telegram_user_id' => $telegramUser->id,
@@ -348,7 +403,6 @@ class TelegramWebhookController extends Controller
                 'is_read' => true,
             ]);
 
-            // Create notification
             TelegramNotification::create([
                 'company_id' => $telegramUser->company_id,
                 'telegram_user_id' => $telegramUser->id,
@@ -374,10 +428,6 @@ class TelegramWebhookController extends Controller
 
             if ($acceptTask) {
                 $acceptTask->update(['status' => 'completed']);
-                Log::channel('telegram')->info('Accept task completed', [
-                    'task_id' => $acceptTask->id,
-                    'service_id' => $serviceId,
-                ]);
             }
 
             // Handle payment collection if driver must collect
@@ -410,13 +460,13 @@ class TelegramWebhookController extends Controller
             return;
         }
 
+        $serviceLabel = TelegramServiceLabel::getHtml($service);
         $balanceTaxable = (float) ($service->balance_taxable ?? 0);
         $balanceCardFees = (float) ($service->balance_card_fees ?? 0);
 
-        // If both amounts are 0, notify driver and admin, skip payment flow
         if ($balanceTaxable <= 0 && $balanceCardFees <= 0) {
             $noAmountText = "<b>⚠️ ATTENZIONE</b>\n\n"
-                . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n\n"
+                . "<b>Servizio:</b> {$serviceLabel}\n\n"
                 . "Il servizio è contrassegnato come \"Da Incassare\" ma gli importi saldo risultano a zero.\n"
                 . "Contatta l'amministrazione per verificare.";
 
@@ -445,17 +495,15 @@ class TelegramWebhookController extends Controller
                 'service_id' => $serviceId,
             ]);
 
-            // Still proceed to service closure even if payment amounts are zero
             $this->requestServiceClosure($service, $serviceId, $telegramUser, $chatId, $api);
             return;
         }
 
-        // Send payment collection message with two buttons
         $amountCassa = number_format($balanceTaxable, 2, ',', '.');
         $amountCarta = number_format($balanceCardFees, 2, ',', '.');
 
-        $paymentText = "<b>INCASSO RICHIESTO</b>\n\n"
-            . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n"
+        $paymentText = "<b>💰 INCASSO RICHIESTO</b>\n\n"
+            . "<b>Servizio:</b> {$serviceLabel}\n"
             . "<b>Saldo Imponibile:</b> € {$amountCassa}\n"
             . "<b>Saldo Card Fees:</b> € {$amountCarta}\n\n"
             . "Seleziona la modalità di incasso:";
@@ -463,20 +511,11 @@ class TelegramWebhookController extends Controller
         $paymentKeyboard = [
             'inline_keyboard' => [
                 [
-                    [
-                        'text' => "💵 CASSA € {$amountCassa}",
-                        'callback_data' => "incasso:{$serviceId}:cassa",
-                    ],
-                    [
-                        'text' => "💳 CARTA € {$amountCarta}",
-                        'callback_data' => "incasso:{$serviceId}:carta",
-                    ],
+                    ['text' => "💵 CASSA € {$amountCassa}", 'callback_data' => "incasso:{$serviceId}:cassa"],
+                    ['text' => "💳 CARTA € {$amountCarta}", 'callback_data' => "incasso:{$serviceId}:carta"],
                 ],
                 [
-                    [
-                        'text' => "❌ ANNULLA INCASSO",
-                        'callback_data' => "incasso:{$serviceId}:annulla",
-                    ],
+                    ['text' => "❌ ANNULLA INCASSO", 'callback_data' => "incasso:{$serviceId}:annulla"],
                 ]
             ]
         ];
@@ -551,6 +590,7 @@ class TelegramWebhookController extends Controller
             $service = \App\Models\Service::withoutGlobalScopes()
                 ->where('id', $serviceId)
                 ->where('company_id', $telegramUser->company_id)
+                ->with('passengers')
                 ->first();
 
             if (!$service) {
@@ -558,18 +598,17 @@ class TelegramWebhookController extends Controller
                 return;
             }
 
+            $serviceLabel = TelegramServiceLabel::getHtml($service);
             $driverName = trim(($telegramUser->first_name ?? '') . ' ' . ($telegramUser->last_name ?? ''));
             $timestamp = now()->format('d/m/Y H:i');
 
             // Handle cancellation
             if ($metodo === 'annulla') {
-                // Append cancellation note to service
                 $cancelNote = "Il driver {$driverName} ha annullato la riscossione ({$timestamp})";
                 $service->update([
                     'notes' => ($service->notes ? $service->notes . "\n" : '') . $cancelNote,
                 ]);
 
-                // Complete the collection task
                 $collectionTask = Task::withoutGlobalScopes()
                     ->where('company_id', $telegramUser->company_id)
                     ->where('name', 'LIKE', "[TG:COLLECT:{$serviceId}]%")
@@ -580,9 +619,8 @@ class TelegramWebhookController extends Controller
                     $collectionTask->update(['status' => 'completed']);
                 }
 
-                // Create task for operators to verify
                 $cancelTaskTitle = "[TG:CANCEL_COLLECT:{$serviceId}] Annullamento incasso - Verificare motivazioni";
-                $cancelTaskNotes = "Il driver {$driverName} ha annullato la riscossione per il servizio #{$serviceId} - {$service->reference_number} il {$timestamp}.\n\n"
+                $cancelTaskNotes = "Il driver {$driverName} ha annullato la riscossione per il servizio #{$serviceId} il {$timestamp}.\n\n"
                     . "Azioni richieste:\n"
                     . "- Verificare le motivazioni dell'annullamento con il driver\n"
                     . "- Verificare lo stato del servizio e dei movimenti contabili";
@@ -596,7 +634,6 @@ class TelegramWebhookController extends Controller
                     'status' => 'to_complete',
                 ]);
 
-                // Assign to all active operators
                 $operatorIds = \App\Models\User::withoutGlobalScopes()
                     ->where('company_id', $telegramUser->company_id)
                     ->whereIn('role', ['operator', 'admin'])
@@ -608,15 +645,11 @@ class TelegramWebhookController extends Controller
                     $cancelTask->assignedUsers()->sync($operatorIds);
                 }
 
-                // Remove inline keyboard
                 $api->editMessageReplyMarkup($chatId, $messageId, null);
-
-                // Acknowledge callback
                 $api->answerCallbackQuery($callbackId, 'Incasso annullato');
 
-                // Send confirmation to driver
-                $confirmText = "<b>INCASSO ANNULLATO</b>\n\n"
-                    . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n"
+                $confirmText = "<b>❌ INCASSO ANNULLATO</b>\n\n"
+                    . "<b>Servizio:</b> {$serviceLabel}\n"
                     . "<b>Annullato da:</b> {$driverName}\n"
                     . "<b>Data/Ora:</b> {$timestamp}\n\n"
                     . "L'operatore è stato notificato e verificherà la situazione.";
@@ -633,7 +666,6 @@ class TelegramWebhookController extends Controller
                     'is_read' => true,
                 ]);
 
-                // Create notification for admin
                 TelegramNotification::create([
                     'company_id' => $telegramUser->company_id,
                     'telegram_user_id' => $telegramUser->id,
@@ -649,8 +681,8 @@ class TelegramWebhookController extends Controller
                     'task_id' => $cancelTask->id,
                 ]);
 
-                // Proceed to service closure step
-                $this->requestServiceClosure($service, $serviceId, $telegramUser, $chatId, $api);
+                // Ask for optional cancellation comment
+                $this->requestOptionalComment($service, $serviceId, $telegramUser, $chatId, $api, 'cancel');
                 return;
             }
 
@@ -660,7 +692,6 @@ class TelegramWebhookController extends Controller
                 : (float) ($service->balance_card_fees ?? 0);
             $amountFormatted = number_format($amount, 2, ',', '.');
 
-            // Find balance sale transaction
             $balanceTransaction = AccountingTransaction::where('service_id', $serviceId)
                 ->where('company_id', $telegramUser->company_id)
                 ->where('transaction_type', 'sale')
@@ -668,11 +699,10 @@ class TelegramWebhookController extends Controller
                 ->first();
 
             if (!$balanceTransaction) {
-                // Transaction not found - notify driver and admin
                 $api->answerCallbackQuery($callbackId, 'Movimento contabile saldo non trovato');
 
                 $errorText = "<b>⚠️ ATTENZIONE</b>\n\n"
-                    . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n\n"
+                    . "<b>Servizio:</b> {$serviceLabel}\n\n"
                     . "Il movimento contabile saldo vendita non è stato trovato.\n"
                     . "L'incasso <b>non</b> è stato registrato. Contatta l'amministrazione.";
 
@@ -697,22 +727,18 @@ class TelegramWebhookController extends Controller
                     'is_read' => false,
                 ]);
 
-                // Remove buttons to prevent repeated attempts
                 $api->editMessageReplyMarkup($chatId, $messageId, null);
                 return;
             }
 
-            // Update service balance_sale_type based on payment method
             $balanceSaleType = $metodo === 'cassa' ? 'balance_taxable' : 'balance_card_fees';
             $service->update(['balance_sale_type' => $balanceSaleType]);
 
-            // Determine collected status from settings (fallback to 'collected_driver')
             $settings = \App\Models\Settings::withoutGlobalScopes()
                 ->where('company_id', $telegramUser->company_id)
                 ->first();
             $collectedStatus = $settings->telegram_collected_status_id ?? null;
 
-            // If a service status is configured, load its name for the transaction status
             $transactionStatus = 'collected_driver';
             if ($collectedStatus) {
                 $configuredStatus = \App\Models\ServiceStatus::withoutGlobalScopes()->find($collectedStatus);
@@ -721,7 +747,6 @@ class TelegramWebhookController extends Controller
                 }
             }
 
-            // Update accounting transaction status
             $balanceTransaction->update([
                 'status' => $transactionStatus,
                 'amount' => $amount,
@@ -730,10 +755,11 @@ class TelegramWebhookController extends Controller
                     . "Incassato via Telegram ({$metodoLabel}) il " . now()->format('d/m/Y H:i'),
             ]);
 
-            // Create/update handling fees and card fees debit movements for card payments
             $this->syncBalanceFeeTransactions($service, $metodo, $telegramUser->company_id);
 
-            // Complete the collection task via unique tag
+            // Refresh the denormalized status map on the service
+            $service->refreshTransactionStatusMap();
+
             $collectionTask = Task::withoutGlobalScopes()
                 ->where('company_id', $telegramUser->company_id)
                 ->where('name', 'LIKE', "[TG:COLLECT:{$serviceId}]%")
@@ -744,15 +770,11 @@ class TelegramWebhookController extends Controller
                 $collectionTask->update(['status' => 'completed']);
             }
 
-            // Remove inline keyboard buttons
             $api->editMessageReplyMarkup($chatId, $messageId, null);
-
-            // Acknowledge callback
             $api->answerCallbackQuery($callbackId, "Incasso registrato: {$metodoLabel}");
 
-            // Send confirmation message
-            $confirmText = "<b>INCASSO REGISTRATO</b>\n\n"
-                . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n"
+            $confirmText = "<b>💰 INCASSO REGISTRATO</b>\n\n"
+                . "<b>Servizio:</b> {$serviceLabel}\n"
                 . "<b>Modalità:</b> {$metodoLabel}\n"
                 . "<b>Importo:</b> € {$amountFormatted}\n"
                 . "<b>Registrato da:</b> {$driverName}\n"
@@ -770,7 +792,6 @@ class TelegramWebhookController extends Controller
                 'is_read' => true,
             ]);
 
-            // Create notification for admin
             TelegramNotification::create([
                 'company_id' => $telegramUser->company_id,
                 'telegram_user_id' => $telegramUser->id,
@@ -802,11 +823,9 @@ class TelegramWebhookController extends Controller
 
     /**
      * Request service closure from driver (OK/KO buttons).
-     * Called after payment collection or after acceptance if no payment required.
      */
     private function requestServiceClosure(\App\Models\Service $service, int $serviceId, TelegramUser $telegramUser, int $chatId, TelegramAPI $api): void
     {
-        // Check if closure statuses are configured
         $settings = \App\Models\Settings::withoutGlobalScopes()
             ->where('company_id', $telegramUser->company_id)
             ->first();
@@ -818,21 +837,17 @@ class TelegramWebhookController extends Controller
             return;
         }
 
-        $closureText = "<b>CHIUSURA SERVIZIO</b>\n\n"
-            . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n\n"
+        $serviceLabel = TelegramServiceLabel::getHtml($service);
+
+        $closureText = "<b>📋 CHIUSURA SERVIZIO</b>\n\n"
+            . "<b>Servizio:</b> {$serviceLabel}\n\n"
             . "Come si è concluso il servizio?";
 
         $closureKeyboard = [
             'inline_keyboard' => [
                 [
-                    [
-                        'text' => 'Concluso OK',
-                        'callback_data' => "chiusura:{$serviceId}:ok",
-                    ],
-                    [
-                        'text' => 'Concluso KO',
-                        'callback_data' => "chiusura:{$serviceId}:ko",
-                    ],
+                    ['text' => '✅ Concluso OK', 'callback_data' => "chiusura:{$serviceId}:ok"],
+                    ['text' => '❌ Concluso KO', 'callback_data' => "chiusura:{$serviceId}:ko"],
                 ]
             ]
         ];
@@ -851,7 +866,7 @@ class TelegramWebhookController extends Controller
             ]);
         }
 
-        // Create closure task assigned to driver
+        // Create closure task
         $pickupTime = $service->pickup_datetime
             ? Carbon::parse($service->pickup_datetime)->format('H:i')
             : '';
@@ -898,6 +913,7 @@ class TelegramWebhookController extends Controller
             $service = \App\Models\Service::withoutGlobalScopes()
                 ->where('id', $serviceId)
                 ->where('company_id', $telegramUser->company_id)
+                ->with('passengers')
                 ->first();
 
             if (!$service) {
@@ -905,6 +921,7 @@ class TelegramWebhookController extends Controller
                 return;
             }
 
+            $serviceLabel = TelegramServiceLabel::getHtml($service);
             $settings = \App\Models\Settings::withoutGlobalScopes()
                 ->where('company_id', $telegramUser->company_id)
                 ->first();
@@ -920,19 +937,16 @@ class TelegramWebhookController extends Controller
                 $closeTask->update(['status' => 'completed']);
             }
 
-            // Remove inline keyboard buttons
             $api->editMessageReplyMarkup($chatId, $messageId, null);
 
             $driverName = trim(($telegramUser->first_name ?? '') . ' ' . ($telegramUser->last_name ?? ''));
             $timestamp = now()->format('d/m/Y H:i');
 
             if ($result === 'ok') {
-                // Update status to closed OK
                 if ($settings && $settings->telegram_closed_ok_status_id) {
                     $service->update(['status_id' => $settings->telegram_closed_ok_status_id]);
                 }
 
-                // Add note to service
                 $noteText = "Il driver {$driverName} ha dichiarato che il servizio si è concluso con successo ({$timestamp})";
                 $service->update([
                     'notes' => ($service->notes ? $service->notes . "\n" : '') . $noteText,
@@ -940,11 +954,10 @@ class TelegramWebhookController extends Controller
 
                 $api->answerCallbackQuery($callbackId, 'Servizio chiuso con successo');
 
-                $confirmText = "<b>SERVIZIO CONCLUSO OK</b>\n\n"
-                    . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n"
+                $confirmText = "<b>✅ SERVIZIO CONCLUSO OK</b>\n\n"
+                    . "<b>Servizio:</b> {$serviceLabel}\n"
                     . "<b>Chiuso da:</b> {$driverName}\n"
-                    . "<b>Data/Ora:</b> {$timestamp}\n\n"
-                    . "Grazie per la conferma!";
+                    . "<b>Data/Ora:</b> {$timestamp}";
 
                 $msgResult = $api->sendMessage($chatId, $confirmText);
 
@@ -972,8 +985,8 @@ class TelegramWebhookController extends Controller
                     'driver_id' => $telegramUser->user_id,
                 ]);
 
-                // Request mileage reading
-                $this->requestMileageReading($service, $serviceId, $telegramUser, $chatId, $api);
+                // Ask for optional OK comment, then mileage
+                $this->requestOptionalComment($service, $serviceId, $telegramUser, $chatId, $api, 'ok');
 
             } else {
                 // KO flow
@@ -983,14 +996,29 @@ class TelegramWebhookController extends Controller
 
                 $api->answerCallbackQuery($callbackId, 'Servizio segnalato come KO');
 
-                // Set pending action for KO comment
-                $telegramUser->update(['pending_action' => "awaiting_ko_comment:{$serviceId}"]);
+                TelegramNotification::create([
+                    'company_id' => $telegramUser->company_id,
+                    'telegram_user_id' => $telegramUser->id,
+                    'type' => 'service_closed_ko',
+                    'title' => "Servizio #{$serviceId} - Problema segnalato",
+                    'body' => "Chiuso KO da {$driverName} il {$timestamp}",
+                    'is_read' => false,
+                ]);
 
-                $koText = "<b>SERVIZIO CONCLUSO KO</b>\n\n"
-                    . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n\n"
+                // KO comment is mandatory — ask with write button (no skip)
+                $koText = "<b>❌ SERVIZIO CONCLUSO KO</b>\n\n"
+                    . "<b>Servizio:</b> {$serviceLabel}\n\n"
                     . "Descrivi brevemente il problema riscontrato:";
 
-                $msgResult = $api->sendMessage($chatId, $koText);
+                $koKeyboard = [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '✏️ Scrivi commento', 'callback_data' => "write_comment:{$serviceId}:ko"],
+                        ]
+                    ]
+                ];
+
+                $msgResult = $api->sendMessage($chatId, $koText, $koKeyboard);
 
                 TelegramMessage::create([
                     'company_id' => $telegramUser->company_id,
@@ -1002,7 +1030,7 @@ class TelegramWebhookController extends Controller
                     'is_read' => true,
                 ]);
 
-                Log::channel('telegram')->info('Service closed KO, awaiting comment', [
+                Log::channel('telegram')->info('Service closed KO, awaiting comment via button', [
                     'service_id' => $serviceId,
                     'driver_id' => $telegramUser->user_id,
                 ]);
@@ -1018,11 +1046,224 @@ class TelegramWebhookController extends Controller
     }
 
     /**
-     * Handle KO comment from driver (text message while awaiting_ko_comment).
+     * Request an optional comment from driver (used for OK closure and cancel payment).
      */
-    private function handleKoComment(string $text, TelegramUser $telegramUser, int $chatId, array $message, TelegramAPI $api): void
+    private function requestOptionalComment(\App\Models\Service $service, int $serviceId, TelegramUser $telegramUser, int $chatId, TelegramAPI $api, string $commentType): void
     {
-        $serviceId = (int) str_replace('awaiting_ko_comment:', '', $telegramUser->pending_action);
+        $serviceLabel = TelegramServiceLabel::getHtml($service);
+
+        $promptText = $commentType === 'ok'
+            ? "<b>💬 COMMENTO</b>\n\n<b>Servizio:</b> {$serviceLabel}\n\nVuoi lasciare un commento sul servizio?"
+            : "<b>💬 COMMENTO</b>\n\n<b>Servizio:</b> {$serviceLabel}\n\nVuoi specificare il motivo dell'annullamento?";
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '✏️ Scrivi commento', 'callback_data' => "write_comment:{$serviceId}:{$commentType}"],
+                    ['text' => '⏩ Salta', 'callback_data' => "skip_comment:{$serviceId}:{$commentType}"],
+                ]
+            ]
+        ];
+
+        $result = $api->sendMessage($chatId, $promptText, $keyboard);
+
+        if ($result && ($result['ok'] ?? false)) {
+            TelegramMessage::create([
+                'company_id' => $telegramUser->company_id,
+                'telegram_user_id' => $telegramUser->id,
+                'direction' => 'outbound',
+                'message_type' => 'text',
+                'content' => $promptText,
+                'telegram_message_id' => $result['result']['message_id'] ?? null,
+                'is_read' => true,
+            ]);
+        }
+    }
+
+    /**
+     * Handle "write comment" button press — activate pending action for text input.
+     */
+    private function handleWriteCommentButton(string $data, TelegramUser $telegramUser, int $chatId, int $messageId, string $callbackId, TelegramAPI $api): void
+    {
+        // Format: write_comment:{serviceId}:{type}
+        $parts = explode(':', $data);
+        if (count($parts) !== 3) {
+            $api->answerCallbackQuery($callbackId, 'Formato non valido');
+            return;
+        }
+
+        $serviceId = (int) $parts[1];
+        $commentType = $parts[2]; // 'ok', 'ko', 'cancel'
+
+        $service = \App\Models\Service::withoutGlobalScopes()
+            ->where('id', $serviceId)
+            ->where('company_id', $telegramUser->company_id)
+            ->with('passengers')
+            ->first();
+
+        if (!$service) {
+            $api->answerCallbackQuery($callbackId, 'Servizio non trovato');
+            return;
+        }
+
+        // Check if there's already a pending action for another service
+        $existingAction = TelegramPendingAction::where('telegram_user_id', $telegramUser->id)->first();
+        if ($existingAction && $existingAction->service_id !== $serviceId) {
+            $existingService = \App\Models\Service::withoutGlobalScopes()
+                ->where('id', $existingAction->service_id)
+                ->with('passengers')
+                ->first();
+            $existingLabel = $existingService ? TelegramServiceLabel::get($existingService) : "#{$existingAction->service_id}";
+
+            $api->answerCallbackQuery($callbackId, "Hai un'azione in sospeso per il servizio {$existingLabel}. Completa prima quella.");
+            return;
+        }
+
+        // Remove the buttons
+        $api->editMessageReplyMarkup($chatId, $messageId, null);
+        $api->answerCallbackQuery($callbackId, 'Scrivi il tuo commento');
+
+        $actionType = "{$commentType}_comment";
+
+        // Create or update pending action
+        TelegramPendingAction::updateOrCreate(
+            ['telegram_user_id' => $telegramUser->id, 'service_id' => $serviceId, 'action_type' => $actionType],
+            []
+        );
+
+        $serviceLabel = TelegramServiceLabel::getHtml($service);
+        $promptText = "✏️ Scrivi il tuo commento per il servizio {$serviceLabel}:";
+
+        $result = $api->sendMessage($chatId, $promptText);
+
+        TelegramMessage::create([
+            'company_id' => $telegramUser->company_id,
+            'telegram_user_id' => $telegramUser->id,
+            'direction' => 'outbound',
+            'message_type' => 'text',
+            'content' => $promptText,
+            'telegram_message_id' => $result['result']['message_id'] ?? null,
+            'is_read' => true,
+        ]);
+    }
+
+    /**
+     * Handle "skip comment" button press — proceed to next step.
+     */
+    private function handleSkipCommentButton(string $data, TelegramUser $telegramUser, int $chatId, int $messageId, string $callbackId, TelegramAPI $api): void
+    {
+        $parts = explode(':', $data);
+        if (count($parts) !== 3) {
+            $api->answerCallbackQuery($callbackId, 'Formato non valido');
+            return;
+        }
+
+        $serviceId = (int) $parts[1];
+        $commentType = $parts[2]; // 'ok', 'ko', 'cancel'
+
+        $api->editMessageReplyMarkup($chatId, $messageId, null);
+        $api->answerCallbackQuery($callbackId, 'Commento saltato');
+
+        $service = \App\Models\Service::withoutGlobalScopes()
+            ->where('id', $serviceId)
+            ->where('company_id', $telegramUser->company_id)
+            ->first();
+
+        if (!$service) return;
+
+        // Proceed to next step based on comment type
+        $this->proceedAfterComment($service, $serviceId, $telegramUser, $chatId, $api, $commentType);
+    }
+
+    /**
+     * Handle "enter mileage" button press — activate pending action for km input.
+     */
+    private function handleEnterMileageButton(string $data, TelegramUser $telegramUser, int $chatId, int $messageId, string $callbackId, TelegramAPI $api): void
+    {
+        $serviceId = (int) str_replace('enter_mileage:', '', $data);
+
+        $service = \App\Models\Service::withoutGlobalScopes()
+            ->where('id', $serviceId)
+            ->where('company_id', $telegramUser->company_id)
+            ->with('passengers')
+            ->first();
+
+        if (!$service) {
+            $api->answerCallbackQuery($callbackId, 'Servizio non trovato');
+            return;
+        }
+
+        // Check for existing pending actions
+        $existingAction = TelegramPendingAction::where('telegram_user_id', $telegramUser->id)->first();
+        if ($existingAction && $existingAction->service_id !== $serviceId) {
+            $existingService = \App\Models\Service::withoutGlobalScopes()
+                ->where('id', $existingAction->service_id)
+                ->with('passengers')
+                ->first();
+            $existingLabel = $existingService ? TelegramServiceLabel::get($existingService) : "#{$existingAction->service_id}";
+
+            $api->answerCallbackQuery($callbackId, "Hai un'azione in sospeso per il servizio {$existingLabel}. Completa prima quella.");
+            return;
+        }
+
+        $api->editMessageReplyMarkup($chatId, $messageId, null);
+        $api->answerCallbackQuery($callbackId, 'Inserisci i km');
+
+        TelegramPendingAction::updateOrCreate(
+            ['telegram_user_id' => $telegramUser->id, 'service_id' => $serviceId, 'action_type' => 'mileage'],
+            []
+        );
+
+        $serviceLabel = TelegramServiceLabel::getHtml($service);
+        $promptText = "📏 Inserisci la lettura attuale del contachilometri (km) per il servizio {$serviceLabel}:";
+
+        $result = $api->sendMessage($chatId, $promptText);
+
+        TelegramMessage::create([
+            'company_id' => $telegramUser->company_id,
+            'telegram_user_id' => $telegramUser->id,
+            'direction' => 'outbound',
+            'message_type' => 'text',
+            'content' => $promptText,
+            'telegram_message_id' => $result['result']['message_id'] ?? null,
+            'is_read' => true,
+        ]);
+    }
+
+    /**
+     * Handle "skip mileage" button press.
+     */
+    private function handleSkipMileageButton(string $data, TelegramUser $telegramUser, int $chatId, int $messageId, string $callbackId, TelegramAPI $api): void
+    {
+        $serviceId = (int) str_replace('skip_mileage:', '', $data);
+
+        $api->editMessageReplyMarkup($chatId, $messageId, null);
+        $api->answerCallbackQuery($callbackId, 'Lettura km saltata');
+
+        $service = \App\Models\Service::withoutGlobalScopes()
+            ->where('id', $serviceId)
+            ->where('company_id', $telegramUser->company_id)
+            ->with('passengers')
+            ->first();
+
+        if ($service) {
+            $serviceLabel = TelegramServiceLabel::getHtml($service);
+            $confirmText = "⏩ Lettura km saltata per il servizio {$serviceLabel}.\n\nGrazie, il flusso è completato!";
+            $api->sendMessage($chatId, $confirmText);
+        }
+
+        Log::channel('telegram')->info('Mileage reading skipped by driver', [
+            'service_id' => $serviceId,
+            'driver_id' => $telegramUser->user_id,
+        ]);
+    }
+
+    /**
+     * Handle a comment text message for a specific pending action.
+     */
+    private function handleComment(string $text, TelegramPendingAction $action, TelegramUser $telegramUser, int $chatId, array $message, TelegramAPI $api, string $commentType): void
+    {
+        $serviceId = $action->service_id;
 
         // Save inbound message
         TelegramMessage::create([
@@ -1039,69 +1280,68 @@ class TelegramWebhookController extends Controller
             $service = \App\Models\Service::withoutGlobalScopes()
                 ->where('id', $serviceId)
                 ->where('company_id', $telegramUser->company_id)
+                ->with('passengers')
                 ->first();
 
             if (!$service) {
-                $telegramUser->update(['pending_action' => null]);
+                $action->delete();
                 $api->sendMessage($chatId, "Servizio non trovato. Operazione annullata.");
                 return;
             }
 
+            $serviceLabel = TelegramServiceLabel::getHtml($service);
             $driverName = trim(($telegramUser->first_name ?? '') . ' ' . ($telegramUser->last_name ?? ''));
             $timestamp = now()->format('d/m/Y H:i');
 
+            $typeLabels = [
+                'ko' => 'KO',
+                'ok' => 'OK',
+                'cancel' => 'Annullamento incasso',
+            ];
+            $typeLabel = $typeLabels[$commentType] ?? $commentType;
+
             // Append comment to service notes
-            $commentNote = "Commento driver via Telegram ({$driverName}, {$timestamp}): {$text}";
+            $commentNote = "Commento driver ({$typeLabel}) via Telegram ({$driverName}, {$timestamp}): {$text}";
             $service->update([
                 'notes' => ($service->notes ? $service->notes . "\n" : '') . $commentNote,
             ]);
 
-            // Create ISSUE task assigned to operators
-            $pickupTime = $service->pickup_datetime
-                ? Carbon::parse($service->pickup_datetime)->format('H:i')
-                : '';
-            $serviceType = $service->service_type ?? '';
+            // For KO comments, create an ISSUE task for operators
+            if ($commentType === 'ko') {
+                $pickupTime = $service->pickup_datetime
+                    ? Carbon::parse($service->pickup_datetime)->format('H:i')
+                    : '';
+                $serviceType = $service->service_type ?? '';
 
-            $issueTaskTitle = "[TG:ISSUE:{$serviceId}] {$pickupTime} | {$serviceType} - Problematica segnalata dal driver";
+                $issueTaskTitle = "[TG:ISSUE:{$serviceId}] {$pickupTime} | {$serviceType} - Problematica segnalata dal driver";
 
-            $issueTask = Task::create([
-                'company_id' => $telegramUser->company_id,
-                'service_id' => $serviceId,
-                'name' => $issueTaskTitle,
-                'due_date' => now()->toDateString(),
-                'notes' => "Il driver {$driverName} ha segnalato un problema per il servizio #{$serviceId}:\n\n{$text}",
-                'status' => 'to_complete',
-            ]);
+                $issueTask = Task::create([
+                    'company_id' => $telegramUser->company_id,
+                    'service_id' => $serviceId,
+                    'name' => $issueTaskTitle,
+                    'due_date' => now()->toDateString(),
+                    'notes' => "Il driver {$driverName} ha segnalato un problema per il servizio #{$serviceId}:\n\n{$text}",
+                    'status' => 'to_complete',
+                ]);
 
-            // Assign task to all operators of the company
-            $operators = \App\Models\User::withoutGlobalScopes()
-                ->where('company_id', $telegramUser->company_id)
-                ->where('role', 'operator')
-                ->where('is_active', true)
-                ->pluck('id');
+                $operators = \App\Models\User::withoutGlobalScopes()
+                    ->where('company_id', $telegramUser->company_id)
+                    ->where('role', 'operator')
+                    ->where('is_active', true)
+                    ->pluck('id');
 
-            if ($operators->isNotEmpty()) {
-                $issueTask->assignedUsers()->sync($operators->toArray());
+                if ($operators->isNotEmpty()) {
+                    $issueTask->assignedUsers()->sync($operators->toArray());
+                }
             }
 
-            // Create notification for admin
-            TelegramNotification::create([
-                'company_id' => $telegramUser->company_id,
-                'telegram_user_id' => $telegramUser->id,
-                'type' => 'service_closed_ko',
-                'title' => "Servizio #{$serviceId} - Problema segnalato",
-                'body' => "Driver {$driverName}: " . mb_substr($text, 0, 200),
-                'is_read' => false,
-            ]);
-
-            // Reset pending action
-            $telegramUser->update(['pending_action' => null]);
+            // Delete the pending action
+            $action->delete();
 
             // Send confirmation
-            $confirmText = "<b>COMMENTO REGISTRATO</b>\n\n"
-                . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n\n"
-                . "Il tuo commento è stato registrato e un task è stato assegnato agli operatori.\n"
-                . "Grazie per la segnalazione.";
+            $confirmText = "<b>💬 COMMENTO REGISTRATO</b>\n\n"
+                . "<b>Servizio:</b> {$serviceLabel}\n\n"
+                . "Il tuo commento è stato registrato. Grazie!";
 
             $msgResult = $api->sendMessage($chatId, $confirmText);
 
@@ -1115,31 +1355,46 @@ class TelegramWebhookController extends Controller
                 'is_read' => true,
             ]);
 
-            Log::channel('telegram')->info('KO comment registered and ISSUE task created', [
+            Log::channel('telegram')->info("{$typeLabel} comment registered", [
                 'service_id' => $serviceId,
-                'task_id' => $issueTask->id,
                 'driver_id' => $telegramUser->user_id,
+                'comment_type' => $commentType,
             ]);
 
-            // Request mileage reading
-            $this->requestMileageReading($service, $serviceId, $telegramUser, $chatId, $api);
+            // Proceed to next step
+            $this->proceedAfterComment($service, $serviceId, $telegramUser, $chatId, $api, $commentType);
 
         } catch (\Exception $e) {
-            Log::channel('telegram')->error('Error handling KO comment', [
+            Log::channel('telegram')->error('Error handling comment', [
                 'service_id' => $serviceId,
+                'comment_type' => $commentType,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+            $action->delete();
             $api->sendMessage($chatId, "Errore nella registrazione del commento. Riprova.");
         }
     }
 
     /**
-     * Request mileage reading from driver after service closure.
+     * After a comment (or skip), proceed to the next step in the flow.
+     */
+    private function proceedAfterComment(\App\Models\Service $service, int $serviceId, TelegramUser $telegramUser, int $chatId, TelegramAPI $api, string $commentType): void
+    {
+        if ($commentType === 'ok' || $commentType === 'ko') {
+            // After closure comment → request mileage
+            $this->requestMileageReading($service, $serviceId, $telegramUser, $chatId, $api);
+        } elseif ($commentType === 'cancel') {
+            // After cancel payment comment → proceed to service closure
+            $this->requestServiceClosure($service, $serviceId, $telegramUser, $chatId, $api);
+        }
+    }
+
+    /**
+     * Request mileage reading from driver after service closure (button-based).
      */
     private function requestMileageReading(\App\Models\Service $service, int $serviceId, TelegramUser $telegramUser, int $chatId, TelegramAPI $api): void
     {
-        // Check if service has a vehicle assigned
         if (!$service->vehicle_id) {
             Log::channel('telegram')->info('Mileage reading skipped: no vehicle assigned', [
                 'service_id' => $serviceId,
@@ -1147,14 +1402,22 @@ class TelegramWebhookController extends Controller
             return;
         }
 
-        // Set pending action for mileage reading
-        $telegramUser->update(['pending_action' => "awaiting_mileage:{$serviceId}"]);
+        $serviceLabel = TelegramServiceLabel::getHtml($service);
 
-        $mileageText = "<b>LETTURA CHILOMETRAGGIO</b>\n\n"
-            . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n\n"
-            . "Inserisci la lettura attuale del contachilometri (km):";
+        $mileageText = "<b>📏 LETTURA CHILOMETRAGGIO</b>\n\n"
+            . "<b>Servizio:</b> {$serviceLabel}\n\n"
+            . "Vuoi inserire la lettura del contachilometri?";
 
-        $msgResult = $api->sendMessage($chatId, $mileageText);
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '📏 Inserisci km', 'callback_data' => "enter_mileage:{$serviceId}"],
+                    ['text' => '⏩ Salta', 'callback_data' => "skip_mileage:{$serviceId}"],
+                ]
+            ]
+        ];
+
+        $msgResult = $api->sendMessage($chatId, $mileageText, $keyboard);
 
         TelegramMessage::create([
             'company_id' => $telegramUser->company_id,
@@ -1168,11 +1431,11 @@ class TelegramWebhookController extends Controller
     }
 
     /**
-     * Handle mileage reading from driver (text message while awaiting_mileage).
+     * Handle mileage reading text input.
      */
-    private function handleMileageReading(string $text, TelegramUser $telegramUser, int $chatId, array $message, TelegramAPI $api): void
+    private function handleMileageReading(string $text, TelegramPendingAction $action, TelegramUser $telegramUser, int $chatId, array $message, TelegramAPI $api): void
     {
-        $serviceId = (int) str_replace('awaiting_mileage:', '', $telegramUser->pending_action);
+        $serviceId = $action->service_id;
 
         // Save inbound message
         TelegramMessage::create([
@@ -1185,10 +1448,8 @@ class TelegramWebhookController extends Controller
             'is_read' => false,
         ]);
 
-        // Clean text: remove spaces and dots (e.g., "125.000" or "125 000")
         $cleanText = str_replace(['.', ',', ' '], '', trim($text));
 
-        // Validate that it's a positive integer
         if (!ctype_digit($cleanText) || (int) $cleanText <= 0) {
             $errorText = "Inserisci un numero valido di km (es. 125000):";
             $msgResult = $api->sendMessage($chatId, $errorText);
@@ -1202,7 +1463,7 @@ class TelegramWebhookController extends Controller
                 'telegram_message_id' => $msgResult['result']['message_id'] ?? null,
                 'is_read' => true,
             ]);
-            return; // Don't reset pending_action, let them retry
+            return; // Don't delete pending action, let them retry
         }
 
         $mileage = (int) $cleanText;
@@ -1211,15 +1472,17 @@ class TelegramWebhookController extends Controller
             $service = \App\Models\Service::withoutGlobalScopes()
                 ->where('id', $serviceId)
                 ->where('company_id', $telegramUser->company_id)
+                ->with('passengers')
                 ->first();
 
             if (!$service || !$service->vehicle_id) {
-                $telegramUser->update(['pending_action' => null]);
+                $action->delete();
                 $api->sendMessage($chatId, "Servizio o veicolo non trovato. Operazione annullata.");
                 return;
             }
 
-            // Create mileage entry
+            $serviceLabel = TelegramServiceLabel::getHtml($service);
+
             VehicleMileageEntry::create([
                 'vehicle_id' => $service->vehicle_id,
                 'mileage' => $mileage,
@@ -1229,14 +1492,14 @@ class TelegramWebhookController extends Controller
                 'notes' => "Lettura di fine servizio #{$serviceId} effettuata via Telegram",
             ]);
 
-            // Reset pending action
-            $telegramUser->update(['pending_action' => null]);
+            // Delete pending action
+            $action->delete();
 
             $formattedKm = number_format($mileage, 0, ',', '.');
-            $confirmText = "<b>KM REGISTRATI</b>\n\n"
-                . "<b>Servizio:</b> #{$serviceId} - {$service->reference_number}\n"
+            $confirmText = "<b>📏 KM REGISTRATI</b>\n\n"
+                . "<b>Servizio:</b> {$serviceLabel}\n"
                 . "<b>Km registrati:</b> {$formattedKm} km\n\n"
-                . "Grazie! La lettura è stata registrata con successo.";
+                . "Grazie! La lettura è stata registrata con successo. Il flusso è completato!";
 
             $msgResult = $api->sendMessage($chatId, $confirmText);
 
@@ -1263,7 +1526,7 @@ class TelegramWebhookController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            $telegramUser->update(['pending_action' => null]);
+            $action->delete();
             $api->sendMessage($chatId, "Errore nella registrazione dei km. Riprova o contatta l'amministrazione.");
         }
     }
@@ -1309,7 +1572,6 @@ class TelegramWebhookController extends Controller
             $counterpartId = $service->client_id;
 
             if ($metodo === 'carta') {
-                // Create Saldo Handling Fees if applicable
                 $handlingAmount = round((float) ($service->balance_handling_fees ?? 0) - (float) ($service->balance_taxable ?? 0), 2);
                 if ($handlingAmount > 0 && $handlingEntryId) {
                     AccountingTransaction::updateOrCreate(
@@ -1332,7 +1594,6 @@ class TelegramWebhookController extends Controller
                     );
                 }
 
-                // Create Saldo Card Fees if applicable
                 $cardFeesAmount = round((float) ($service->balance_card_fees ?? 0) - (float) ($service->balance_handling_fees ?? 0), 2);
                 if ($cardFeesAmount > 0 && $cardFeesEntryId) {
                     AccountingTransaction::updateOrCreate(
@@ -1361,7 +1622,6 @@ class TelegramWebhookController extends Controller
                     'card_fees_amount' => $cardFeesAmount ?? 0,
                 ]);
             } else {
-                // Cash payment: delete any existing handling/card fees balance transactions
                 if ($handlingEntryId) {
                     AccountingTransaction::where('service_id', $service->id)
                         ->where('company_id', $companyId)

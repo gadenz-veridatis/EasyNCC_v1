@@ -19,7 +19,7 @@
                                 {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
                                 <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
                             </button>
-                            <Link :href="route('easyncc.vehicles.create')" class="btn btn-primary btn-sm">
+                            <Link v-if="canManage" :href="withReturnUrl(route('easyncc.vehicles.create'))" class="btn btn-primary btn-sm">
                                 <i class="bx bx-plus me-1"></i>
                                 Nuovo Veicolo
                             </Link>
@@ -240,13 +240,14 @@
                                                 </button>
                                             </template>
                                             <template v-else>
-                                                <Link :href="route('easyncc.vehicles.show', vehicle.id)" class="btn btn-sm btn-soft-info me-2">
+                                                <Link :href="withReturnUrl(route('easyncc.vehicles.show', vehicle.id))" class="btn btn-sm btn-soft-info me-2">
                                                     <i class="bx bx-show"></i>
                                                 </Link>
-                                                <Link :href="route('easyncc.vehicles.edit', vehicle.id)" class="btn btn-sm btn-soft-primary me-2">
+                                                <Link v-if="canManage" :href="withReturnUrl(route('easyncc.vehicles.edit', vehicle.id))" class="btn btn-sm btn-soft-primary me-2">
                                                     <i class="bx bx-edit"></i>
                                                 </Link>
                                                 <button
+                                                    v-if="canManage"
                                                     class="btn btn-sm btn-soft-danger"
                                                     @click="deleteVehicle(vehicle.id)"
                                                 >
@@ -538,6 +539,7 @@ import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import moment from 'moment';
 import Swal from 'sweetalert2';
+import { useUrlFilters } from '@/composables/useUrlFilters.js';
 
 const vehicles = ref([]);
 const loading = ref(false);
@@ -569,6 +571,12 @@ const filters = ref({
     company_id: '',
     search: '',
     expiring: ''
+});
+
+const { readFromUrl, withReturnUrl } = useUrlFilters(filters, {
+    page: currentPage,
+    sortField: sortBy,
+    sortDirection: sortOrder,
 });
 
 const hasActiveFilters = computed(() => {
@@ -969,6 +977,8 @@ const isUnavailabilityFuture = (unavailability) => {
 const isSuperAdmin = computed(() => {
     return currentUser.value?.role === 'super-admin';
 });
+const isDriver = computed(() => currentUser.value?.role === 'driver');
+const canManage = computed(() => ['super-admin', 'admin', 'operator'].includes(currentUser.value?.role));
 
 const loadCurrentUser = async () => {
     try {
@@ -992,6 +1002,7 @@ const loadCompanies = async () => {
 
 onMounted(async () => {
     await loadCurrentUser();
+    readFromUrl();
     await loadCompanies();
     await loadVehicles();
 });

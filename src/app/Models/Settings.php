@@ -21,6 +21,8 @@ class Settings extends Model
         'balance_reason',
         'activity_confirmation_text',
         'activity_confirmation_role',
+        'activity_confirmation_user_ids',
+        'activity_confirmation_default_user_id',
         'default_supplier_id',
         'commission_accounting_entry_id',
         'commission_reason',
@@ -42,11 +44,24 @@ class Settings extends Model
         'handling_fees_reason',
         'card_fees_accounting_entry_id',
         'card_fees_reason',
+        'extra_revenue_accounting_entry_id',
+        'extra_revenue_reason',
         'telegram_trigger_status_id',
         'telegram_accepted_status_id',
         'telegram_closed_ok_status_id',
         'telegram_closed_ko_status_id',
         'telegram_collected_status_id',
+        'telegram_location_status_ids',
+        'service_cancel_status_ids',
+        'email_accepted_status_id',
+        'email_closed_status_id',
+        'email_notification_address',
+        'email_assignment_template_id',
+        'email_closure_template_id',
+        'email_gmail_account_id',
+        'email_token_expiry_days',
+        'aviationstack_api_key',
+        'flight_tracking_enabled',
         'pricing_markups',
         'pricing_vehicle_costs',
         'pricing_vehicle_assumptions',
@@ -60,11 +75,18 @@ class Settings extends Model
         'pricing_extension',
         'pricing_depreciation',
         'pricing_toll',
+        'gmail_label_richieste',
+        'gmail_subject_tag',
+        'gmail_polling_interval',
     ];
 
     protected $casts = [
         'deposit_percentage' => 'decimal:2',
         'card_fees_percentage' => 'decimal:2',
+        'telegram_location_status_ids' => 'array',
+        'service_cancel_status_ids' => 'array',
+        'activity_confirmation_user_ids' => 'array',
+        'flight_tracking_enabled' => 'boolean',
         'pricing_markups' => 'array',
         'pricing_vehicle_costs' => 'array',
         'pricing_vehicle_assumptions' => 'array',
@@ -78,6 +100,7 @@ class Settings extends Model
         'pricing_extension' => 'array',
         'pricing_depreciation' => 'array',
         'pricing_toll' => 'array',
+        'gmail_polling_interval' => 'integer',
     ];
 
     // Relationships
@@ -189,5 +212,32 @@ class Settings extends Model
     public function telegramCollectedStatus(): BelongsTo
     {
         return $this->belongsTo(ServiceStatus::class, 'telegram_collected_status_id');
+    }
+
+    // Email notification relationships
+
+    public function emailAcceptedStatus(): BelongsTo
+    {
+        return $this->belongsTo(ServiceStatus::class, 'email_accepted_status_id');
+    }
+
+    public function emailClosedStatus(): BelongsTo
+    {
+        return $this->belongsTo(ServiceStatus::class, 'email_closed_status_id');
+    }
+
+    public function emailAssignmentTemplate(): BelongsTo
+    {
+        return $this->belongsTo(QuoteEmailTemplate::class, 'email_assignment_template_id');
+    }
+
+    public function emailClosureTemplate(): BelongsTo
+    {
+        return $this->belongsTo(QuoteEmailTemplate::class, 'email_closure_template_id');
+    }
+
+    public function emailGmailAccount(): BelongsTo
+    {
+        return $this->belongsTo(GmailAccount::class, 'email_gmail_account_id');
     }
 }

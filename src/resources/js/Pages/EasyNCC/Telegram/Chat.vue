@@ -216,6 +216,9 @@ import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
 import { driverLabel } from '@/composables/useDriverLabel.js';
+import { useNotify } from '@/composables/useNotify.js';
+
+const notify = useNotify();
 
 export default {
     components: {
@@ -470,7 +473,7 @@ export default {
             } catch (error) {
                 console.error('Error sending message:', error);
                 this.newMessage = messageText; // Restore on error
-                alert(error.response?.data?.message || 'Errore nell\'invio del messaggio');
+                notify.error(error.response?.data?.message || 'Errore nell\'invio del messaggio');
             } finally {
                 this.sending = false;
             }

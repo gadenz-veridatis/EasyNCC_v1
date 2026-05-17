@@ -110,7 +110,7 @@
                                         <i :class="expandedItems[index] ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line'" class="fs-5"></i>
                                         <strong>Servizio {{ index + 1 }}</strong>
                                         <span v-if="item.destination_name" class="text-muted">- {{ item.destination_name }}</span>
-                                        <span v-if="item.service_type" class="badge ms-1" :class="serviceTypeBadgeClass(item.service_type, 'bg-info-subtle text-info')">{{ item.service_type }}</span>
+                                        <span v-if="item.service_type" class="badge ms-1" :style="serviceTypeBadgeStyle(item.service_type, '#299cdb')">{{ item.service_type }}</span>
                                     </div>
                                     <div class="d-flex align-items-center gap-2">
                                         <span class="fw-bold text-primary">{{ formatCurrency(item.taxable_price) }}</span>
@@ -505,7 +505,7 @@ import QuoteVersionsSidebar from './components/QuoteVersionsSidebar.vue';
 import QuoteVersionPreviewModal from './components/QuoteVersionPreviewModal.vue';
 import { useServiceTypeColor } from '@/composables/useServiceTypeColor.js';
 
-const { loadServiceTypes, serviceTypeBadgeClass } = useServiceTypeColor();
+const { loadServiceTypes, serviceTypeBadgeStyle } = useServiceTypeColor();
 
 export default {
     components: { Head, Link, Layout, PageHeader, Ckeditor, QuoteWorkflowStepper, PricingCalculatorModal, ContactAutocomplete, QuoteVersionsSidebar, QuoteVersionPreviewModal },
@@ -538,6 +538,7 @@ export default {
             saving: false,
             errors: [],
             successMessage: '',
+            returnUrl: new URLSearchParams(window.location.search).get('returnUrl') || '',
             expandedItems: [true],
             // Versioning
             versionsList: [...(this.versions || [])],
@@ -671,7 +672,7 @@ export default {
         loadServiceTypes();
     },
     methods: {
-        serviceTypeBadgeClass,
+        serviceTypeBadgeStyle,
         // --- Contact ---
         onContactSelect(contact) {
             this.form.contact_id = contact.id;
@@ -901,7 +902,7 @@ export default {
                     await axios.post('/api/quotes', payload);
                 }
 
-                window.location.href = '/easyncc/quotes';
+                window.location.href = this.returnUrl || '/easyncc/quotes';
             } catch (error) {
                 console.error('Error saving quote:', error);
                 if (error.response?.data?.errors) {

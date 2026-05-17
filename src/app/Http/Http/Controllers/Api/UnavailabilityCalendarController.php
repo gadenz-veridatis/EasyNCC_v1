@@ -44,14 +44,17 @@ class UnavailabilityCalendarController extends Controller
             ->select('driver_unavailabilities.*')
             ->get()
             ->map(function ($item) {
+                $allDay = (bool) $item->all_day;
                 return [
                     'id' => 'driver_unavail_' . $item->id,
                     'type' => 'driver_unavailability',
-                    'start_date' => $item->start_date->format('Y-m-d'),
-                    'end_date' => $item->end_date->format('Y-m-d'),
+                    'start_date' => $allDay ? $item->start_date->format('Y-m-d') : $item->start_date->format('Y-m-d\TH:i:s'),
+                    'end_date' => $allDay ? $item->end_date->format('Y-m-d') : $item->end_date->format('Y-m-d\TH:i:s'),
+                    'all_day' => $allDay,
                     'driver_id' => $item->user_id,
                     'driver_name' => $item->user->display_name ?? '',
                     'driver_color' => $item->user->driverProfile->color ?? '#6c757d',
+                    'leave_type_id' => $item->leave_type_id,
                     'reason' => $item->leaveType->name ?? '',
                     'notes' => $item->notes,
                 ];
@@ -69,14 +72,17 @@ class UnavailabilityCalendarController extends Controller
             ->select('vehicle_unavailabilities.*')
             ->get()
             ->map(function ($item) {
+                $allDay = (bool) $item->all_day;
                 return [
                     'id' => 'vehicle_unavail_' . $item->id,
                     'type' => 'vehicle_unavailability',
-                    'start_date' => $item->start_date->format('Y-m-d'),
-                    'end_date' => $item->end_date->format('Y-m-d'),
+                    'start_date' => $allDay ? $item->start_date->format('Y-m-d') : $item->start_date->format('Y-m-d\TH:i:s'),
+                    'end_date' => $allDay ? $item->end_date->format('Y-m-d') : $item->end_date->format('Y-m-d\TH:i:s'),
+                    'all_day' => $allDay,
                     'vehicle_id' => $item->vehicle_id,
                     'vehicle_plate' => $item->vehicle->license_plate ?? '',
                     'vehicle_label' => trim(($item->vehicle->brand ?? '') . ' ' . ($item->vehicle->model ?? '')),
+                    'vehicle_unavailability_type_id' => $item->vehicle_unavailability_type_id,
                     'reason' => $item->unavailabilityType->name ?? '',
                     'notes' => $item->notes,
                 ];

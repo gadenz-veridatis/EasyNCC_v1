@@ -24,6 +24,9 @@ class Activity extends Model
         'cost_per_person',
         'payment_type',
         'should_account',
+        'confirmation_enabled',
+        'confirmation_assignee_id',
+        'accounting_transaction_id',
         'sort_order',
         'notes',
     ];
@@ -34,6 +37,7 @@ class Activity extends Model
         'cost' => 'decimal:2',
         'cost_per_person' => 'decimal:2',
         'should_account' => 'boolean',
+        'confirmation_enabled' => 'boolean',
     ];
 
     /**
@@ -58,5 +62,21 @@ class Activity extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    /**
+     * Get the linked accounting transaction
+     */
+    public function accountingTransaction(): BelongsTo
+    {
+        return $this->belongsTo(AccountingTransaction::class);
+    }
+
+    /**
+     * Get the user assigned to confirm this activity
+     */
+    public function confirmationAssignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'confirmation_assignee_id');
     }
 }

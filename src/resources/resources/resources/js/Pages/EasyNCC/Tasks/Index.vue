@@ -31,7 +31,7 @@
                             <BRow class="mb-3">
                                 <BCol md="3" v-if="isSuperAdmin">
                                     <label class="form-label">Azienda</label>
-                                    <select v-model="filters.company_id" class="form-select form-select-sm" @change="loadTasks">
+                                    <select v-model="filters.company_id" class="form-select form-select-sm" @change="loadTasksFromFilter">
                                         <option value="">Tutte le aziende</option>
                                         <option v-for="company in companies" :key="company.id" :value="company.id">
                                             {{ company.name }}
@@ -45,12 +45,12 @@
                                         type="text"
                                         class="form-control form-control-sm"
                                         placeholder="Nome task o note..."
-                                        @input="loadTasks"
+                                        @input="loadTasksFromFilter"
                                     />
                                 </BCol>
                                 <BCol :md="isSuperAdmin ? 3 : 4">
                                     <label class="form-label">Stato</label>
-                                    <select v-model="filters.status" class="form-select form-select-sm" @change="loadTasks">
+                                    <select v-model="filters.status" class="form-select form-select-sm" @change="loadTasksFromFilter">
                                         <option value="">Tutti</option>
                                         <option value="to_complete">Da Completare</option>
                                         <option value="completed">Completato</option>
@@ -59,43 +59,23 @@
                                 </BCol>
                                 <BCol :md="isSuperAdmin ? 3 : 4" v-if="canViewAll">
                                     <label class="form-label">Assegnatario</label>
-                                    <select v-model="filters.assigned_to" class="form-select form-select-sm" @change="loadTasks">
+                                    <select v-model="filters.assigned_to" class="form-select form-select-sm" @change="loadTasksFromFilter">
                                         <option value="">Tutti</option>
                                         <option v-for="user in assignableUsers" :key="user.id" :value="user.id">
-                                            {{ user.name }} {{ user.surname }} ({{ user.role }})
+                                            {{ user.surname }} {{ user.name }} ({{ user.role }})
                                         </option>
                                     </select>
                                 </BCol>
                             </BRow>
                             <BRow class="mb-3">
-                                <BCol :md="isSuperAdmin ? 6 : 6">
+                                <BCol md="6">
                                     <label class="form-label">Servizio</label>
-                                    <select v-model="filters.service_id" class="form-select form-select-sm" @change="loadTasks">
+                                    <select v-model="filters.service_id" class="form-select form-select-sm" @change="loadTasksFromFilter">
                                         <option value="">Tutti</option>
                                         <option v-for="service in services" :key="service.id" :value="service.id">
                                             {{ service.reference_number }}
                                         </option>
                                     </select>
-                                </BCol>
-                            </BRow>
-                            <BRow class="mb-3">
-                                <BCol :md="isSuperAdmin ? 6 : 6">
-                                    <label class="form-label">Data Scadenza (Da)</label>
-                                    <input
-                                        v-model="filters.start_date"
-                                        type="date"
-                                        class="form-control form-control-sm"
-                                        @change="loadTasks"
-                                    />
-                                </BCol>
-                                <BCol :md="isSuperAdmin ? 6 : 6">
-                                    <label class="form-label">Data Scadenza (A)</label>
-                                    <input
-                                        v-model="filters.end_date"
-                                        type="date"
-                                        class="form-control form-control-sm"
-                                        @change="loadTasks"
-                                    />
                                 </BCol>
                             </BRow>
 
@@ -114,6 +94,32 @@
                             </BRow>
                         </div>
 
+                        <!-- Preset Filter Buttons -->
+                        <div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
+                            <button type="button" class="btn btn-sm" :class="activePreset === 'tutti' ? 'btn-primary' : 'btn-soft-primary'" @click="presetAll">
+                                Tutti
+                            </button>
+                            <button type="button" class="btn btn-sm" :class="activePreset === 'da_oggi' ? 'btn-primary' : 'btn-soft-primary'" @click="presetFromToday">
+                                Da Oggi
+                            </button>
+                            <button type="button" class="btn btn-sm" :class="activePreset === 'oggi' ? 'btn-primary' : 'btn-soft-primary'" @click="presetToday">
+                                Oggi
+                            </button>
+                            <button type="button" class="btn btn-sm" :class="activePreset === 'domani' ? 'btn-primary' : 'btn-soft-primary'" @click="presetTomorrow">
+                                Domani
+                            </button>
+                            <span class="vr mx-1"></span>
+                            <button
+                                type="button"
+                                class="btn btn-sm"
+                                :class="onlyMine ? 'btn-warning' : 'btn-soft-warning'"
+                                @click="toggleOnlyMine"
+                                title="Mostra solo i task assegnati a me"
+                            >
+                                <i class="ri-user-line me-1"></i>Solo i miei
+                            </button>
+                        </div>
+
                         <!-- Loading State -->
                         <div v-if="loading" class="text-center py-5">
                             <div class="spinner-border text-primary" role="status">
@@ -126,6 +132,9 @@
                             <table class="table table-hover table-nowrap align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
+                                        <th v-if="canViewAll" scope="col" style="width: 40px;">
+                                            <input type="checkbox" v-model="selectAll" @change="toggleSelectAll" class="form-check-input">
+                                        </th>
                                         <th scope="col" @click="sort('name')" style="cursor: pointer;">
                                             Nome Task
                                             <i v-if="sortBy === 'name'" :class="sortOrder === 'asc' ? 'bx bx-up-arrow-alt' : 'bx bx-down-arrow-alt'"></i>
@@ -146,7 +155,10 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="task in sortedTasks" :key="task.id">
+                                    <tr v-for="task in sortedTasks" :key="task.id" :class="{ 'table-active': selectedTasks.includes(task.id) }">
+                                        <td v-if="canViewAll">
+                                            <input type="checkbox" v-model="selectedTasks" :value="task.id" class="form-check-input">
+                                        </td>
                                         <td class="fw-medium">{{ task.name }}</td>
                                         <td>
                                             <span v-if="task.service" class="badge bg-info-subtle text-info">
@@ -233,20 +245,16 @@
                             </div>
                             <nav aria-label="Navigazione pagine">
                                 <ul class="pagination pagination-sm mb-0">
-                                    <!-- First Page -->
                                     <li class="page-item" :class="{ disabled: currentPage === 1 }">
                                         <a class="page-link" href="#" @click.prevent="changePage(1)">
                                             <i class="bx bx-chevrons-left"></i>
                                         </a>
                                     </li>
-                                    <!-- Previous Page -->
                                     <li class="page-item" :class="{ disabled: currentPage === 1 }">
                                         <a class="page-link" href="#" @click.prevent="changePage(currentPage - 1)">
                                             <i class="bx bx-chevron-left"></i>
                                         </a>
                                     </li>
-
-                                    <!-- Page Numbers -->
                                     <template v-if="totalPages <= 7">
                                         <li
                                             v-for="page in totalPages"
@@ -254,76 +262,19 @@
                                             class="page-item"
                                             :class="{ active: currentPage === page }"
                                         >
-                                            <a class="page-link" href="#" @click.prevent="changePage(page)">
-                                                {{ page }}
-                                            </a>
+                                            <a class="page-link" href="#" @click.prevent="changePage(page)">{{ page }}</a>
                                         </li>
                                     </template>
                                     <template v-else>
-                                        <li
-                                            v-if="currentPage <= 4"
-                                            v-for="page in 5"
-                                            :key="page"
-                                            class="page-item"
-                                            :class="{ active: currentPage === page }"
-                                        >
-                                            <a class="page-link" href="#" @click.prevent="changePage(page)">
-                                                {{ page }}
-                                            </a>
+                                        <li v-for="page in visiblePages" :key="page" class="page-item" :class="{ active: currentPage === page }">
+                                            <a class="page-link" href="#" @click.prevent="changePage(page)">{{ page }}</a>
                                         </li>
-                                        <template v-else-if="currentPage >= totalPages - 3">
-                                            <li class="page-item">
-                                                <a class="page-link" href="#" @click.prevent="changePage(1)">1</a>
-                                            </li>
-                                            <li class="page-item disabled">
-                                                <span class="page-link">...</span>
-                                            </li>
-                                            <li
-                                                v-for="page in 5"
-                                                :key="page"
-                                                class="page-item"
-                                                :class="{ active: currentPage === totalPages - 5 + page }"
-                                            >
-                                                <a class="page-link" href="#" @click.prevent="changePage(totalPages - 5 + page)">
-                                                    {{ totalPages - 5 + page }}
-                                                </a>
-                                            </li>
-                                        </template>
-                                        <template v-else>
-                                            <li class="page-item">
-                                                <a class="page-link" href="#" @click.prevent="changePage(1)">1</a>
-                                            </li>
-                                            <li class="page-item disabled">
-                                                <span class="page-link">...</span>
-                                            </li>
-                                            <li
-                                                v-for="page in [currentPage - 1, currentPage, currentPage + 1]"
-                                                :key="page"
-                                                class="page-item"
-                                                :class="{ active: currentPage === page }"
-                                            >
-                                                <a class="page-link" href="#" @click.prevent="changePage(page)">
-                                                    {{ page }}
-                                                </a>
-                                            </li>
-                                            <li class="page-item disabled">
-                                                <span class="page-link">...</span>
-                                            </li>
-                                            <li class="page-item">
-                                                <a class="page-link" href="#" @click.prevent="changePage(totalPages)">
-                                                    {{ totalPages }}
-                                                </a>
-                                            </li>
-                                        </template>
                                     </template>
-
-                                    <!-- Next Page -->
                                     <li class="page-item" :class="{ disabled: currentPage === totalPages }">
                                         <a class="page-link" href="#" @click.prevent="changePage(currentPage + 1)">
                                             <i class="bx bx-chevron-right"></i>
                                         </a>
                                     </li>
-                                    <!-- Last Page -->
                                     <li class="page-item" :class="{ disabled: currentPage === totalPages }">
                                         <a class="page-link" href="#" @click.prevent="changePage(totalPages)">
                                             <i class="bx bx-chevrons-right"></i>
@@ -332,11 +283,83 @@
                                 </ul>
                             </nav>
                         </div>
+
+                        <!-- Spacer for bulk action bar -->
+                        <div v-if="canViewAll && selectedTasks.length > 0" style="height: 80px;"></div>
                     </BCardBody>
                 </BCard>
             </BCol>
         </BRow>
     </Layout>
+
+    <!-- Bulk Action Bar (teleported to body) -->
+    <Teleport to="body">
+        <div v-if="canViewAll && selectedTasks.length > 0" class="bulk-action-bar">
+            <div class="container-fluid">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <!-- Counter + Deselect -->
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-white text-dark fs-6">{{ selectedTasks.length }}</span>
+                        <span class="text-white small d-none d-sm-inline">selezionati</span>
+                        <button class="btn btn-sm btn-outline-light" @click="clearSelection">
+                            <i class="ri-close-line"></i>
+                        </button>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <!-- Bulk Status -->
+                        <div class="bulk-action-group">
+                            <select v-model="bulkStatusValue" class="form-select form-select-sm bulk-select">
+                                <option value="">Stato...</option>
+                                <option value="to_complete">Da Completare</option>
+                                <option value="completed">Completato</option>
+                                <option value="cancelled">Annullato</option>
+                            </select>
+                            <button
+                                class="btn btn-sm btn-light"
+                                :disabled="!bulkStatusValue || bulkApplying"
+                                @click="applyBulkStatus"
+                            >
+                                <i class="ri-check-line"></i>
+                            </button>
+                        </div>
+
+                        <!-- Bulk Assignee -->
+                        <div class="bulk-action-group">
+                            <select v-model="bulkAssigneeId" class="form-select form-select-sm bulk-select" style="min-width: 160px;">
+                                <option value="">Assegnatario...</option>
+                                <option v-for="user in assignableUsers" :key="user.id" :value="user.id">
+                                    {{ user.surname }} {{ user.name }}
+                                </option>
+                            </select>
+                            <button
+                                class="btn btn-sm btn-light"
+                                :disabled="!bulkAssigneeId || bulkApplying"
+                                @click="applyBulkAssignee"
+                            >
+                                <i class="ri-check-line"></i>
+                            </button>
+                        </div>
+
+                        <span class="bulk-divider d-none d-sm-inline">|</span>
+
+                        <!-- Bulk Delete -->
+                        <button
+                            v-if="canDelete"
+                            class="btn btn-sm btn-danger"
+                            :disabled="bulkApplying"
+                            @click="deleteSelectedTasks"
+                        >
+                            <span v-if="bulkApplying" class="spinner-border spinner-border-sm me-1"></span>
+                            <i v-else class="ri-delete-bin-line me-1"></i>
+                            Elimina
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Teleport>
 </template>
 
 <script setup>
@@ -346,6 +369,7 @@ import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import moment from 'moment';
+import Swal from 'sweetalert2';
 
 const tasks = ref([]);
 const loading = ref(false);
@@ -363,13 +387,24 @@ const perPage = ref(10);
 const totalPages = ref(1);
 const totalRecords = ref(0);
 
+// Preset filters
+const activePreset = ref('da_oggi');
+const onlyMine = ref(false);
+
+// Bulk selection
+const selectedTasks = ref([]);
+const selectAll = ref(false);
+const bulkStatusValue = ref('');
+const bulkAssigneeId = ref('');
+const bulkApplying = ref(false);
+
 const filters = ref({
     company_id: '',
     search: '',
     status: '',
     assigned_to: '',
     service_id: '',
-    start_date: '',
+    start_date: moment().format('YYYY-MM-DD'),
     end_date: ''
 });
 
@@ -395,6 +430,15 @@ const activeFiltersCount = computed(() => {
     return count;
 });
 
+const visiblePages = computed(() => {
+    const pages = [];
+    let start = Math.max(1, currentPage.value - 2);
+    let end = Math.min(totalPages.value, start + 4);
+    start = Math.max(1, end - 4);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+});
+
 const resetFilters = () => {
     filters.value = {
         company_id: '',
@@ -405,10 +449,65 @@ const resetFilters = () => {
         start_date: '',
         end_date: ''
     };
+    activePreset.value = 'tutti';
+    onlyMine.value = false;
     currentPage.value = 1;
     loadTasks();
 };
 
+const loadTasksFromFilter = () => {
+    activePreset.value = null;
+    currentPage.value = 1;
+    loadTasks();
+};
+
+// Preset functions
+const presetAll = () => {
+    filters.value.start_date = '';
+    filters.value.end_date = '';
+    activePreset.value = 'tutti';
+    currentPage.value = 1;
+    loadTasks();
+};
+
+const presetFromToday = () => {
+    filters.value.start_date = moment().format('YYYY-MM-DD');
+    filters.value.end_date = '';
+    activePreset.value = 'da_oggi';
+    currentPage.value = 1;
+    loadTasks();
+};
+
+const presetToday = () => {
+    const today = moment().format('YYYY-MM-DD');
+    filters.value.start_date = today;
+    filters.value.end_date = today;
+    activePreset.value = 'oggi';
+    currentPage.value = 1;
+    loadTasks();
+};
+
+const presetTomorrow = () => {
+    const tomorrow = moment().add(1, 'days').format('YYYY-MM-DD');
+    filters.value.start_date = tomorrow;
+    filters.value.end_date = tomorrow;
+    activePreset.value = 'domani';
+    currentPage.value = 1;
+    loadTasks();
+};
+
+const toggleOnlyMine = () => {
+    onlyMine.value = !onlyMine.value;
+    if (onlyMine.value && currentUser.value) {
+        filters.value.assigned_to = currentUser.value.id;
+    } else {
+        filters.value.assigned_to = '';
+    }
+    currentPage.value = 1;
+    loadTasks();
+};
+
+// Sort
 const sort = (column) => {
     if (sortBy.value === column) {
         sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
@@ -443,6 +542,111 @@ const sortedTasks = computed(() => {
     return sorted;
 });
 
+// Bulk selection
+const toggleSelectAll = () => {
+    if (selectAll.value) {
+        selectedTasks.value = sortedTasks.value.map(t => t.id);
+    } else {
+        selectedTasks.value = [];
+    }
+};
+
+const clearSelection = () => {
+    selectedTasks.value = [];
+    selectAll.value = false;
+    bulkStatusValue.value = '';
+    bulkAssigneeId.value = '';
+};
+
+const applyBulkStatus = async () => {
+    if (!bulkStatusValue.value || selectedTasks.value.length === 0) return;
+
+    const label = getStatusLabel(bulkStatusValue.value);
+    const { isConfirmed } = await Swal.fire({
+        title: `Modifica stato di ${selectedTasks.value.length} task`,
+        text: `Impostare lo stato "${label}" per i task selezionati?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Applica',
+        cancelButtonText: 'Annulla',
+    });
+    if (!isConfirmed) return;
+
+    bulkApplying.value = true;
+    try {
+        await Promise.all(selectedTasks.value.map(id =>
+            axios.put(`/api/tasks/${id}`, { status: bulkStatusValue.value })
+        ));
+        clearSelection();
+        await loadTasks();
+    } catch (err) {
+        error.value = 'Errore nell\'aggiornamento dello stato';
+        console.error(err);
+    } finally {
+        bulkApplying.value = false;
+    }
+};
+
+const applyBulkAssignee = async () => {
+    if (!bulkAssigneeId.value || selectedTasks.value.length === 0) return;
+
+    const user = assignableUsers.value.find(u => u.id === parseInt(bulkAssigneeId.value));
+    const userName = user ? `${user.surname} ${user.name}` : '';
+    const { isConfirmed } = await Swal.fire({
+        title: `Assegna ${selectedTasks.value.length} task`,
+        text: `Assegnare i task selezionati a "${userName}"?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Applica',
+        cancelButtonText: 'Annulla',
+    });
+    if (!isConfirmed) return;
+
+    bulkApplying.value = true;
+    try {
+        await Promise.all(selectedTasks.value.map(id =>
+            axios.put(`/api/tasks/${id}`, { assigned_users: [parseInt(bulkAssigneeId.value)] })
+        ));
+        clearSelection();
+        await loadTasks();
+    } catch (err) {
+        error.value = 'Errore nell\'assegnazione';
+        console.error(err);
+    } finally {
+        bulkApplying.value = false;
+    }
+};
+
+const deleteSelectedTasks = async () => {
+    if (selectedTasks.value.length === 0) return;
+
+    const { isConfirmed } = await Swal.fire({
+        title: 'Conferma eliminazione',
+        text: `Eliminare ${selectedTasks.value.length} task selezionati?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Elimina',
+        cancelButtonText: 'Annulla',
+    });
+    if (!isConfirmed) return;
+
+    bulkApplying.value = true;
+    try {
+        await Promise.all(selectedTasks.value.map(id =>
+            axios.delete(`/api/tasks/${id}`)
+        ));
+        clearSelection();
+        await loadTasks();
+    } catch (err) {
+        error.value = 'Errore nell\'eliminazione';
+        console.error(err);
+    } finally {
+        bulkApplying.value = false;
+    }
+};
+
+// Data loading
 const loadTasks = async () => {
     loading.value = true;
     error.value = '';
@@ -459,7 +663,6 @@ const loadTasks = async () => {
         const response = await axios.get('/api/tasks', { params });
         tasks.value = response.data.data || [];
 
-        // Update pagination metadata
         if (response.data.meta) {
             totalPages.value = response.data.meta.last_page || 1;
             totalRecords.value = response.data.meta.total || 0;
@@ -480,14 +683,12 @@ const changePage = (page) => {
 };
 
 const changePerPage = () => {
-    currentPage.value = 1; // Reset to first page when changing per page
+    currentPage.value = 1;
     loadTasks();
 };
 
 const deleteTask = async (id) => {
-    if (!confirm('Sei sicuro di voler eliminare questo task?')) {
-        return;
-    }
+    if (!confirm('Sei sicuro di voler eliminare questo task?')) return;
 
     try {
         await axios.delete(`/api/tasks/${id}`);
@@ -512,13 +713,9 @@ const getDueDateClass = (task) => {
     const dueDate = new Date(task.due_date);
     dueDate.setHours(0, 0, 0, 0);
 
-    if (dueDate < today) {
-        return 'text-danger fw-bold';
-    }
+    if (dueDate < today) return 'text-danger fw-bold';
     const daysDiff = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-    if (daysDiff <= 3) {
-        return 'text-warning fw-bold';
-    }
+    if (daysDiff <= 3) return 'text-warning fw-bold';
     return '';
 };
 
@@ -540,24 +737,10 @@ const getStatusLabel = (status) => {
     return labels[status] || status;
 };
 
-const isSuperAdmin = computed(() => {
-    return currentUser.value?.role === 'super-admin';
-});
-
-const canViewAll = computed(() => {
-    const role = currentUser.value?.role;
-    return role === 'super-admin' || role === 'admin' || role === 'operator';
-});
-
-const canCreate = computed(() => {
-    const role = currentUser.value?.role;
-    return role === 'super-admin' || role === 'admin' || role === 'operator';
-});
-
-const canDelete = computed(() => {
-    const role = currentUser.value?.role;
-    return role === 'super-admin' || role === 'admin';
-});
+const isSuperAdmin = computed(() => currentUser.value?.role === 'super-admin');
+const canViewAll = computed(() => ['super-admin', 'admin', 'operator'].includes(currentUser.value?.role));
+const canCreate = computed(() => ['super-admin', 'admin', 'operator'].includes(currentUser.value?.role));
+const canDelete = computed(() => ['super-admin', 'admin'].includes(currentUser.value?.role));
 
 const loadCurrentUser = async () => {
     try {
@@ -570,7 +753,6 @@ const loadCurrentUser = async () => {
 
 const loadCompanies = async () => {
     if (!isSuperAdmin.value) return;
-
     try {
         const response = await axios.get('/api/companies');
         companies.value = response.data.data || [];
@@ -581,12 +763,9 @@ const loadCompanies = async () => {
 
 const loadAssignableUsers = async () => {
     if (!canViewAll.value) return;
-
     try {
         const response = await axios.get('/api/users', {
-            params: {
-                role: 'admin,operator,driver,accountant'
-            }
+            params: { role: 'admin,operator,driver,contabilita', light: 1 }
         });
         assignableUsers.value = response.data.data || [];
     } catch (err) {
@@ -596,7 +775,7 @@ const loadAssignableUsers = async () => {
 
 const loadServices = async () => {
     try {
-        const response = await axios.get('/api/services');
+        const response = await axios.get('/api/services', { params: { per_page: 200 } });
         services.value = response.data.data || [];
     } catch (err) {
         console.error('Error loading services:', err);
@@ -605,9 +784,68 @@ const loadServices = async () => {
 
 onMounted(async () => {
     await loadCurrentUser();
-    await loadCompanies();
-    await loadAssignableUsers();
-    await loadServices();
+    await Promise.all([loadCompanies(), loadAssignableUsers(), loadServices()]);
     await loadTasks();
 });
 </script>
+
+<style scoped>
+/* Bulk Action Bar */
+.bulk-action-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #405189;
+    color: white;
+    padding: 12px 16px;
+    z-index: 1050;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.bulk-divider {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 1.2rem;
+    line-height: 1;
+    user-select: none;
+}
+
+.bulk-action-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bulk-select {
+    width: auto;
+    min-width: 120px;
+    max-width: 160px;
+    font-size: 0.8rem;
+    padding: 0.25rem 2rem 0.25rem 0.5rem;
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.bulk-select:focus {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 0.15rem rgba(255, 255, 255, 0.2);
+}
+
+.bulk-select option {
+    background-color: #405189;
+    color: white;
+}
+
+@media (max-width: 576px) {
+    .bulk-action-bar {
+        padding: 8px 12px;
+    }
+    .bulk-select {
+        min-width: 100px;
+        font-size: 0.75rem;
+    }
+}
+</style>

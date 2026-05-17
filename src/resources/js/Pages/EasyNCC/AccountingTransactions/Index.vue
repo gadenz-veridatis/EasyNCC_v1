@@ -36,6 +36,7 @@
                                 <legend class="fs-6 fw-semibold text-primary mb-3">
                                     <i class="ri-filter-3-line me-2"></i>Filtri di Ricerca
                                 </legend>
+                            <!-- Riga 1: Ricerca, Tipo, Stato, Causale -->
                             <BRow class="mb-3">
                                 <BCol md="3">
                                     <label class="form-label">Ricerca</label>
@@ -44,12 +45,12 @@
                                         type="text"
                                         class="form-control form-control-sm"
                                         placeholder="Numero documento, causale, note..."
-                                        @input="loadTransactions"
+                                        @input="() => loadTransactions(1)"
                                     />
                                 </BCol>
                                 <BCol md="3">
                                     <label class="form-label">Tipo Movimento</label>
-                                    <select v-model="filters.transaction_type" class="form-select form-select-sm" @change="loadTransactions">
+                                    <select v-model="filters.transaction_type" class="form-select form-select-sm" @change="() => loadTransactions(1)">
                                         <option value="">Tutti</option>
                                         <option value="purchase">Acquisto</option>
                                         <option value="sale">Vendita</option>
@@ -58,7 +59,7 @@
                                 </BCol>
                                 <BCol md="3">
                                     <label class="form-label">Stato</label>
-                                    <select v-model="filters.status" class="form-select form-select-sm" @change="loadTransactions">
+                                    <select v-model="filters.status" class="form-select form-select-sm" @change="() => loadTransactions(1)">
                                         <option value="">Tutti</option>
                                         <option v-for="ts in transactionStatuses" :key="ts.code" :value="ts.code">
                                             {{ ts.name }}
@@ -66,57 +67,142 @@
                                     </select>
                                 </BCol>
                                 <BCol md="3">
-                                    <label class="form-label">Servizio</label>
-                                    <select v-model="filters.service_id" class="form-select form-select-sm" @change="loadTransactions">
-                                        <option value="">Tutti</option>
-                                        <option v-for="service in services" :key="service.id" :value="service.id">
-                                            {{ service.reference_number }}
-                                        </option>
-                                    </select>
-                                </BCol>
-                            </BRow>
-                            <BRow class="mb-3">
-                                <BCol md="3">
                                     <label class="form-label">Causale Contabile</label>
-                                    <select v-model="filters.accounting_entry_id" class="form-select form-select-sm" @change="loadTransactions">
+                                    <select v-model="filters.accounting_entry_id" class="form-select form-select-sm" @change="() => loadTransactions(1)">
                                         <option value="">Tutte</option>
                                         <option v-for="entry in accountingEntries" :key="entry.id" :value="entry.id">
                                             {{ entry.name }} ({{ entry.abbreviation }})
                                         </option>
                                     </select>
                                 </BCol>
+                            </BRow>
+                            <!-- Riga 2: Servizio, Controparte Movimento, Date -->
+                            <BRow class="mb-3">
                                 <BCol md="3">
-                                    <label class="form-label">Controparte</label>
-                                    <select v-model="filters.counterpart_id" class="form-select form-select-sm" @change="loadTransactions">
-                                        <option value="">Tutte</option>
-                                        <option v-for="user in counterparts" :key="user.id" :value="user.id">
-                                            {{ user.name }} {{ user.surname }} ({{ user.role }})
+                                    <label class="form-label">Servizio</label>
+                                    <select v-model="filters.service_id" class="form-select form-select-sm" @change="() => loadTransactions(1)">
+                                        <option value="">Tutti</option>
+                                        <option v-for="service in services" :key="service.id" :value="service.id">
+                                            {{ service.reference_number }}
                                         </option>
                                     </select>
                                 </BCol>
                                 <BCol md="3">
+                                    <label class="form-label">Controparte Movimento</label>
+                                    <Multiselect
+                                        v-model="filters.counterpart_id"
+                                        :options="searchCounterparts"
+                                        :searchable="true"
+                                        :filter-results="false"
+                                        :min-chars="2"
+                                        :delay="300"
+                                        :resolve-on-load="false"
+                                        placeholder="Digita per cercare..."
+                                        no-options-text="Digita almeno 2 caratteri"
+                                        no-results-text="Nessun risultato"
+                                        :can-clear="true"
+                                    >
+                                        <template v-slot:singlelabel="{ value }">
+                                            <div class="multiselect-single-label text-truncate" style="max-width: 100%;">{{ value.label }}</div>
+                                        </template>
+                                    </Multiselect>
+                                </BCol>
+                                <BCol md="3">
                                     <label class="form-label">Data Da</label>
-                                    <input
-                                        v-model="filters.start_date"
-                                        type="date"
-                                        class="form-control form-control-sm"
-                                        @change="loadTransactions"
-                                    />
+                                    <input v-model="filters.start_date" type="date" class="form-control form-control-sm" @change="() => loadTransactions(1)" />
                                 </BCol>
                                 <BCol md="3">
                                     <label class="form-label">Data A</label>
-                                    <input
-                                        v-model="filters.end_date"
-                                        type="date"
-                                        class="form-control form-control-sm"
-                                        @change="loadTransactions"
-                                    />
+                                    <input v-model="filters.end_date" type="date" class="form-control form-control-sm" @change="() => loadTransactions(1)" />
+                                </BCol>
+                            </BRow>
+                            <!-- Riga 3: Filtri per relazioni servizio -->
+                            <BRow class="mb-3">
+                                <BCol md="3">
+                                    <label class="form-label">Committente (Servizio)</label>
+                                    <Multiselect
+                                        v-model="filters.client_id"
+                                        :options="searchClients"
+                                        :searchable="true"
+                                        :filter-results="false"
+                                        :min-chars="2"
+                                        :delay="300"
+                                        :resolve-on-load="false"
+                                        placeholder="Digita per cercare..."
+                                        no-options-text="Digita almeno 2 caratteri"
+                                        no-results-text="Nessun risultato"
+                                        :can-clear="true"
+                                    >
+                                        <template v-slot:singlelabel="{ value }">
+                                            <div class="multiselect-single-label text-truncate" style="max-width: 100%;">{{ value.label }}</div>
+                                        </template>
+                                    </Multiselect>
+                                </BCol>
+                                <BCol md="3">
+                                    <label class="form-label">Fornitore (Servizio)</label>
+                                    <Multiselect
+                                        v-model="filters.supplier_id"
+                                        :options="searchSuppliers"
+                                        :searchable="true"
+                                        :filter-results="false"
+                                        :min-chars="2"
+                                        :delay="300"
+                                        :resolve-on-load="false"
+                                        placeholder="Digita per cercare..."
+                                        no-options-text="Digita almeno 2 caratteri"
+                                        no-results-text="Nessun risultato"
+                                        :can-clear="true"
+                                    >
+                                        <template v-slot:singlelabel="{ value }">
+                                            <div class="multiselect-single-label text-truncate" style="max-width: 100%;">{{ value.label }}</div>
+                                        </template>
+                                    </Multiselect>
+                                </BCol>
+                                <BCol md="3">
+                                    <label class="form-label">Intermediario (Servizio)</label>
+                                    <Multiselect
+                                        v-model="filters.intermediary_id"
+                                        :options="searchIntermediaries"
+                                        :searchable="true"
+                                        :filter-results="false"
+                                        :min-chars="2"
+                                        :delay="300"
+                                        :resolve-on-load="false"
+                                        placeholder="Digita per cercare..."
+                                        no-options-text="Digita almeno 2 caratteri"
+                                        no-results-text="Nessun risultato"
+                                        :can-clear="true"
+                                    >
+                                        <template v-slot:singlelabel="{ value }">
+                                            <div class="multiselect-single-label text-truncate" style="max-width: 100%;">{{ value.label }}</div>
+                                        </template>
+                                    </Multiselect>
+                                </BCol>
+                                <BCol md="3">
+                                    <label class="form-label">Driver (Servizio)</label>
+                                    <Multiselect
+                                        v-model="filters.driver_id"
+                                        :options="searchDrivers"
+                                        :searchable="true"
+                                        :filter-results="false"
+                                        :min-chars="2"
+                                        :delay="300"
+                                        :resolve-on-load="false"
+                                        placeholder="Digita per cercare..."
+                                        no-options-text="Digita almeno 2 caratteri"
+                                        no-results-text="Nessun risultato"
+                                        :can-clear="true"
+                                    >
+                                        <template v-slot:singlelabel="{ value }">
+                                            <div class="multiselect-single-label text-truncate" style="max-width: 100%;">{{ value.label }}</div>
+                                        </template>
+                                    </Multiselect>
                                 </BCol>
                             </BRow>
                             <BRow class="mb-3" v-if="isSuperAdmin">
-                                <BCol md="12">
+                                <BCol md="3">
                                     <label class="form-label">Azienda</label>
-                                    <select v-model="filters.company_id" class="form-select form-select-sm" @change="loadTransactions">
+                                    <select v-model="filters.company_id" class="form-select form-select-sm" @change="() => loadTransactions(1)">
                                         <option value="">Tutte le aziende</option>
                                         <option v-for="company in companies" :key="company.id" :value="company.id">
                                             {{ company.name }}
@@ -278,22 +364,11 @@
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="d-flex gap-2">
-                                <button
-                                    v-if="selectedTransactions.length > 0 && canDelete"
-                                    type="button"
-                                    class="btn btn-soft-danger btn-sm"
-                                    @click="deleteSelectedTransactions"
-                                >
-                                    <i class="ri-delete-bin-line me-1"></i>
-                                    Cancella Selezionati ({{ selectedTransactions.length }})
-                                </button>
-                            </div>
-                            <Link :href="route('easyncc.accounting-transactions.create')" class="btn btn-primary btn-sm">
+                        <div class="d-flex justify-content-end mb-3">
+                            <button type="button" class="btn btn-primary btn-sm" @click="openTransactionModal()">
                                 <i class="bx bx-plus me-1"></i>
                                 Nuovo Movimento
-                            </Link>
+                            </button>
                         </div>
 
                         <!-- Loading State -->
@@ -308,14 +383,14 @@
                             <table class="table table-hover table-nowrap align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th scope="col" style="width: 30px;">
+                                        <th scope="col" style="width: 70px;">
                                             <input
                                                 type="checkbox"
-                                                class="form-check-input"
+                                                class="form-check-input me-2"
                                                 :checked="isAllSelected"
                                                 @change="toggleSelectAll"
                                                 title="Seleziona tutti"
-                                            />
+                                            />Azioni
                                         </th>
                                         <th scope="col" class="cursor-pointer" @click="sortBy('transaction_date')">
                                             Data
@@ -333,8 +408,8 @@
                                             Rata
                                             <i v-if="sortField === 'installment'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'" class="ms-1"></i>
                                         </th>
-                                        <th scope="col">Causali</th>
-                                        <th scope="col">Controparte</th>
+                                        <th scope="col" style="max-width: 250px;">Causali</th>
+                                        <th scope="col" style="max-width: 200px;">Controparte</th>
                                         <th scope="col" class="cursor-pointer" @click="sortBy('document_number')">
                                             Documenti
                                             <i v-if="sortField === 'document_number'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'" class="ms-1"></i>
@@ -345,19 +420,35 @@
                                         </th>
                                         <th scope="col">Servizio</th>
                                         <th scope="col" v-if="isSuperAdmin">Azienda</th>
-                                        <th scope="col">Azioni</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="transaction in transactions" :key="transaction.id">
+                                    <tr v-for="transaction in transactions" :key="transaction.id" :class="{ 'table-active': selectedTransactions.includes(transaction.id) }">
                                         <td>
-                                            <input
-                                                v-if="!transaction.is_automatic"
-                                                type="checkbox"
-                                                class="form-check-input"
-                                                :value="transaction.id"
-                                                v-model="selectedTransactions"
-                                            />
+                                            <div class="d-flex align-items-center gap-1">
+                                                <input
+                                                    type="checkbox"
+                                                    class="form-check-input"
+                                                    :value="transaction.id"
+                                                    v-model="selectedTransactions"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-soft-primary btn-sm px-1 py-0"
+                                                    title="Modifica"
+                                                    @click="openTransactionModal(transaction)"
+                                                >
+                                                    <i class="ri-pencil-line"></i>
+                                                </button>
+                                                <button
+                                                    @click="deleteTransaction(transaction.id)"
+                                                    class="btn btn-soft-danger btn-sm px-1 py-0"
+                                                    title="Elimina"
+                                                    v-if="canDelete && !transaction.is_automatic"
+                                                >
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                         <td>{{ formatDate(transaction.transaction_date) }}</td>
                                         <td>
@@ -373,13 +464,30 @@
                                         <td class="fw-medium">€ {{ parseFloat(transaction.amount).toFixed(2) }}</td>
                                         <td>
                                             <span
-                                                class="badge bg-secondary-subtle text-secondary"
-                                                :title="getInstallmentLabel(transaction.installment)"
+                                                v-if="editingInstallment !== transaction.id"
+                                                class="badge bg-secondary-subtle text-secondary cursor-pointer"
+                                                :title="getInstallmentLabel(transaction.installment) + ' - Clicca per modificare'"
+                                                @click="startEditInstallment(transaction)"
                                             >
                                                 {{ getInstallmentAbbr(transaction.installment) }}
                                             </span>
+                                            <div v-else>
+                                                <select
+                                                    v-model="editingInstallmentValue"
+                                                    class="form-select form-select-sm"
+                                                    @change="saveInstallment(transaction)"
+                                                    @keyup.esc="cancelEditInstallment"
+                                                    @blur="cancelEditInstallment"
+                                                    style="max-width: 130px; font-size: 0.75rem;"
+                                                >
+                                                    <option value="deposit">Acconto</option>
+                                                    <option value="balance">Saldo</option>
+                                                    <option value="supplier_refund">Reso Fornitore</option>
+                                                    <option value="customer_refund">Rimborso Cliente</option>
+                                                </select>
+                                            </div>
                                         </td>
-                                        <td>
+                                        <td style="max-width: 250px; word-wrap: break-word; white-space: normal;">
                                             <span v-if="transaction.payment_reason || transaction.accounting_entry">
                                                 <span v-if="transaction.payment_reason">{{ transaction.payment_reason }}</span>
                                                 <br v-if="transaction.payment_reason && transaction.accounting_entry">
@@ -389,7 +497,7 @@
                                             </span>
                                             <span v-else class="text-muted">-</span>
                                         </td>
-                                        <td>
+                                        <td style="max-width: 200px; word-wrap: break-word; white-space: normal;">
                                             <span v-if="transaction.counterpart">
                                                 {{ transaction.counterpart.name }} {{ transaction.counterpart.surname }}
                                                 <br>
@@ -413,8 +521,8 @@
                                             <span
                                                 v-if="editingStatus !== transaction.id"
                                                 @click="startEditStatus(transaction)"
-                                                :class="getStatusBadgeClass(transaction.status)"
-                                                class="cursor-pointer"
+                                                class="badge cursor-pointer"
+                                                :style="getStatusBadgeStyle(transaction.status)"
                                                 :title="getStatusLabel(transaction.status) + ' - Clicca per modificare'"
                                             >
                                                 {{ getStatusAbbr(transaction.status) }}
@@ -454,7 +562,7 @@
                                         </td>
                                         <td>
                                             <Link v-if="transaction.service"
-                                                :href="route('easyncc.services.edit', transaction.service.id)"
+                                                :href="withReturnUrl(route('easyncc.services.edit', transaction.service.id))"
                                                 class="text-primary text-decoration-underline"
                                                 :title="'Vai al servizio ' + transaction.service.reference_number"
                                             >
@@ -464,25 +572,6 @@
                                         </td>
                                         <td v-if="isSuperAdmin">
                                             <span v-if="transaction.company">{{ transaction.company.name }}</span>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex gap-2">
-                                                <Link
-                                                    :href="route('easyncc.accounting-transactions.edit', transaction.id)"
-                                                    class="btn btn-soft-primary btn-sm"
-                                                    title="Modifica"
-                                                >
-                                                    <i class="ri-pencil-line"></i>
-                                                </Link>
-                                                <button
-                                                    @click="deleteTransaction(transaction.id)"
-                                                    class="btn btn-soft-danger btn-sm"
-                                                    title="Elimina"
-                                                    v-if="canDelete && !transaction.is_automatic"
-                                                >
-                                                    <i class="ri-delete-bin-line"></i>
-                                                </button>
-                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -558,20 +647,322 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Spacer for bulk action bar -->
+                        <div v-if="selectedTransactions.length > 0" style="height: 80px;"></div>
                     </BCardBody>
                 </BCard>
             </BCol>
         </BRow>
     </Layout>
+
+    <!-- Transaction Edit/Create Modal -->
+    <BModal
+        v-model="showTransactionModal"
+        :title="transactionForm.id ? 'Modifica Movimento Contabile' : 'Nuovo Movimento Contabile'"
+        size="lg"
+        hide-footer
+        @hidden="cancelTransactionEdit"
+    >
+        <!-- Loading spinner -->
+        <div v-if="loadingModal" class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Caricamento...</span>
+            </div>
+        </div>
+
+        <!-- Fieldset 1: Dati Principali -->
+        <fieldset v-show="!loadingModal" class="border rounded p-3 mb-3">
+            <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                <i class="ri-file-list-3-line me-1"></i>
+                Dati Principali
+            </legend>
+            <BRow>
+                <BCol md="6">
+                    <div class="mb-3">
+                        <label class="form-label">Tipo Movimento <span class="text-danger">*</span></label>
+                        <select v-model="transactionForm.transaction_type" class="form-select" @change="onTransactionTypeChange" required :disabled="transactionForm.is_automatic">
+                            <option value="">Seleziona tipo</option>
+                            <option value="purchase">Acquisto (Costi da Fornitore)</option>
+                            <option value="sale">Vendita (Ricavi da Committente)</option>
+                            <option value="intermediation">Intermediazione (Commissioni)</option>
+                        </select>
+                        <small v-if="transactionForm.is_automatic" class="text-muted">Campo gestito automaticamente</small>
+                    </div>
+                </BCol>
+                <BCol md="6">
+                    <div class="mb-3">
+                        <label class="form-label">Data Movimento <span class="text-danger">*</span></label>
+                        <input v-model="transactionForm.transaction_date" type="date" class="form-control" required :disabled="transactionForm.is_automatic" />
+                        <small v-if="transactionForm.is_automatic" class="text-muted">Campo gestito automaticamente</small>
+                    </div>
+                </BCol>
+                <BCol md="6">
+                    <div class="mb-3">
+                        <label class="form-label">Importo <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">€</span>
+                            <input v-model="transactionForm.amount" type="number" step="0.01" min="0" class="form-control" required :disabled="transactionForm.is_automatic" />
+                        </div>
+                        <small v-if="transactionForm.is_automatic" class="text-muted">Campo gestito automaticamente</small>
+                    </div>
+                </BCol>
+                <BCol md="6">
+                    <div class="mb-3">
+                        <label class="form-label">Causale Movimento</label>
+                        <input v-model="transactionForm.payment_reason" type="text" class="form-control" placeholder="Es. Pagamento servizio, Acconto, Saldo finale..." />
+                    </div>
+                </BCol>
+                <BCol md="6">
+                    <div class="mb-3">
+                        <label class="form-label">Rata <span class="text-danger">*</span></label>
+                        <select v-model="transactionForm.installment" class="form-select" required>
+                            <option value="">Seleziona rata</option>
+                            <option value="deposit">Acconto</option>
+                            <option value="balance">Saldo</option>
+                            <option value="supplier_refund">Reso Fornitore</option>
+                            <option value="customer_refund">Rimborso Cliente</option>
+                        </select>
+                    </div>
+                </BCol>
+                <BCol md="6">
+                    <div class="mb-3">
+                        <label class="form-label">Stato <span class="text-danger">*</span></label>
+                        <select v-model="transactionForm.status" class="form-select" required>
+                            <option value="">Seleziona stato</option>
+                            <option
+                                v-for="ts in filteredTransactionStatuses(transactionForm.transaction_type)"
+                                :key="ts.code"
+                                :value="ts.code"
+                            >{{ ts.name }}</option>
+                        </select>
+                    </div>
+                </BCol>
+            </BRow>
+        </fieldset>
+
+        <!-- Fieldset 2: Riferimenti -->
+        <fieldset v-show="!loadingModal" class="border rounded p-3 mb-3">
+            <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                <i class="ri-links-line me-1"></i>
+                Riferimenti
+            </legend>
+            <BRow>
+                <BCol md="6">
+                    <div class="mb-3">
+                        <label class="form-label">Servizio</label>
+                        <select v-model="transactionForm.service_id" class="form-select">
+                            <option value="">Nessuno</option>
+                            <option v-for="service in modalServices" :key="service.id" :value="service.id">
+                                {{ service.reference_number }}
+                            </option>
+                        </select>
+                    </div>
+                </BCol>
+                <BCol md="6">
+                    <div class="mb-3">
+                        <label class="form-label">Causale Contabile</label>
+                        <select v-model="transactionForm.accounting_entry_id" class="form-select" :disabled="transactionForm.is_automatic">
+                            <option value="">Nessuna</option>
+                            <option v-for="entry in accountingEntries" :key="entry.id" :value="entry.id">
+                                {{ entry.name }} ({{ entry.abbreviation }})
+                            </option>
+                        </select>
+                        <small v-if="transactionForm.is_automatic" class="text-muted">Campo gestito automaticamente</small>
+                    </div>
+                </BCol>
+                <BCol md="6">
+                    <div class="mb-3">
+                        <label class="form-label">Controparte</label>
+                        <select v-model="transactionForm.counterpart_id" class="form-select" :disabled="transactionForm.is_automatic">
+                            <option value="">Nessuna</option>
+                            <option v-for="cp in modalCounterparts" :key="cp.id" :value="cp.id">
+                                {{ cp.name }} {{ cp.surname }} - {{ cp.email }}
+                            </option>
+                        </select>
+                        <small v-if="transactionForm.is_automatic" class="text-muted d-block mt-1">Campo gestito automaticamente</small>
+                    </div>
+                </BCol>
+            </BRow>
+        </fieldset>
+
+        <!-- Fieldset 3: Documenti e Pagamenti -->
+        <fieldset v-show="!loadingModal" class="border rounded p-3 mb-3">
+            <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                <i class="ri-file-text-line me-1"></i>
+                Documenti e Pagamenti
+            </legend>
+            <BRow>
+                <BCol md="6">
+                    <div class="mb-3">
+                        <label class="form-label">Numero Documento</label>
+                        <input v-model="transactionForm.document_number" type="text" class="form-control" placeholder="Es: FT-2024-001" />
+                    </div>
+                </BCol>
+                <BCol md="6">
+                    <div class="mb-3">
+                        <label class="form-label">Scadenza Documento</label>
+                        <input v-model="transactionForm.document_due_date" type="date" class="form-control" />
+                    </div>
+                </BCol>
+                <BCol md="6">
+                    <div class="mb-3">
+                        <label class="form-label">Data Pagamento</label>
+                        <input v-model="transactionForm.payment_date" type="date" class="form-control" />
+                    </div>
+                </BCol>
+                <BCol md="6">
+                    <div class="mb-3">
+                        <label class="form-label">Modalità Pagamento</label>
+                        <select v-model="transactionForm.payment_type" class="form-select">
+                            <option value="">Nessuna</option>
+                            <option v-for="type in paymentTypes" :key="type.id" :value="type.name">
+                                {{ type.name }}
+                            </option>
+                        </select>
+                    </div>
+                </BCol>
+                <BCol md="12">
+                    <div class="mb-3">
+                        <label class="form-label">IBAN</label>
+                        <input v-model="transactionForm.iban" type="text" class="form-control" placeholder="IT60X0542811101000000123456" />
+                    </div>
+                </BCol>
+            </BRow>
+        </fieldset>
+
+        <!-- Fieldset 4: Note -->
+        <fieldset v-show="!loadingModal" class="border rounded p-3 mb-3">
+            <legend class="float-none w-auto px-2 fs-6 fw-semibold text-primary">
+                <i class="ri-sticky-note-line me-1"></i>
+                Note
+            </legend>
+            <BRow>
+                <BCol md="12">
+                    <div class="mb-3">
+                        <textarea v-model="transactionForm.notes" class="form-control" rows="3" placeholder="Note aggiuntive..."></textarea>
+                    </div>
+                </BCol>
+            </BRow>
+        </fieldset>
+
+        <!-- Form Actions -->
+        <div v-show="!loadingModal" class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-soft-secondary" @click="closeTransactionModal">
+                <i class="ri-close-line me-1"></i> Annulla
+            </button>
+            <button
+                type="button"
+                class="btn btn-primary"
+                @click="saveTransaction"
+                :disabled="savingTransaction || !transactionForm.transaction_date || !transactionForm.amount || !transactionForm.transaction_type || !transactionForm.installment || !transactionForm.status"
+            >
+                <span v-if="savingTransaction" class="spinner-border spinner-border-sm me-1"></span>
+                <i v-else :class="transactionForm.id ? 'ri-save-line' : 'ri-add-line'" class="me-1"></i>
+                {{ transactionForm.id ? 'Aggiorna' : 'Crea' }} Movimento
+            </button>
+        </div>
+    </BModal>
+
+    <!-- Bulk Action Bar -->
+    <Teleport to="body">
+        <div v-if="selectedTransactions.length > 0" class="bulk-action-bar">
+            <div class="container-fluid">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <!-- Counter + Deselect -->
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-white text-dark fs-6">{{ selectedTransactions.length }}</span>
+                        <span class="text-white small d-none d-sm-inline">selezionati</span>
+                        <button class="btn btn-sm btn-outline-light" @click="clearSelection">
+                            <i class="ri-close-line"></i>
+                        </button>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <!-- Bulk Status -->
+                        <div class="bulk-action-group">
+                            <select v-model="bulkStatusCode" class="form-select form-select-sm bulk-select">
+                                <option value="">Stato...</option>
+                                <option v-for="ts in transactionStatuses" :key="ts.code" :value="ts.code">
+                                    {{ ts.name }}
+                                </option>
+                            </select>
+                            <button
+                                class="btn btn-sm btn-light"
+                                :disabled="!bulkStatusCode || bulkApplying"
+                                @click="applyBulkStatus"
+                            >
+                                <i class="ri-check-line"></i>
+                            </button>
+                        </div>
+
+                        <!-- Bulk Payment Date -->
+                        <div class="bulk-action-group">
+                            <input
+                                v-model="bulkPaymentDate"
+                                type="date"
+                                class="form-control form-control-sm bulk-select"
+                                style="min-width: 140px;"
+                                title="Data Pagamento"
+                            />
+                            <button
+                                class="btn btn-sm btn-light"
+                                :disabled="!bulkPaymentDate || bulkApplying"
+                                @click="applyBulkPaymentDate"
+                            >
+                                <i class="ri-check-line"></i>
+                            </button>
+                        </div>
+
+                        <!-- Bulk Payment Type -->
+                        <div class="bulk-action-group">
+                            <select v-model="bulkPaymentType" class="form-select form-select-sm bulk-select" style="min-width: 140px;">
+                                <option value="">Pagamento...</option>
+                                <option v-for="type in paymentTypes" :key="type.id" :value="type.name">
+                                    {{ type.name }}
+                                </option>
+                            </select>
+                            <button
+                                class="btn btn-sm btn-light"
+                                :disabled="!bulkPaymentType || bulkApplying"
+                                @click="applyBulkPaymentType"
+                            >
+                                <i class="ri-check-line"></i>
+                            </button>
+                        </div>
+
+                        <span class="bulk-divider d-none d-sm-inline">|</span>
+
+                        <!-- Bulk Delete -->
+                        <button
+                            v-if="canDelete"
+                            class="btn btn-sm btn-danger"
+                            :disabled="bulkApplying"
+                            @click="deleteSelectedTransactions"
+                        >
+                            <span v-if="bulkApplying" class="spinner-border spinner-border-sm me-1"></span>
+                            <i v-else class="ri-delete-bin-line me-1"></i>
+                            Elimina
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Teleport>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { useUrlFilters } from '@/composables/useUrlFilters.js';
 import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import moment from 'moment';
+import { useNotify } from '@/composables/useNotify.js';
+import Multiselect from '@vueform/multiselect';
+import '@vueform/multiselect/themes/default.css';
 
 export default {
     components: {
@@ -579,8 +970,10 @@ export default {
         Link,
         Layout,
         PageHeader,
+        Multiselect,
     },
     setup() {
+        const notify = useNotify();
         const transactions = ref([]);
         const companies = ref([]);
         const services = ref([]);
@@ -594,8 +987,41 @@ export default {
         const sortField = ref('transaction_date');
         const sortDirection = ref('desc');
         const selectedTransactions = ref([]);
+        const bulkStatusCode = ref('');
+        const bulkPaymentDate = ref('');
+        const bulkPaymentType = ref('');
+        const bulkApplying = ref(false);
         const editingStatus = ref(null);
         const editingStatusValue = ref('');
+        const editingInstallment = ref(null);
+        const editingInstallmentValue = ref('');
+
+        // Transaction modal state
+        const showTransactionModal = ref(false);
+        const loadingModal = ref(false);
+        const savingTransaction = ref(false);
+        const modalServices = ref([]);
+        const modalCounterparts = ref([]);
+        const paymentTypes = ref([]);
+        const transactionForm = ref({
+            id: null,
+            service_id: '',
+            transaction_date: '',
+            amount: 0,
+            transaction_type: '',
+            installment: '',
+            accounting_entry_id: '',
+            counterpart_id: '',
+            document_number: '',
+            document_due_date: '',
+            payment_date: '',
+            payment_type: '',
+            payment_reason: '',
+            iban: '',
+            status: '',
+            notes: '',
+            is_automatic: false,
+        });
 
         const filters = ref({
             company_id: '',
@@ -605,6 +1031,10 @@ export default {
             service_id: '',
             accounting_entry_id: '',
             counterpart_id: '',
+            client_id: '',
+            supplier_id: '',
+            intermediary_id: '',
+            driver_id: '',
             start_date: '',
             end_date: '',
         });
@@ -614,6 +1044,15 @@ export default {
             last_page: 1,
             per_page: 10,
             total: 0,
+        });
+
+        // URL sync: use a proxy ref for currentPage
+        const currentPageRef = ref(1);
+        watch(currentPageRef, (v) => { pagination.value.current_page = v; });
+        const { readFromUrl, withReturnUrl } = useUrlFilters(filters, {
+            page: currentPageRef,
+            sortField,
+            sortDirection,
         });
 
         const summary = ref({
@@ -636,29 +1075,11 @@ export default {
         });
 
         const hasActiveFilters = computed(() => {
-            return filters.value.company_id !== '' ||
-                   filters.value.search !== '' ||
-                   filters.value.transaction_type !== '' ||
-                   filters.value.status !== '' ||
-                   filters.value.service_id !== '' ||
-                   filters.value.accounting_entry_id !== '' ||
-                   filters.value.counterpart_id !== '' ||
-                   filters.value.start_date !== '' ||
-                   filters.value.end_date !== '';
+            return Object.values(filters.value).some(v => v !== '' && v !== null);
         });
 
         const activeFiltersCount = computed(() => {
-            let count = 0;
-            if (filters.value.company_id !== '') count++;
-            if (filters.value.search !== '') count++;
-            if (filters.value.transaction_type !== '') count++;
-            if (filters.value.status !== '') count++;
-            if (filters.value.service_id !== '') count++;
-            if (filters.value.accounting_entry_id !== '') count++;
-            if (filters.value.counterpart_id !== '') count++;
-            if (filters.value.start_date !== '') count++;
-            if (filters.value.end_date !== '') count++;
-            return count;
+            return Object.values(filters.value).filter(v => v !== '' && v !== null).length;
         });
 
         const visiblePages = computed(() => {
@@ -711,18 +1132,48 @@ export default {
             }
         };
 
-        const loadCounterparts = async () => {
+        const searchCounterparts = async (query) => {
             try {
                 const params = {};
                 if (filters.value.company_id) {
                     params.company_id = filters.value.company_id;
                 }
+                if (query && query.length >= 2) {
+                    params.search = query;
+                }
                 const response = await axios.get('/api/accounting-transactions/counterparts', { params });
-                counterparts.value = response.data.data || [];
+                const users = response.data.data || [];
+                return users.map(u => ({
+                    value: u.id,
+                    label: `${u.surname || ''} ${u.name || ''}`.trim() || u.email,
+                    type_label: u.type_label || u.role,
+                }));
             } catch (error) {
                 console.error('Error loading counterparts:', error);
+                return [];
             }
         };
+
+        const makeUserSearch = (extraParams) => async (query) => {
+            try {
+                const params = { light: true, per_page: 30, ...extraParams };
+                if (filters.value.company_id) params.company_id = filters.value.company_id;
+                if (query && query.length >= 1) params.search = query;
+                const response = await axios.get('/api/users', { params });
+                return (response.data.data || []).map(u => ({
+                    value: u.id,
+                    label: `${u.surname || ''} ${u.name || ''}`.trim() || u.email,
+                }));
+            } catch (error) {
+                console.error('Error searching users:', error);
+                return [];
+            }
+        };
+
+        const searchClients = makeUserSearch({ is_committente: 1 });
+        const searchSuppliers = makeUserSearch({ is_fornitore: 1 });
+        const searchIntermediaries = makeUserSearch({ is_intermediario: 1 });
+        const searchDrivers = makeUserSearch({ role: 'driver' });
 
         const loadAccountingEntries = async () => {
             try {
@@ -824,6 +1275,10 @@ export default {
                 service_id: '',
                 accounting_entry_id: '',
                 counterpart_id: '',
+                client_id: '',
+                supplier_id: '',
+                intermediary_id: '',
+                driver_id: '',
                 start_date: '',
                 end_date: '',
             };
@@ -838,15 +1293,23 @@ export default {
             }
         };
 
+        const clearSelection = () => {
+            selectedTransactions.value = [];
+            bulkStatusCode.value = '';
+            bulkPaymentDate.value = '';
+            bulkPaymentType.value = '';
+        };
+
         const deleteTransaction = async (id) => {
-            if (confirm('Sei sicuro di voler eliminare questo movimento?')) {
+            const confirmed = await notify.confirm('Conferma eliminazione', 'Sei sicuro di voler eliminare questo movimento?');
+            if (confirmed) {
                 try {
                     await axios.delete(`/api/accounting-transactions/${id}`);
                     selectedTransactions.value = [];
                     loadTransactions(pagination.value.current_page);
                 } catch (error) {
                     console.error('Error deleting transaction:', error);
-                    alert('Errore durante l\'eliminazione del movimento');
+                    notify.error('Errore durante l\'eliminazione del movimento');
                 }
             }
         };
@@ -854,22 +1317,91 @@ export default {
         const deleteSelectedTransactions = async () => {
             if (selectedTransactions.value.length === 0) return;
 
-            const count = selectedTransactions.value.length;
-            if (confirm(`Sei sicuro di voler eliminare ${count} movimenti selezionati?`)) {
-                try {
-                    // Delete all selected transactions
-                    await Promise.all(
-                        selectedTransactions.value.map(id =>
-                            axios.delete(`/api/accounting-transactions/${id}`)
-                        )
-                    );
+            const confirmed = await notify.confirm('Conferma eliminazione', `Eliminare ${selectedTransactions.value.length} movimenti selezionati?`, { confirmText: 'Elimina' });
+            if (!confirmed) return;
 
-                    selectedTransactions.value = [];
-                    loadTransactions(pagination.value.current_page);
-                } catch (error) {
-                    console.error('Error deleting transactions:', error);
-                    alert('Errore durante l\'eliminazione dei movimenti selezionati');
-                }
+            bulkApplying.value = true;
+            try {
+                await Promise.all(
+                    selectedTransactions.value.map(id =>
+                        axios.delete(`/api/accounting-transactions/${id}`)
+                    )
+                );
+                clearSelection();
+                loadTransactions(pagination.value.current_page);
+            } catch (error) {
+                console.error('Error deleting transactions:', error);
+            } finally {
+                bulkApplying.value = false;
+            }
+        };
+
+        const applyBulkStatus = async () => {
+            if (!bulkStatusCode.value || selectedTransactions.value.length === 0) return;
+
+            const statusObj = transactionStatuses.value.find(s => s.code === bulkStatusCode.value);
+            const statusName = statusObj?.name || bulkStatusCode.value;
+
+            const confirmed = await notify.confirmInfo(`Modifica stato di ${selectedTransactions.value.length} movimenti`, `Impostare lo stato "${statusName}" per i movimenti selezionati?`, { confirmText: 'Applica' });
+            if (!confirmed) return;
+
+            bulkApplying.value = true;
+            try {
+                await Promise.all(
+                    selectedTransactions.value.map(id =>
+                        axios.put(`/api/accounting-transactions/${id}`, { status: bulkStatusCode.value })
+                    )
+                );
+                clearSelection();
+                loadTransactions(pagination.value.current_page);
+            } catch (error) {
+                console.error('Error updating status:', error);
+            } finally {
+                bulkApplying.value = false;
+            }
+        };
+
+        const applyBulkPaymentDate = async () => {
+            if (!bulkPaymentDate.value || selectedTransactions.value.length === 0) return;
+
+            const confirmed = await notify.confirmInfo(`Modifica data pagamento di ${selectedTransactions.value.length} movimenti`, `Impostare la data "${moment(bulkPaymentDate.value).format('DD/MM/YYYY')}"?`, { confirmText: 'Applica' });
+            if (!confirmed) return;
+
+            bulkApplying.value = true;
+            try {
+                await Promise.all(
+                    selectedTransactions.value.map(id =>
+                        axios.put(`/api/accounting-transactions/${id}`, { payment_date: bulkPaymentDate.value })
+                    )
+                );
+                clearSelection();
+                loadTransactions(pagination.value.current_page);
+            } catch (error) {
+                console.error('Error updating payment date:', error);
+            } finally {
+                bulkApplying.value = false;
+            }
+        };
+
+        const applyBulkPaymentType = async () => {
+            if (!bulkPaymentType.value || selectedTransactions.value.length === 0) return;
+
+            const confirmed = await notify.confirmInfo(`Modifica modalità pagamento di ${selectedTransactions.value.length} movimenti`, `Impostare "${bulkPaymentType.value}"?`, { confirmText: 'Applica' });
+            if (!confirmed) return;
+
+            bulkApplying.value = true;
+            try {
+                await Promise.all(
+                    selectedTransactions.value.map(id =>
+                        axios.put(`/api/accounting-transactions/${id}`, { payment_type: bulkPaymentType.value })
+                    )
+                );
+                clearSelection();
+                loadTransactions(pagination.value.current_page);
+            } catch (error) {
+                console.error('Error updating payment type:', error);
+            } finally {
+                bulkApplying.value = false;
             }
         };
 
@@ -892,13 +1424,185 @@ export default {
                 loadSummary();
             } catch (error) {
                 console.error('Error updating status:', error);
-                alert('Errore durante l\'aggiornamento dello stato');
+                notify.error('Errore durante l\'aggiornamento dello stato');
             }
         };
 
         const cancelEditStatus = () => {
             editingStatus.value = null;
             editingStatusValue.value = '';
+        };
+
+        const startEditInstallment = (transaction) => {
+            editingInstallment.value = transaction.id;
+            editingInstallmentValue.value = transaction.installment;
+        };
+
+        const saveInstallment = async (transaction) => {
+            if (!editingInstallmentValue.value) return;
+            try {
+                await axios.put(`/api/accounting-transactions/${transaction.id}`, {
+                    installment: editingInstallmentValue.value,
+                });
+                transaction.installment = editingInstallmentValue.value;
+                editingInstallment.value = null;
+                editingInstallmentValue.value = '';
+                loadSummary();
+            } catch (error) {
+                console.error('Error updating installment:', error);
+                notify.error('Errore durante l\'aggiornamento della rata');
+            }
+        };
+
+        const cancelEditInstallment = () => {
+            editingInstallment.value = null;
+            editingInstallmentValue.value = '';
+        };
+
+        // --- Transaction Modal functions ---
+        const loadModalDropdowns = async () => {
+            try {
+                const params = {};
+                if (filters.value.company_id) params.company_id = filters.value.company_id;
+
+                const [servicesRes, counterpartsRes, paymentTypesRes] = await Promise.all([
+                    axios.get('/api/accounting-transactions/services', { params }),
+                    axios.get('/api/accounting-transactions/counterparts', { params }),
+                    axios.get('/api/dictionaries/payment-types', { params }),
+                ]);
+                modalServices.value = servicesRes.data.data || [];
+                modalCounterparts.value = counterpartsRes.data.data || [];
+                paymentTypes.value = paymentTypesRes.data.data || [];
+            } catch (error) {
+                console.error('Error loading modal dropdowns:', error);
+            }
+        };
+
+        const populateTransactionForm = (tx) => {
+            transactionForm.value = {
+                id: tx.id,
+                service_id: tx.service_id || '',
+                transaction_date: tx.transaction_date ? moment.utc(tx.transaction_date).format('YYYY-MM-DD') : '',
+                amount: tx.amount || 0,
+                transaction_type: tx.transaction_type || '',
+                installment: tx.installment || '',
+                accounting_entry_id: tx.accounting_entry_id || '',
+                counterpart_id: tx.counterpart_id || '',
+                document_number: tx.document_number || '',
+                document_due_date: tx.document_due_date ? moment.utc(tx.document_due_date).format('YYYY-MM-DD') : '',
+                payment_date: tx.payment_date ? moment.utc(tx.payment_date).format('YYYY-MM-DD') : '',
+                payment_type: tx.payment_type || '',
+                payment_reason: tx.payment_reason || '',
+                iban: tx.iban || '',
+                status: tx.status || '',
+                notes: tx.notes || '',
+                is_automatic: tx.is_automatic || false,
+            };
+        };
+
+        const openTransactionModal = async (transaction = null) => {
+            // Open modal immediately with spinner
+            loadingModal.value = true;
+            showTransactionModal.value = true;
+
+            if (transaction) {
+                // Pre-fill from list data for instant feedback
+                populateTransactionForm(transaction);
+            } else {
+                transactionForm.value = {
+                    id: null, service_id: '', transaction_date: moment().format('YYYY-MM-DD'),
+                    amount: 0, transaction_type: '', installment: '', accounting_entry_id: '',
+                    counterpart_id: '', document_number: '', document_due_date: '',
+                    payment_date: '', payment_type: '', payment_reason: '',
+                    iban: '', status: '', notes: '', is_automatic: false,
+                };
+            }
+
+            try {
+                // Load dropdowns and fresh transaction data in parallel
+                const promises = [loadModalDropdowns()];
+                if (transaction) {
+                    promises.push(
+                        axios.get(`/api/accounting-transactions/${transaction.id}`).then(res => {
+                            populateTransactionForm(res.data.data);
+                        })
+                    );
+                }
+                await Promise.all(promises);
+            } catch (error) {
+                console.error('Error loading modal data:', error);
+            } finally {
+                loadingModal.value = false;
+            }
+        };
+
+        const closeTransactionModal = () => {
+            showTransactionModal.value = false;
+        };
+
+        const cancelTransactionEdit = () => {
+            transactionForm.value = {
+                id: null, service_id: '', transaction_date: '', amount: 0,
+                transaction_type: '', installment: '', accounting_entry_id: '',
+                counterpart_id: '', document_number: '', document_due_date: '',
+                payment_date: '', payment_type: '', payment_reason: '',
+                iban: '', status: '', notes: '', is_automatic: false,
+            };
+            showTransactionModal.value = false;
+        };
+
+        const onTransactionTypeChange = () => {
+            transactionForm.value.counterpart_id = '';
+            transactionForm.value.status = '';
+        };
+
+        const saveTransaction = async () => {
+            if (!transactionForm.value.transaction_date || !transactionForm.value.amount || !transactionForm.value.transaction_type || !transactionForm.value.installment || !transactionForm.value.status) {
+                notify.warning('Compila tutti i campi obbligatori');
+                return;
+            }
+            savingTransaction.value = true;
+            try {
+                const payload = {
+                    service_id: transactionForm.value.service_id || null,
+                    transaction_date: transactionForm.value.transaction_date,
+                    amount: transactionForm.value.amount,
+                    transaction_type: transactionForm.value.transaction_type,
+                    installment: transactionForm.value.installment,
+                    accounting_entry_id: transactionForm.value.accounting_entry_id || null,
+                    counterpart_id: transactionForm.value.counterpart_id || null,
+                    document_number: transactionForm.value.document_number || null,
+                    document_due_date: transactionForm.value.document_due_date || null,
+                    payment_date: transactionForm.value.payment_date || null,
+                    payment_type: transactionForm.value.payment_type || null,
+                    payment_reason: transactionForm.value.payment_reason || null,
+                    iban: transactionForm.value.iban || null,
+                    status: transactionForm.value.status,
+                    notes: transactionForm.value.notes || null,
+                    is_automatic: transactionForm.value.is_automatic,
+                };
+
+                if (transactionForm.value.id) {
+                    await axios.put(`/api/accounting-transactions/${transactionForm.value.id}`, payload);
+                } else {
+                    await axios.post('/api/accounting-transactions', payload);
+                }
+
+                closeTransactionModal();
+                cancelTransactionEdit();
+                loadTransactions(pagination.value.current_page);
+            } catch (error) {
+                console.error('Error saving transaction:', error);
+                if (error.response?.status === 422) {
+                    const errors = error.response.data.errors;
+                    const errorMessages = Object.values(errors).flat().join('\n');
+                    notify.error('Errori di validazione:\n' + errorMessages);
+                } else {
+                    notify.error('Errore durante il salvataggio del movimento');
+                }
+            } finally {
+                savingTransaction.value = false;
+            }
         };
 
         const formatDate = (date) => {
@@ -962,12 +1666,17 @@ export default {
             return found ? (found.abbreviation || found.name) : status;
         };
 
-        const getStatusBadgeClass = (status) => {
+        const bootstrapMap = {
+            primary: '#405189', secondary: '#6c757d', success: '#0ab39c',
+            danger: '#f06548', warning: '#f7b84b', info: '#299cdb',
+        };
+
+        const getStatusBadgeStyle = (status) => {
+            const fallback = { backgroundColor: '#6c757d20', color: '#6c757d', fontWeight: '500' };
             const found = transactionStatuses.value.find(s => s.code === status);
-            if (found && found.color) {
-                return `badge bg-${found.color}-subtle text-${found.color}`;
-            }
-            return 'badge bg-secondary-subtle text-secondary';
+            if (!found || !found.color) return fallback;
+            const hex = found.color.startsWith('#') ? found.color : (bootstrapMap[found.color] || '#6c757d');
+            return { backgroundColor: hex + '20', color: hex, fontWeight: '500' };
         };
 
         const isStatusFinal = (statusCode) => {
@@ -1016,14 +1725,15 @@ export default {
 
         onMounted(async () => {
             await loadUser();
+            readFromUrl();
 
             // Load all dropdown data and transactions in parallel
             const promises = [
                 loadServices(),
                 loadAccountingEntries(),
-                loadCounterparts(),
                 loadTransactionStatuses(),
                 loadTransactions(),
+                loadModalDropdowns(),
             ];
             if (isSuperAdmin.value) {
                 promises.push(loadCompanies());
@@ -1031,11 +1741,23 @@ export default {
             await Promise.all(promises);
         });
 
+        // Watch multiselect filter values — @change on @vueform/multiselect fires
+        // before v-model is updated, so we use watchers to ensure the correct value
+        // is sent to the API.
+        const multiselectKeys = ['counterpart_id', 'client_id', 'supplier_id', 'intermediary_id', 'driver_id'];
+        multiselectKeys.forEach(key => {
+            watch(() => filters.value[key], () => loadTransactions(1));
+        });
+
         return {
             transactions,
             companies,
             services,
-            counterparts,
+            searchCounterparts,
+            searchClients,
+            searchSuppliers,
+            searchIntermediaries,
+            searchDrivers,
             accountingEntries,
             transactionStatuses,
             loading,
@@ -1055,12 +1777,20 @@ export default {
             visiblePages,
             selectedTransactions,
             isAllSelected,
+            bulkStatusCode,
+            bulkPaymentDate,
+            bulkPaymentType,
+            bulkApplying,
             loadTransactions,
             sortBy,
             goToPage,
             changePerPage,
             resetFilters,
             toggleSelectAll,
+            clearSelection,
+            applyBulkStatus,
+            applyBulkPaymentDate,
+            applyBulkPaymentType,
             deleteTransaction,
             deleteSelectedTransactions,
             formatDate,
@@ -1072,7 +1802,7 @@ export default {
             getInstallmentAbbr,
             getStatusLabel,
             getStatusAbbr,
-            getStatusBadgeClass,
+            getStatusBadgeStyle,
             getDueDateClass,
             filteredTransactionStatuses,
             editingStatus,
@@ -1080,7 +1810,26 @@ export default {
             startEditStatus,
             saveStatus,
             cancelEditStatus,
+            editingInstallment,
+            editingInstallmentValue,
+            startEditInstallment,
+            saveInstallment,
+            cancelEditInstallment,
+            // Transaction modal
+            showTransactionModal,
+            loadingModal,
+            savingTransaction,
+            transactionForm,
+            modalServices,
+            modalCounterparts,
+            paymentTypes,
+            openTransactionModal,
+            closeTransactionModal,
+            cancelTransactionEdit,
+            onTransactionTypeChange,
+            saveTransaction,
             route: window.route,
+            withReturnUrl,
         };
     },
 };
@@ -1094,5 +1843,64 @@ export default {
 
 .cursor-pointer:hover {
     background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Bulk Action Bar */
+.bulk-action-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #405189;
+    color: white;
+    padding: 12px 16px;
+    z-index: 1050;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.bulk-divider {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 1.2rem;
+    line-height: 1;
+    user-select: none;
+}
+
+.bulk-action-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bulk-select {
+    width: auto;
+    min-width: 120px;
+    max-width: 180px;
+    font-size: 0.8rem;
+    padding: 0.25rem 2rem 0.25rem 0.5rem;
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.bulk-select:focus {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 0.15rem rgba(255, 255, 255, 0.2);
+}
+
+.bulk-select option {
+    background-color: #405189;
+    color: white;
+}
+
+@media (max-width: 576px) {
+    .bulk-action-bar {
+        padding: 8px 12px;
+    }
+    .bulk-select {
+        min-width: 100px;
+        font-size: 0.75rem;
+    }
 }
 </style>

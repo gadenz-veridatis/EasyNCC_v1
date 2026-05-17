@@ -71,6 +71,7 @@ class Service extends Model
         'other_vehicle_costs',
         'colleague_cost',
         'notes',
+        'transaction_status_map',
         'created_by',
         'updated_by',
     ];
@@ -112,6 +113,7 @@ class Service extends Model
         'parking_cost' => 'decimal:2',
         'other_vehicle_costs' => 'decimal:2',
         'colleague_cost' => 'decimal:2',
+        'transaction_status_map' => 'array',
     ];
 
     // Relationships
@@ -214,5 +216,77 @@ class Service extends Model
     public function overlappedBy(): HasMany
     {
         return $this->hasMany(ServiceOverlap::class, 'overlapping_service_id');
+    }
+
+    /**
+     * Rebuild the transaction_status_map from current accounting transactions.
+     *
+     * Produces a map with individual keys per transaction AND aggregate keys:
+     * - Individual: "{type}_{installment}_{entry_id}" → status code
+     * - Aggregate: "sale_deposit" → worst status across all sale/deposit transactions
+     * - Aggregate: "sale_balance" → worst status across all sale/balance transactions
+     * - Aggregate: "purchase" → worst status across all purchase transactions
+     * - Aggregate: "intermediation" → worst status across all intermediation transactions
+     */
+    public function refreshTransactionStatusMap(): void
+    {
+        $transactions = $this->accountingTransactions()
+            ->whereNotNull('status')
+            ->select('transaction_type', 'installment', 'accounting_entry_id', 'status')
+            ->get();
+
+        if ($transactions->isEmpty()) {
+            $this->update(['transaction_status_map' => null]);
+            return;
+        }
+
+        // Priority: non-final statuses are "worse" than final ones
+        // Lower = worse (shown first). We want the worst status per group.
+        $statusPriority = [
+            'suspended' => 0,
+            'cancelled' => 1,
+            'to_pay' => 2,
+            'to_collect' => 2,
+            'collected_driver' => 3,
+            'paid' => 4,
+            'collected' => 4,
+        ];
+
+        $map = [];
+        $groups = []; // group_key => [statuses]
+
+        foreach ($transactions as $t) {
+            // Individual key with entry_id
+            $individualKey = $t->transaction_type . '_' . $t->installment;
+            if ($t->accounting_entry_id) {
+                $individualKey .= '_' . $t->accounting_entry_id;
+            }
+            $map[$individualKey] = $t->status;
+
+            // Aggregate keys
+            $typeInstallmentKey = $t->transaction_type . '_' . $t->installment;
+            $typeKey = $t->transaction_type;
+
+            $groups[$typeInstallmentKey][] = $t->status;
+            $groups[$typeKey][] = $t->status;
+        }
+
+        // Compute worst status per group
+        foreach ($groups as $groupKey => $statuses) {
+            $worst = null;
+            $worstPriority = PHP_INT_MAX;
+            foreach ($statuses as $s) {
+                $p = $statusPriority[$s] ?? 5;
+                if ($p < $worstPriority) {
+                    $worstPriority = $p;
+                    $worst = $s;
+                }
+            }
+            if ($worst) {
+                $map[$groupKey] = $worst;
+            }
+        }
+
+        $this->update(['transaction_status_map' => $map]);
     }
 }

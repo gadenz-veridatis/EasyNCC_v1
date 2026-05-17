@@ -19,7 +19,7 @@
                                 {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
                                 <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
                             </button>
-                            <Link :href="route('easyncc.vehicles.create')" class="btn btn-primary btn-sm">
+                            <Link v-if="canManage" :href="withReturnUrl(route('easyncc.vehicles.create'))" class="btn btn-primary btn-sm">
                                 <i class="bx bx-plus me-1"></i>
                                 Nuovo Veicolo
                             </Link>
@@ -240,13 +240,14 @@
                                                 </button>
                                             </template>
                                             <template v-else>
-                                                <Link :href="route('easyncc.vehicles.show', vehicle.id)" class="btn btn-sm btn-soft-info me-2">
+                                                <Link :href="withReturnUrl(route('easyncc.vehicles.show', vehicle.id))" class="btn btn-sm btn-soft-info me-2">
                                                     <i class="bx bx-show"></i>
                                                 </Link>
-                                                <Link :href="route('easyncc.vehicles.edit', vehicle.id)" class="btn btn-sm btn-soft-primary me-2">
+                                                <Link v-if="canManage" :href="withReturnUrl(route('easyncc.vehicles.edit', vehicle.id))" class="btn btn-sm btn-soft-primary me-2">
                                                     <i class="bx bx-edit"></i>
                                                 </Link>
                                                 <button
+                                                    v-if="canManage"
                                                     class="btn btn-sm btn-soft-danger"
                                                     @click="deleteVehicle(vehicle.id)"
                                                 >
@@ -537,8 +538,10 @@ import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import moment from 'moment';
-import Swal from 'sweetalert2';
+import { useUrlFilters } from '@/composables/useUrlFilters.js';
+import { useNotify } from '@/composables/useNotify.js';
 
+const notify = useNotify();
 const vehicles = ref([]);
 const loading = ref(false);
 const error = ref('');
@@ -549,7 +552,7 @@ const showDeleted = ref(false);
 const sortBy = ref('license_plate');
 const sortOrder = ref('asc');
 const currentPage = ref(1);
-const perPage = ref(10);
+const perPage = ref(25);
 const totalPages = ref(1);
 const totalRecords = ref(0);
 
@@ -569,6 +572,12 @@ const filters = ref({
     company_id: '',
     search: '',
     expiring: ''
+});
+
+const { readFromUrl, withReturnUrl } = useUrlFilters(filters, {
+    page: currentPage,
+    sortField: sortBy,
+    sortDirection: sortOrder,
 });
 
 const hasActiveFilters = computed(() => {
@@ -669,12 +678,10 @@ const loadVehicles = async () => {
         const response = await axios.get('/api/vehicles', { params });
         vehicles.value = response.data.data || [];
 
-        // Update pagination metadata
-        if (response.data.meta) {
-            totalPages.value = response.data.meta.last_page || 1;
-            totalRecords.value = response.data.meta.total || 0;
-            currentPage.value = response.data.meta.current_page || 1;
-        }
+        // Update pagination metadata (Laravel paginate() puts these at root level)
+        totalPages.value = response.data.last_page || 1;
+        totalRecords.value = response.data.total || 0;
+        currentPage.value = response.data.current_page || 1;
     } catch (err) {
         error.value = 'Errore nel caricamento dei veicoli';
         console.error('Error loading vehicles:', err);
@@ -695,49 +702,29 @@ const changePerPage = () => {
 };
 
 const deleteVehicle = async (id) => {
-    const result = await Swal.fire({
-        title: 'Sei sicuro?',
-        text: 'Vuoi eliminare questo veicolo?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Sì, elimina',
-        cancelButtonText: 'Annulla'
-    });
-
-    if (!result.isConfirmed) return;
+    const confirmed = await notify.confirm('Sei sicuro?', 'Vuoi eliminare questo veicolo?', { confirmText: 'Sì, elimina' });
+    if (!confirmed) return;
 
     try {
         await axios.delete(`/api/vehicles/${id}`);
-        Swal.fire('Eliminato!', 'Il veicolo è stato eliminato.', 'success');
+        notify.success('Il veicolo è stato eliminato.');
         await loadVehicles();
     } catch (err) {
-        Swal.fire('Errore!', 'Si è verificato un errore durante l\'eliminazione.', 'error');
+        notify.error('Si è verificato un errore durante l\'eliminazione.');
         console.error('Error deleting vehicle:', err);
     }
 };
 
 const restoreVehicle = async (id) => {
-    const result = await Swal.fire({
-        title: 'Ripristina veicolo?',
-        text: 'Vuoi ripristinare questo veicolo?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#28a745',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sì, ripristina!',
-        cancelButtonText: 'Annulla'
-    });
-
-    if (!result.isConfirmed) return;
+    const confirmed = await notify.confirmInfo('Ripristina veicolo?', 'Vuoi ripristinare questo veicolo?', { confirmText: 'Sì, ripristina!' });
+    if (!confirmed) return;
 
     try {
         await axios.post(`/api/vehicles/${id}/restore`);
-        Swal.fire('Ripristinato!', 'Il veicolo è stato ripristinato.', 'success');
+        notify.success('Il veicolo è stato ripristinato.');
         await loadVehicles();
     } catch (err) {
-        Swal.fire('Errore!', 'Si è verificato un errore durante il ripristino.', 'error');
+        notify.error('Si è verificato un errore durante il ripristino.');
         console.error('Error restoring vehicle:', err);
     }
 };
@@ -750,7 +737,7 @@ const showAttachmentsModal = async (vehicle) => {
         showAttachmentsModalFlag.value = true;
     } catch (err) {
         console.error('Error loading vehicle attachments:', err);
-        Swal.fire('Errore!', 'Errore nel caricamento degli allegati.', 'error');
+        notify.error('Errore nel caricamento degli allegati.');
     }
 };
 
@@ -762,14 +749,14 @@ const showUnavailabilitiesModal = async (vehicle) => {
         showUnavailabilitiesModalFlag.value = true;
     } catch (err) {
         console.error('Error loading vehicle unavailabilities:', err);
-        Swal.fire('Errore!', 'Errore nel caricamento delle inattività.', 'error');
+        notify.error('Errore nel caricamento delle inattività.');
     }
 };
 
 const showDocumentPreview = async (vehicle, typeName) => {
     const attachment = getAttachmentByType(vehicle, typeName);
     if (!attachment) {
-        Swal.fire('Attenzione', `Nessun documento di tipo "${typeName}" trovato.`, 'warning');
+        notify.warning(`Nessun documento di tipo "${typeName}" trovato.`);
         return;
     }
     previewTitle.value = `${typeName} - ${vehicle.license_plate}`;
@@ -788,7 +775,7 @@ const showDocumentPreview = async (vehicle, typeName) => {
     } catch (err) {
         console.error('Error loading document preview:', err);
         previewUrl.value = null;
-        Swal.fire('Errore', 'Impossibile caricare l\'anteprima del documento.', 'error');
+        notify.error('Impossibile caricare l\'anteprima del documento.');
         showPreviewModalFlag.value = false;
     } finally {
         previewLoading.value = false;
@@ -812,7 +799,7 @@ const previewAttachmentInModal = async (vehicleId, attachment) => {
     } catch (err) {
         console.error('Error loading attachment preview:', err);
         previewUrl.value = null;
-        Swal.fire('Errore', 'Impossibile caricare l\'anteprima del documento.', 'error');
+        notify.error('Impossibile caricare l\'anteprima del documento.');
         showPreviewModalFlag.value = false;
     } finally {
         previewLoading.value = false;
@@ -835,7 +822,7 @@ const downloadAttachment = async (vehicleId, attachment) => {
         URL.revokeObjectURL(url);
     } catch (err) {
         console.error('Error downloading attachment:', err);
-        Swal.fire('Errore', 'Impossibile scaricare il documento.', 'error');
+        notify.error('Impossibile scaricare il documento.');
     }
 };
 
@@ -969,6 +956,8 @@ const isUnavailabilityFuture = (unavailability) => {
 const isSuperAdmin = computed(() => {
     return currentUser.value?.role === 'super-admin';
 });
+const isDriver = computed(() => currentUser.value?.role === 'driver');
+const canManage = computed(() => ['super-admin', 'admin', 'operator'].includes(currentUser.value?.role));
 
 const loadCurrentUser = async () => {
     try {
@@ -992,6 +981,7 @@ const loadCompanies = async () => {
 
 onMounted(async () => {
     await loadCurrentUser();
+    readFromUrl();
     await loadCompanies();
     await loadVehicles();
 });

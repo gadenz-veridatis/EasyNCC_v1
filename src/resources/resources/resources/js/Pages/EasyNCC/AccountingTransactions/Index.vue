@@ -87,12 +87,33 @@
                                 </BCol>
                                 <BCol md="3">
                                     <label class="form-label">Controparte</label>
-                                    <select v-model="filters.counterpart_id" class="form-select form-select-sm" @change="loadTransactions">
-                                        <option value="">Tutte</option>
-                                        <option v-for="user in counterparts" :key="user.id" :value="user.id">
-                                            {{ user.name }} {{ user.surname }} ({{ user.role }})
-                                        </option>
-                                    </select>
+                                    <Multiselect
+                                        v-model="filters.counterpart_id"
+                                        :options="searchCounterparts"
+                                        :searchable="true"
+                                        :filter-results="false"
+                                        :min-chars="2"
+                                        :delay="300"
+                                        :resolve-on-load="false"
+                                        placeholder="Cerca controparte..."
+                                        no-options-text="Digita almeno 2 caratteri"
+                                        no-results-text="Nessun risultato"
+                                        :can-clear="true"
+                                        @change="loadTransactions"
+                                    >
+                                        <template v-slot:option="{ option }">
+                                            <div class="d-flex justify-content-between align-items-center w-100">
+                                                <span>{{ option.label }}</span>
+                                                <span class="badge bg-light text-dark ms-2" style="font-size: 0.65rem;">{{ option.type_label }}</span>
+                                            </div>
+                                        </template>
+                                        <template v-slot:singlelabel="{ value }">
+                                            <div class="multiselect-single-label">
+                                                {{ value.label }}
+                                                <span class="badge bg-light text-dark ms-1" style="font-size: 0.6rem;">{{ value.type_label }}</span>
+                                            </div>
+                                        </template>
+                                    </Multiselect>
                                 </BCol>
                                 <BCol md="3">
                                     <label class="form-label">Data Da</label>
@@ -278,19 +299,8 @@
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="d-flex gap-2">
-                                <button
-                                    v-if="selectedTransactions.length > 0 && canDelete"
-                                    type="button"
-                                    class="btn btn-soft-danger btn-sm"
-                                    @click="deleteSelectedTransactions"
-                                >
-                                    <i class="ri-delete-bin-line me-1"></i>
-                                    Cancella Selezionati ({{ selectedTransactions.length }})
-                                </button>
-                            </div>
-                            <Link :href="route('easyncc.accounting-transactions.create')" class="btn btn-primary btn-sm">
+                        <div class="d-flex justify-content-end mb-3">
+                            <Link :href="withReturnUrl(route('easyncc.accounting-transactions.create'))" class="btn btn-primary btn-sm">
                                 <i class="bx bx-plus me-1"></i>
                                 Nuovo Movimento
                             </Link>
@@ -349,7 +359,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="transaction in transactions" :key="transaction.id">
+                                    <tr v-for="transaction in transactions" :key="transaction.id" :class="{ 'table-active': selectedTransactions.includes(transaction.id) }">
                                         <td>
                                             <input
                                                 v-if="!transaction.is_automatic"
@@ -468,7 +478,7 @@
                                         <td>
                                             <div class="d-flex gap-2">
                                                 <Link
-                                                    :href="route('easyncc.accounting-transactions.edit', transaction.id)"
+                                                    :href="withReturnUrl(route('easyncc.accounting-transactions.edit', transaction.id))"
                                                     class="btn btn-soft-primary btn-sm"
                                                     title="Modifica"
                                                 >
@@ -558,20 +568,79 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Spacer for bulk action bar -->
+                        <div v-if="selectedTransactions.length > 0" style="height: 80px;"></div>
                     </BCardBody>
                 </BCard>
             </BCol>
         </BRow>
     </Layout>
+
+    <!-- Bulk Action Bar -->
+    <Teleport to="body">
+        <div v-if="selectedTransactions.length > 0" class="bulk-action-bar">
+            <div class="container-fluid">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <!-- Counter + Deselect -->
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-white text-dark fs-6">{{ selectedTransactions.length }}</span>
+                        <span class="text-white small d-none d-sm-inline">selezionati</span>
+                        <button class="btn btn-sm btn-outline-light" @click="clearSelection">
+                            <i class="ri-close-line"></i>
+                        </button>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <!-- Bulk Status -->
+                        <div class="bulk-action-group">
+                            <select v-model="bulkStatusCode" class="form-select form-select-sm bulk-select">
+                                <option value="">Stato...</option>
+                                <option v-for="ts in transactionStatuses" :key="ts.code" :value="ts.code">
+                                    {{ ts.name }}
+                                </option>
+                            </select>
+                            <button
+                                class="btn btn-sm btn-light"
+                                :disabled="!bulkStatusCode || bulkApplying"
+                                @click="applyBulkStatus"
+                            >
+                                <i class="ri-check-line"></i>
+                            </button>
+                        </div>
+
+                        <span class="bulk-divider d-none d-sm-inline">|</span>
+
+                        <!-- Bulk Delete -->
+                        <button
+                            v-if="canDelete"
+                            class="btn btn-sm btn-danger"
+                            :disabled="bulkApplying"
+                            @click="deleteSelectedTransactions"
+                        >
+                            <span v-if="bulkApplying" class="spinner-border spinner-border-sm me-1"></span>
+                            <i v-else class="ri-delete-bin-line me-1"></i>
+                            Elimina
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Teleport>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { useUrlFilters } from '@/composables/useUrlFilters.js';
 import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import moment from 'moment';
+import Swal from 'sweetalert2';
+import Multiselect from '@vueform/multiselect';
+import '@vueform/multiselect/themes/default.css';
 
 export default {
     components: {
@@ -579,6 +648,7 @@ export default {
         Link,
         Layout,
         PageHeader,
+        Multiselect,
     },
     setup() {
         const transactions = ref([]);
@@ -594,6 +664,8 @@ export default {
         const sortField = ref('transaction_date');
         const sortDirection = ref('desc');
         const selectedTransactions = ref([]);
+        const bulkStatusCode = ref('');
+        const bulkApplying = ref(false);
         const editingStatus = ref(null);
         const editingStatusValue = ref('');
 
@@ -614,6 +686,15 @@ export default {
             last_page: 1,
             per_page: 10,
             total: 0,
+        });
+
+        // URL sync: use a proxy ref for currentPage
+        const currentPageRef = ref(1);
+        watch(currentPageRef, (v) => { pagination.value.current_page = v; });
+        const { readFromUrl, withReturnUrl } = useUrlFilters(filters, {
+            page: currentPageRef,
+            sortField,
+            sortDirection,
         });
 
         const summary = ref({
@@ -711,16 +792,25 @@ export default {
             }
         };
 
-        const loadCounterparts = async () => {
+        const searchCounterparts = async (query) => {
             try {
                 const params = {};
                 if (filters.value.company_id) {
                     params.company_id = filters.value.company_id;
                 }
+                if (query && query.length >= 2) {
+                    params.search = query;
+                }
                 const response = await axios.get('/api/accounting-transactions/counterparts', { params });
-                counterparts.value = response.data.data || [];
+                const users = response.data.data || [];
+                return users.map(u => ({
+                    value: u.id,
+                    label: `${u.surname || ''} ${u.name || ''}`.trim() || u.email,
+                    type_label: u.type_label || u.role,
+                }));
             } catch (error) {
                 console.error('Error loading counterparts:', error);
+                return [];
             }
         };
 
@@ -834,8 +924,13 @@ export default {
             if (isAllSelected.value) {
                 selectedTransactions.value = [];
             } else {
-                selectedTransactions.value = transactions.value.map(t => t.id);
+                selectedTransactions.value = transactions.value.filter(t => !t.is_automatic).map(t => t.id);
             }
+        };
+
+        const clearSelection = () => {
+            selectedTransactions.value = [];
+            bulkStatusCode.value = '';
         };
 
         const deleteTransaction = async (id) => {
@@ -854,22 +949,62 @@ export default {
         const deleteSelectedTransactions = async () => {
             if (selectedTransactions.value.length === 0) return;
 
-            const count = selectedTransactions.value.length;
-            if (confirm(`Sei sicuro di voler eliminare ${count} movimenti selezionati?`)) {
-                try {
-                    // Delete all selected transactions
-                    await Promise.all(
-                        selectedTransactions.value.map(id =>
-                            axios.delete(`/api/accounting-transactions/${id}`)
-                        )
-                    );
+            const { isConfirmed } = await Swal.fire({
+                title: 'Conferma eliminazione',
+                text: `Eliminare ${selectedTransactions.value.length} movimenti selezionati?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Elimina',
+                cancelButtonText: 'Annulla',
+            });
+            if (!isConfirmed) return;
 
-                    selectedTransactions.value = [];
-                    loadTransactions(pagination.value.current_page);
-                } catch (error) {
-                    console.error('Error deleting transactions:', error);
-                    alert('Errore durante l\'eliminazione dei movimenti selezionati');
-                }
+            bulkApplying.value = true;
+            try {
+                await Promise.all(
+                    selectedTransactions.value.map(id =>
+                        axios.delete(`/api/accounting-transactions/${id}`)
+                    )
+                );
+                clearSelection();
+                loadTransactions(pagination.value.current_page);
+            } catch (error) {
+                console.error('Error deleting transactions:', error);
+            } finally {
+                bulkApplying.value = false;
+            }
+        };
+
+        const applyBulkStatus = async () => {
+            if (!bulkStatusCode.value || selectedTransactions.value.length === 0) return;
+
+            const statusObj = transactionStatuses.value.find(s => s.code === bulkStatusCode.value);
+            const statusName = statusObj?.name || bulkStatusCode.value;
+
+            const { isConfirmed } = await Swal.fire({
+                title: `Modifica stato di ${selectedTransactions.value.length} movimenti`,
+                text: `Impostare lo stato "${statusName}" per i movimenti selezionati?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Applica',
+                cancelButtonText: 'Annulla',
+            });
+            if (!isConfirmed) return;
+
+            bulkApplying.value = true;
+            try {
+                await Promise.all(
+                    selectedTransactions.value.map(id =>
+                        axios.put(`/api/accounting-transactions/${id}`, { status: bulkStatusCode.value })
+                    )
+                );
+                clearSelection();
+                loadTransactions(pagination.value.current_page);
+            } catch (error) {
+                console.error('Error updating status:', error);
+            } finally {
+                bulkApplying.value = false;
             }
         };
 
@@ -1016,12 +1151,12 @@ export default {
 
         onMounted(async () => {
             await loadUser();
+            readFromUrl();
 
             // Load all dropdown data and transactions in parallel
             const promises = [
                 loadServices(),
                 loadAccountingEntries(),
-                loadCounterparts(),
                 loadTransactionStatuses(),
                 loadTransactions(),
             ];
@@ -1035,7 +1170,7 @@ export default {
             transactions,
             companies,
             services,
-            counterparts,
+            searchCounterparts,
             accountingEntries,
             transactionStatuses,
             loading,
@@ -1055,12 +1190,16 @@ export default {
             visiblePages,
             selectedTransactions,
             isAllSelected,
+            bulkStatusCode,
+            bulkApplying,
             loadTransactions,
             sortBy,
             goToPage,
             changePerPage,
             resetFilters,
             toggleSelectAll,
+            clearSelection,
+            applyBulkStatus,
             deleteTransaction,
             deleteSelectedTransactions,
             formatDate,
@@ -1081,6 +1220,7 @@ export default {
             saveStatus,
             cancelEditStatus,
             route: window.route,
+            withReturnUrl,
         };
     },
 };
@@ -1094,5 +1234,64 @@ export default {
 
 .cursor-pointer:hover {
     background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Bulk Action Bar */
+.bulk-action-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #405189;
+    color: white;
+    padding: 12px 16px;
+    z-index: 1050;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.bulk-divider {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 1.2rem;
+    line-height: 1;
+    user-select: none;
+}
+
+.bulk-action-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bulk-select {
+    width: auto;
+    min-width: 120px;
+    max-width: 180px;
+    font-size: 0.8rem;
+    padding: 0.25rem 2rem 0.25rem 0.5rem;
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.bulk-select:focus {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 0.15rem rgba(255, 255, 255, 0.2);
+}
+
+.bulk-select option {
+    background-color: #405189;
+    color: white;
+}
+
+@media (max-width: 576px) {
+    .bulk-action-bar {
+        padding: 8px 12px;
+    }
+    .bulk-select {
+        min-width: 100px;
+        font-size: 0.75rem;
+    }
 }
 </style>

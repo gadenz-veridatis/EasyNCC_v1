@@ -221,12 +221,13 @@ class Service extends Model
     /**
      * Rebuild the transaction_status_map from current accounting transactions.
      *
-     * Produces a map with individual keys per transaction AND aggregate keys:
-     * - Individual: "{type}_{installment}_{entry_id}" → status code
-     * - Aggregate: "sale_deposit" → worst status across all sale/deposit transactions
-     * - Aggregate: "sale_balance" → worst status across all sale/balance transactions
-     * - Aggregate: "purchase" → worst status across all purchase transactions
-     * - Aggregate: "intermediation" → worst status across all intermediation transactions
+     * Produces semantic keys mapped to status codes:
+     * - "deposit_amount" → status of the sale deposit transaction
+     * - "balance" → status of the sale balance transaction
+     * - "driver_compensation" → status of the driver cost transaction
+     * - "fuel_cost", "toll_cost", etc. → individual cost statuses
+     * - "intermediary_commission" → intermediation status
+     * - Aggregate: "sale", "purchase" → worst status across group
      */
     public function refreshTransactionStatusMap(): void
     {
@@ -240,8 +241,35 @@ class Service extends Model
             return;
         }
 
-        // Priority: non-final statuses are "worse" than final ones
-        // Lower = worse (shown first). We want the worst status per group.
+        // Load company settings to map entry_ids to semantic field names
+        $settings = Settings::where('company_id', $this->company_id)->first();
+
+        // Build reverse map: accounting_entry_id → semantic field name
+        $entryToField = [];
+        if ($settings) {
+            $fieldMap = [
+                'deposit_accounting_entry_id' => 'deposit_amount',
+                'balance_accounting_entry_id' => 'balance',
+                'driver_cost_accounting_entry_id' => 'driver_compensation',
+                'colleague_cost_accounting_entry_id' => 'colleague_cost',
+                'commission_accounting_entry_id' => 'intermediary_commission',
+                'fuel_accounting_entry_id' => 'fuel_cost',
+                'toll_accounting_entry_id' => 'toll_cost',
+                'parking_accounting_entry_id' => 'parking_cost',
+                'other_vehicle_accounting_entry_id' => 'other_vehicle_costs',
+                'experience_accounting_entry_id' => 'experience_cost',
+                'handling_fees_accounting_entry_id' => 'handling_fees',
+                'card_fees_accounting_entry_id' => 'card_fees',
+            ];
+
+            foreach ($fieldMap as $settingsField => $semanticName) {
+                $entryId = $settings->$settingsField;
+                if ($entryId) {
+                    $entryToField[$entryId] = $semanticName;
+                }
+            }
+        }
+
         $statusPriority = [
             'suspended' => 0,
             'cancelled' => 1,
@@ -256,22 +284,37 @@ class Service extends Model
         $groups = []; // group_key => [statuses]
 
         foreach ($transactions as $t) {
-            // Individual key with entry_id
-            $individualKey = $t->transaction_type . '_' . $t->installment;
-            if ($t->accounting_entry_id) {
-                $individualKey .= '_' . $t->accounting_entry_id;
+            // Semantic key from settings mapping
+            $semanticKey = null;
+            if ($t->accounting_entry_id && isset($entryToField[$t->accounting_entry_id])) {
+                $fieldName = $entryToField[$t->accounting_entry_id];
+                // Disambiguate deposit vs balance for same entry_id (e.g. both use "Ricavo Servizio")
+                if ($t->installment === 'deposit' && $fieldName === 'deposit_amount') {
+                    $semanticKey = 'deposit_amount';
+                } elseif ($t->installment === 'balance' && $fieldName === 'balance') {
+                    $semanticKey = 'balance';
+                } elseif ($t->installment === 'deposit' && in_array($fieldName, ['handling_fees', 'card_fees'])) {
+                    $semanticKey = 'deposit_' . $fieldName;
+                } elseif ($t->installment === 'balance' && in_array($fieldName, ['handling_fees', 'card_fees'])) {
+                    $semanticKey = 'balance_' . $fieldName;
+                } else {
+                    $semanticKey = $fieldName;
+                }
             }
-            $map[$individualKey] = $t->status;
 
-            // Aggregate keys
+            // Write semantic key
+            if ($semanticKey) {
+                $map[$semanticKey] = $t->status;
+            }
+
+            // Aggregate keys by type+installment and by type
             $typeInstallmentKey = $t->transaction_type . '_' . $t->installment;
             $typeKey = $t->transaction_type;
-
             $groups[$typeInstallmentKey][] = $t->status;
             $groups[$typeKey][] = $t->status;
         }
 
-        // Compute worst status per group
+        // Compute worst status per aggregate group
         foreach ($groups as $groupKey => $statuses) {
             $worst = null;
             $worstPriority = PHP_INT_MAX;

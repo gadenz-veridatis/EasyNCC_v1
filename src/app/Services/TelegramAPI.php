@@ -90,6 +90,26 @@ class TelegramAPI
     }
 
     /**
+     * Send a location to a chat.
+     */
+    public function sendLocation(int $chatId, float $latitude, float $longitude, ?string $caption = null): ?array
+    {
+        // Send location pin
+        $result = $this->call('sendLocation', [
+            'chat_id' => $chatId,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+        ]);
+
+        // If there's a caption, send it as a follow-up text message
+        if ($caption && $result && ($result['ok'] ?? false)) {
+            $this->sendMessage($chatId, $caption);
+        }
+
+        return $result;
+    }
+
+    /**
      * Answer a callback query (button press acknowledgment).
      */
     public function answerCallbackQuery(string $callbackId, ?string $text = null): ?array

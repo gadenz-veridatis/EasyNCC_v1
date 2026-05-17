@@ -32,12 +32,14 @@ class ClientProfile extends Model
         'commission',
         'is_committente',
         'is_fornitore',
+        'is_collega',
     ];
 
     protected $casts = [
         'commission' => 'decimal:2',
         'is_committente' => 'boolean',
         'is_fornitore' => 'boolean',
+        'is_collega' => 'boolean',
     ];
 
     protected $appends = ['business_contacts'];

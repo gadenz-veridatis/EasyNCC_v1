@@ -210,7 +210,9 @@ import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
 import moment from "moment";
-import Swal from "sweetalert2";
+import { useNotify } from '@/composables/useNotify.js';
+
+const notify = useNotify();
 
 export default {
     components: { Head, Layout, PageHeader },
@@ -264,16 +266,8 @@ export default {
             await this.loadItems();
         },
         async restoreItem(id) {
-            const { isConfirmed } = await Swal.fire({
-                title: 'Ripristinare?',
-                text: 'Il record e tutti i dati collegati verranno ripristinati.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#28a745',
-                confirmButtonText: 'Ripristina',
-                cancelButtonText: 'Annulla',
-            });
-            if (!isConfirmed) return;
+            const confirmed = await notify.confirmInfo('Ripristinare?', 'Il record e tutti i dati collegati verranno ripristinati.', { confirmText: 'Ripristina', confirmColor: '#28a745' });
+            if (!confirmed) return;
 
             this.processing = true;
             try {
@@ -287,16 +281,8 @@ export default {
             }
         },
         async forceDeleteItem(id) {
-            const { isConfirmed } = await Swal.fire({
-                title: 'Eliminare definitivamente?',
-                html: '<strong class="text-danger">Questa operazione non può essere annullata.</strong><br>Il record e tutti i dati collegati verranno eliminati permanentemente dal database.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                confirmButtonText: 'Elimina per sempre',
-                cancelButtonText: 'Annulla',
-            });
-            if (!isConfirmed) return;
+            const confirmed = await notify.confirm('Eliminare definitivamente?', '<strong class="text-danger">Questa operazione non può essere annullata.</strong><br>Il record e tutti i dati collegati verranno eliminati permanentemente dal database.', { confirmText: 'Elimina per sempre' });
+            if (!confirmed) return;
 
             this.processing = true;
             try {

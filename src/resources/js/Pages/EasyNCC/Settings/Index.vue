@@ -44,11 +44,41 @@
                         <li class="nav-item" role="presentation">
                             <button
                                 class="nav-link"
-                                :class="{ active: activeTab === 'settings' }"
-                                @click="activeTab = 'settings'"
+                                :class="{ active: activeTab === 'accounting' }"
+                                @click="activeTab = 'accounting'"
                                 type="button"
                             >
-                                <i class="ri-settings-3-line me-1"></i> Impostazioni
+                                <i class="ri-money-dollar-circle-line me-1"></i> Contabilit&agrave;
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button
+                                class="nav-link"
+                                :class="{ active: activeTab === 'services' }"
+                                @click="activeTab = 'services'"
+                                type="button"
+                            >
+                                <i class="ri-car-line me-1"></i> Servizi
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button
+                                class="nav-link"
+                                :class="{ active: activeTab === 'notifications' }"
+                                @click="activeTab = 'notifications'"
+                                type="button"
+                            >
+                                <i class="ri-notification-3-line me-1"></i> Notifiche
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button
+                                class="nav-link"
+                                :class="{ active: activeTab === 'maintenance' }"
+                                @click="activeTab = 'maintenance'"
+                                type="button"
+                            >
+                                <i class="ri-tools-line me-1"></i> Manutenzione
                             </button>
                         </li>
                     </ul>
@@ -294,8 +324,8 @@
                         </BCardBody>
                     </BCard>
 
-                    <!-- Tab: Impostazioni -->
-                    <BCard v-show="activeTab === 'settings'" no-body class="border-top-0 rounded-top-0">
+                    <!-- Tab: Contabilità -->
+                    <BCard v-show="activeTab === 'accounting'" no-body class="border-top-0 rounded-top-0">
                         <BCardBody>
                             <form @submit.prevent="saveSettings">
                                 <!-- Sezione Ricavi -->
@@ -420,6 +450,44 @@
                                             />
                                             <small class="text-muted">
                                                 Testo da usare come causale del movimento di saldo
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+
+                                    <BRow>
+                                        <!-- Causale Contabile Ricavi Extra -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Contabile Ricavi Extra</label>
+                                            <select
+                                                v-model="form.extra_revenue_accounting_entry_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">Seleziona causale contabile</option>
+                                                <option
+                                                    v-for="entry in accountingEntries"
+                                                    :key="entry.id"
+                                                    :value="entry.id"
+                                                >
+                                                    {{ entry.abbreviation }} - {{ entry.name }}
+                                                </option>
+                                            </select>
+                                            <small class="text-muted">
+                                                Causale contabile da utilizzare per i movimenti di ricavi extra
+                                            </small>
+                                        </BCol>
+
+                                        <!-- Causale Movimento Ricavi Extra -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Causale Movimento Ricavi Extra</label>
+                                            <input
+                                                v-model="form.extra_revenue_reason"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Es. Ricavo extra servizio"
+                                                maxlength="255"
+                                            />
+                                            <small class="text-muted">
+                                                Testo da usare come causale del movimento di ricavo extra
                                             </small>
                                         </BCol>
                                     </BRow>
@@ -790,50 +858,107 @@
                                             </small>
                                         </BCol>
                                     </BRow>
+
                                 </fieldset>
 
-                                <!-- Sezione Esperienze -->
+                                <!-- Alert per errori -->
+                                <div v-if="errors.length > 0" class="alert alert-danger">
+                                    <ul class="mb-0">
+                                        <li v-for="(error, index) in errors" :key="index">{{ error }}</li>
+                                    </ul>
+                                </div>
+                                <div v-if="successMessage" class="alert alert-success">
+                                    {{ successMessage }}
+                                </div>
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary" :disabled="saving">
+                                        <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                                        <i v-else class="ri-save-line me-1"></i>
+                                        Salva Contabilit&agrave;
+                                    </button>
+                                </div>
+                            </form>
+                        </BCardBody>
+                    </BCard>
+
+                    <!-- Tab: Servizi -->
+                    <BCard v-show="activeTab === 'services'" no-body class="border-top-0 rounded-top-0">
+                        <BCardBody>
+                            <form @submit.prevent="saveSettings">
+                                <!-- Sezione Soste -->
                                 <fieldset class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
-                                        <i class="ri-map-pin-line me-2"></i>Esperienze
+                                        <i class="ri-map-pin-line me-2"></i>Soste
                                     </legend>
 
                                     <BRow>
-                                        <!-- Testo Conferma Prenotazione Esperienza -->
+                                        <!-- Testo Conferma Prenotazione Sosta -->
                                         <BCol md="12" class="mb-3">
                                             <label class="form-label">
-                                                Testo Conferma Prenotazione Esperienza
+                                                Testo Conferma Prenotazione Sosta
                                             </label>
                                             <textarea
                                                 v-model="form.activity_confirmation_text"
                                                 class="form-control"
-                                                rows="3"
-                                                placeholder="Es. Confermare prenotazione {$fornitore$} per servizio {$servizio$}"
+                                                rows="4"
+                                                placeholder="Confermare {$nome_sosta$} ({$tipo_sosta$}) con {$fornitore$} per {$data_servizio$} ore {$ora_inizio$} - {$servizio$} - Pax: {$passeggero$} - Tel: {$telefono_fornitore$}"
                                             ></textarea>
-                                            <small class="text-muted">
-                                                Testo utilizzato nel Nome del Task. Segnaposto disponibili: <code>{$fornitore$}</code> e <code>{$servizio$}</code>
-                                            </small>
+                                            <div class="mt-2">
+                                                <small class="text-muted d-block mb-1 fw-semibold">Segnaposto disponibili:</small>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$nome_sosta$}')" title="Nome/descrizione della sosta">{$nome_sosta$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$tipo_sosta$}')" title="Tipologia sosta">{$tipo_sosta$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$ora_inizio$}')" title="Ora inizio sosta">{$ora_inizio$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$ora_fine$}')" title="Ora fine sosta">{$ora_fine$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$data_sosta$}')" title="Data della sosta">{$data_sosta$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$fornitore$}')" title="Nome fornitore della sosta">{$fornitore$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$telefono_fornitore$}')" title="Telefono fornitore">{$telefono_fornitore$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$email_fornitore$}')" title="Email operativa fornitore">{$email_fornitore$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$servizio$}')" title="Riferimento servizio">{$servizio$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$data_servizio$}')" title="Data pickup servizio">{$data_servizio$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$ora_pickup$}')" title="Ora pickup servizio">{$ora_pickup$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$passeggero$}')" title="Nome primo passeggero">{$passeggero$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$committente$}')" title="Nome committente">{$committente$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$veicolo$}')" title="Targa veicolo">{$veicolo$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$link_servizio$}')" title="Link alla pagina modifica servizio">{$link_servizio$}</span>
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem; cursor: pointer;" @click="insertPlaceholder('{$link_fornitore$}')" title="Link alla scheda fornitore">{$link_fornitore$}</span>
+                                                </div>
+                                                <small class="text-muted d-block mt-1">Clicca su un segnaposto per aggiungerlo al testo</small>
+                                            </div>
                                         </BCol>
                                     </BRow>
 
                                     <BRow>
-                                        <!-- Ruolo Assegnatari -->
+                                        <!-- Utenti disponibili per conferma soste -->
                                         <BCol md="6" class="mb-3">
-                                            <label class="form-label">Assegna a Ruolo</label>
-                                            <select
-                                                v-model="form.activity_confirmation_role"
-                                                class="form-select"
-                                            >
-                                                <option :value="null">Seleziona ruolo</option>
-                                                <option value="super-admin">Super Admin</option>
-                                                <option value="admin">Admin</option>
-                                                <option value="operator">Operatore</option>
-                                                <option value="driver">Driver</option>
-                                                <option value="collaboratore">Collaboratore</option>
-                                                <option value="contabilita">Contabilità</option>
-                                            </select>
+                                            <label class="form-label">Utenti disponibili per conferma soste</label>
+                                            <Multiselect
+                                                v-model="form.activity_confirmation_user_ids"
+                                                :options="companyUsers"
+                                                mode="tags"
+                                                :searchable="true"
+                                                :close-on-select="false"
+                                                placeholder="Seleziona utenti..."
+                                                no-results-text="Nessun utente trovato"
+                                            />
                                             <small class="text-muted">
-                                                Ruolo degli utenti a cui saranno assegnati i task di conferma prenotazione esperienza
+                                                Utenti che appariranno nella lista di assegnazione task per le soste. Se vuoto, nessun utente sarà disponibile.
+                                            </small>
+                                        </BCol>
+                                        <!-- Assegnatario di default -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">Assegnatario di default</label>
+                                            <Multiselect
+                                                v-model="form.activity_confirmation_default_user_id"
+                                                :options="selectedConfirmationUsers"
+                                                :searchable="true"
+                                                :can-clear="true"
+                                                :can-deselect="true"
+                                                placeholder="Tutti gli utenti selezionati"
+                                                no-results-text="Nessun utente selezionato"
+                                            />
+                                            <small class="text-muted">
+                                                Utente assegnato di default ai task di conferma. Se non impostato, il task viene assegnato a tutti gli utenti selezionati.
                                             </small>
                                         </BCol>
                                     </BRow>
@@ -865,6 +990,30 @@
                                     </BRow>
                                 </fieldset>
 
+                                <!-- Alert per errori -->
+                                <div v-if="errors.length > 0" class="alert alert-danger">
+                                    <ul class="mb-0">
+                                        <li v-for="(error, index) in errors" :key="index">{{ error }}</li>
+                                    </ul>
+                                </div>
+                                <div v-if="successMessage" class="alert alert-success">
+                                    {{ successMessage }}
+                                </div>
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary" :disabled="saving">
+                                        <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                                        <i v-else class="ri-save-line me-1"></i>
+                                        Salva Servizi
+                                    </button>
+                                </div>
+                            </form>
+                        </BCardBody>
+                    </BCard>
+
+                    <!-- Tab: Notifiche -->
+                    <BCard v-show="activeTab === 'notifications'" no-body class="border-top-0 rounded-top-0">
+                        <BCardBody>
+                            <form @submit.prevent="saveSettings">
                                 <!-- Sezione Notifiche Telegram -->
                                 <fieldset class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
@@ -993,6 +1142,32 @@
                                                 Stato applicato alla transazione contabile quando il driver segnala l'incasso avvenuto via Telegram
                                             </small>
                                         </BCol>
+
+                                        <!-- Stati per Invio Posizione -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Stati per Invio Posizione al Driver
+                                                <span class="text-muted small">(opzionale)</span>
+                                            </label>
+                                            <select
+                                                v-model="form.telegram_location_status_ids"
+                                                class="form-select"
+                                                multiple
+                                                size="4"
+                                            >
+                                                <option
+                                                    v-for="status in serviceStatuses"
+                                                    :key="status.id"
+                                                    :value="status.id"
+                                                >
+                                                    {{ status.name }}
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Quando il servizio è in uno di questi stati, sarà visibile il bottone per inviare la posizione pickup/dropoff al driver via Telegram.
+                                                Se nessuno stato è selezionato, il bottone sarà sempre visibile.
+                                            </small>
+                                        </BCol>
                                     </BRow>
 
                                     <!-- Alert informativo -->
@@ -1016,6 +1191,299 @@
                                     </div>
                                 </fieldset>
 
+                                <!-- Sezione Annullamento Saldi -->
+                                <fieldset class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-close-circle-line me-2"></i>Annullamento Saldi
+                                    </legend>
+
+                                    <BRow>
+                                        <BCol md="12" class="mb-3">
+                                            <label class="form-label">Stati servizio che propongono l'annullamento dei movimenti di saldo</label>
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <div v-for="status in serviceStatuses" :key="status.id" class="form-check">
+                                                    <input
+                                                        type="checkbox"
+                                                        class="form-check-input"
+                                                        :id="'cancel_status_' + status.id"
+                                                        :value="status.id"
+                                                        v-model="form.service_cancel_status_ids"
+                                                    />
+                                                    <label class="form-check-label" :for="'cancel_status_' + status.id">
+                                                        {{ status.name }}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted d-block mt-1">
+                                                Quando lo stato del servizio cambia in uno di questi stati, verrà proposto all'utente di annullare i movimenti contabili di saldo. I movimenti di acconto resteranno invariati.
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+                                </fieldset>
+
+                                <!-- Sezione Tracking Voli -->
+                                <fieldset class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-flight-takeoff-line me-2"></i>Tracking Voli
+                                    </legend>
+
+                                    <BRow>
+                                        <BCol md="6" class="mb-3">
+                                            <div class="form-check form-switch mb-2">
+                                                <input
+                                                    type="checkbox"
+                                                    class="form-check-input"
+                                                    id="flight_tracking_enabled"
+                                                    v-model="form.flight_tracking_enabled"
+                                                />
+                                                <label class="form-check-label" for="flight_tracking_enabled">
+                                                    <strong>Abilita tracking voli</strong>
+                                                </label>
+                                            </div>
+                                            <small class="text-muted">
+                                                Permette di cercare informazioni sui voli dal campo "Riferimenti vettore" nella pagina servizio.
+                                            </small>
+                                        </BCol>
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">API Key AviationStack</label>
+                                            <input
+                                                v-model="form.aviationstack_api_key"
+                                                type="password"
+                                                class="form-control"
+                                                placeholder="Inserisci la API key..."
+                                                :disabled="!form.flight_tracking_enabled"
+                                            />
+                                            <small class="text-muted">
+                                                Registrati su <a href="https://aviationstack.com" target="_blank">aviationstack.com</a> per ottenere una API key gratuita (500 richieste/mese).
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+                                </fieldset>
+
+                                <!-- Sezione Notifiche Email Colleghi -->
+                                <fieldset class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-mail-send-line me-2"></i>Notifiche Email Colleghi
+                                    </legend>
+
+                                    <div class="alert alert-info small mb-3">
+                                        <i class="ri-information-line me-2"></i>
+                                        Quando un servizio viene assegnato a un fornitore <strong>diverso dal fornitore di default</strong>,
+                                        il sistema utilizza l'email invece di Telegram per notificare il collega.
+                                        Configura qui i parametri per il flusso email.
+                                    </div>
+
+                                    <BRow>
+                                        <!-- Account Gmail -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Account Gmail per Invio
+                                                <span class="text-muted small">(obbligatorio)</span>
+                                            </label>
+                                            <select
+                                                v-model="form.email_gmail_account_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">-- Seleziona account Gmail --</option>
+                                                <option
+                                                    v-for="account in gmailAccounts"
+                                                    :key="account.id"
+                                                    :value="account.id"
+                                                >
+                                                    {{ account.account_label }} ({{ account.email_address }})
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Account Gmail da cui verranno inviate le email ai colleghi
+                                            </small>
+                                        </BCol>
+
+                                        <!-- Email notifiche admin -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Email Notifiche Accettazione/Chiusura
+                                                <span class="text-muted small">(obbligatorio)</span>
+                                            </label>
+                                            <input
+                                                v-model="form.email_notification_address"
+                                                type="email"
+                                                class="form-control"
+                                                placeholder="admin@azienda.it"
+                                            />
+                                            <small class="form-text text-muted">
+                                                Email che riceverà le notifiche quando il collega accetta o chiude il servizio
+                                            </small>
+                                        </BCol>
+
+                                        <!-- Template Assegnazione -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Template Email Assegnazione
+                                            </label>
+                                            <select
+                                                v-model="form.email_assignment_template_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">-- Usa template di default --</option>
+                                                <option
+                                                    v-for="tpl in assignmentTemplates"
+                                                    :key="tpl.id"
+                                                    :value="tpl.id"
+                                                >
+                                                    {{ tpl.name }}{{ tpl.is_default ? ' (default)' : '' }}
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Template utilizzato per l'email di assegnazione servizio al collega
+                                            </small>
+                                        </BCol>
+
+                                        <!-- Template Chiusura -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Template Email Chiusura
+                                            </label>
+                                            <select
+                                                v-model="form.email_closure_template_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">-- Usa template di default --</option>
+                                                <option
+                                                    v-for="tpl in closureTemplates"
+                                                    :key="tpl.id"
+                                                    :value="tpl.id"
+                                                >
+                                                    {{ tpl.name }}{{ tpl.is_default ? ' (default)' : '' }}
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Template utilizzato per l'email di chiusura servizio inviata dopo l'accettazione
+                                            </small>
+                                        </BCol>
+
+                                        <!-- Stato Accettazione Email -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Stato dopo Accettazione via Email
+                                            </label>
+                                            <select
+                                                v-model="form.email_accepted_status_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">-- Non modificare stato --</option>
+                                                <option
+                                                    v-for="status in serviceStatuses"
+                                                    :key="status.id"
+                                                    :value="status.id"
+                                                >
+                                                    {{ status.name }}
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Stato del servizio dopo che il collega accetta tramite il link email
+                                            </small>
+                                        </BCol>
+
+                                        <!-- Stato Chiusura Email -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Stato dopo Chiusura via Email
+                                            </label>
+                                            <select
+                                                v-model="form.email_closed_status_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">-- Non modificare stato --</option>
+                                                <option
+                                                    v-for="status in serviceStatuses"
+                                                    :key="status.id"
+                                                    :value="status.id"
+                                                >
+                                                    {{ status.name }}
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Stato del servizio dopo che il collega conferma la chiusura tramite il link email
+                                            </small>
+                                        </BCol>
+
+                                        <!-- Scadenza Token -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Scadenza Link (giorni)
+                                            </label>
+                                            <input
+                                                v-model.number="form.email_token_expiry_days"
+                                                type="number"
+                                                class="form-control"
+                                                min="1"
+                                                max="90"
+                                                placeholder="7"
+                                            />
+                                            <small class="form-text text-muted">
+                                                Numero di giorni dopo i quali i link di accettazione/chiusura scadranno
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+                                </fieldset>
+
+                                <!-- Sezione Ingestion Email -->
+                                <fieldset class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-mail-download-line me-2"></i>Ingestion Email
+                                    </legend>
+
+                                    <BRow>
+                                        <BCol md="4" class="mb-3">
+                                            <label class="form-label">
+                                                Label Gmail Suggerita
+                                                <span class="text-muted small">(precompila nuove caselle)</span>
+                                            </label>
+                                            <input
+                                                v-model="form.gmail_label_richieste"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="es. NCC/Richiesta"
+                                            />
+                                            <small class="form-text text-muted">
+                                                Nome suggerito della label Gmail. Ogni casella dovrà comunque verificare la label nella configurazione ingestion.
+                                            </small>
+                                        </BCol>
+                                        <BCol md="4" class="mb-3">
+                                            <label class="form-label">
+                                                Subject Tag Suggerito
+                                                <span class="text-muted small">(opzionale)</span>
+                                            </label>
+                                            <input
+                                                v-model="form.gmail_subject_tag"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="es. [NCC]"
+                                            />
+                                            <small class="form-text text-muted">
+                                                Tag nel subject come segnale secondario per identificare richieste
+                                            </small>
+                                        </BCol>
+                                        <BCol md="4" class="mb-3">
+                                            <label class="form-label">
+                                                Intervallo Polling
+                                                <span class="text-muted small">(minuti)</span>
+                                            </label>
+                                            <input
+                                                v-model.number="form.gmail_polling_interval"
+                                                type="number"
+                                                class="form-control"
+                                                min="5"
+                                                max="1440"
+                                                placeholder="60"
+                                            />
+                                            <small class="form-text text-muted">
+                                                Ogni quanti minuti il sistema controlla le nuove email etichettate (default: 60)
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+                                </fieldset>
+
                                 <!-- Alert per errori -->
                                 <div v-if="errors.length > 0" class="alert alert-danger">
                                     <ul class="mb-0">
@@ -1033,13 +1501,16 @@
                                     <button type="submit" class="btn btn-primary" :disabled="saving">
                                         <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
                                         <i v-else class="ri-save-line me-1"></i>
-                                        Salva Impostazioni
+                                        Salva Notifiche
                                     </button>
                                 </div>
                             </form>
+                        </BCardBody>
+                    </BCard>
 
-                            <!-- Sezione Manutenzione -->
-                            <hr class="my-4" />
+                    <!-- Tab: Manutenzione -->
+                    <BCard v-show="activeTab === 'maintenance'" no-body class="border-top-0 rounded-top-0">
+                        <BCardBody>
                             <h5 class="mb-3"><i class="ri-tools-line me-2"></i>Manutenzione</h5>
 
                             <div class="d-flex align-items-center justify-content-between p-3 border rounded bg-light">
@@ -1080,6 +1551,8 @@ import { Head, Link } from '@inertiajs/vue3';
 import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
+import Multiselect from '@vueform/multiselect';
+import '@vueform/multiselect/themes/default.css';
 
 export default {
     components: {
@@ -1087,6 +1560,7 @@ export default {
         Link,
         Layout,
         PageHeader,
+        Multiselect,
     },
     data() {
         return {
@@ -1102,7 +1576,11 @@ export default {
             selectedCompanyId: '',
             accountingEntries: [],
             suppliers: [],
+            companyUsers: [],
             serviceStatuses: [],
+            gmailAccounts: [],
+            assignmentTemplates: [],
+            closureTemplates: [],
             activeTab: 'company',
             recalculatingOverlaps: false,
             recalculateResult: null,
@@ -1134,14 +1612,32 @@ export default {
                 handling_fees_reason: null,
                 card_fees_accounting_entry_id: null,
                 card_fees_reason: null,
+                extra_revenue_accounting_entry_id: null,
+                extra_revenue_reason: null,
                 activity_confirmation_text: null,
                 activity_confirmation_role: null,
+                activity_confirmation_user_ids: [],
+                activity_confirmation_default_user_id: null,
                 default_supplier_id: null,
                 telegram_trigger_status_id: null,
                 telegram_accepted_status_id: null,
                 telegram_closed_ok_status_id: null,
                 telegram_closed_ko_status_id: null,
                 telegram_collected_status_id: null,
+                service_cancel_status_ids: [],
+                telegram_location_status_ids: [],
+                email_accepted_status_id: null,
+                email_closed_status_id: null,
+                email_notification_address: null,
+                email_assignment_template_id: null,
+                email_closure_template_id: null,
+                email_gmail_account_id: null,
+                email_token_expiry_days: 7,
+                aviationstack_api_key: null,
+                flight_tracking_enabled: false,
+                gmail_label_richieste: null,
+                gmail_subject_tag: null,
+                gmail_polling_interval: 60,
             },
             // Company form
             companyForm: {
@@ -1173,6 +1669,12 @@ export default {
         isSuperAdmin() {
             return this.currentUser?.role === 'super-admin';
         },
+        selectedConfirmationUsers() {
+            if (!this.form.activity_confirmation_user_ids || this.form.activity_confirmation_user_ids.length === 0) {
+                return [];
+            }
+            return this.companyUsers.filter(u => this.form.activity_confirmation_user_ids.includes(u.value));
+        },
     },
     async mounted() {
         await this.loadCurrentUser();
@@ -1185,12 +1687,21 @@ export default {
         }
     },
     methods: {
+        insertPlaceholder(placeholder) {
+            this.form.activity_confirmation_text = (this.form.activity_confirmation_text || '') + placeholder;
+        },
         async recalculateOverlaps() {
+            if (!this.selectedCompanyId) {
+                this.recalculateResult = { success: false, message: 'Seleziona un\'azienda prima di ricalcolare le sovrapposizioni.' };
+                return;
+            }
             if (!confirm('Ricalcolare tutte le sovrapposizioni dei servizi? Le sovrapposizioni esistenti verranno rimosse e ricalcolate.')) return;
             this.recalculatingOverlaps = true;
             this.recalculateResult = null;
             try {
-                const { data } = await axios.post('/api/services/recalculate-overlaps');
+                const { data } = await axios.post('/api/services/recalculate-overlaps', {
+                    company_id: this.selectedCompanyId
+                });
                 this.recalculateResult = { success: true, message: data.message };
             } catch (error) {
                 this.recalculateResult = { success: false, message: error.response?.data?.message || 'Errore nel ricalcolo delle sovrapposizioni' };
@@ -1230,6 +1741,9 @@ export default {
                     this.loadSuppliers(),
                     this.loadServiceStatuses(),
                     this.loadCompanyData(),
+                    this.loadGmailAccounts(),
+                    this.loadEmailTemplates(),
+                    this.loadCompanyUsers(),
                 ]);
             } catch (error) {
                 console.error('Error loading settings page data:', error);
@@ -1272,14 +1786,32 @@ export default {
                 handling_fees_reason: data.handling_fees_reason || null,
                 card_fees_accounting_entry_id: data.card_fees_accounting_entry_id || null,
                 card_fees_reason: data.card_fees_reason || null,
+                extra_revenue_accounting_entry_id: data.extra_revenue_accounting_entry_id || null,
+                extra_revenue_reason: data.extra_revenue_reason || null,
                 activity_confirmation_text: data.activity_confirmation_text || null,
                 activity_confirmation_role: data.activity_confirmation_role || null,
+                activity_confirmation_user_ids: data.activity_confirmation_user_ids || [],
+                activity_confirmation_default_user_id: data.activity_confirmation_default_user_id || null,
                 default_supplier_id: data.default_supplier_id || null,
                 telegram_trigger_status_id: data.telegram_trigger_status_id || null,
                 telegram_accepted_status_id: data.telegram_accepted_status_id || null,
                 telegram_closed_ok_status_id: data.telegram_closed_ok_status_id || null,
                 telegram_closed_ko_status_id: data.telegram_closed_ko_status_id || null,
                 telegram_collected_status_id: data.telegram_collected_status_id || null,
+                service_cancel_status_ids: data.service_cancel_status_ids || [],
+                telegram_location_status_ids: data.telegram_location_status_ids || [],
+                email_accepted_status_id: data.email_accepted_status_id || null,
+                email_closed_status_id: data.email_closed_status_id || null,
+                email_notification_address: data.email_notification_address || null,
+                email_assignment_template_id: data.email_assignment_template_id || null,
+                email_closure_template_id: data.email_closure_template_id || null,
+                email_gmail_account_id: data.email_gmail_account_id || null,
+                email_token_expiry_days: data.email_token_expiry_days || 7,
+                aviationstack_api_key: data.aviationstack_api_key || null,
+                flight_tracking_enabled: data.flight_tracking_enabled || false,
+                gmail_label_richieste: data.gmail_label_richieste || null,
+                gmail_subject_tag: data.gmail_subject_tag || null,
+                gmail_polling_interval: data.gmail_polling_interval || 60,
             };
         },
         async loadCompanyData() {
@@ -1326,6 +1858,21 @@ export default {
             const response = await axios.get('/api/settings/suppliers', { params });
             this.suppliers = response.data.data || [];
         },
+        async loadCompanyUsers() {
+            if (!this.selectedCompanyId) return;
+            try {
+                const params = { per_page: 200, role: 'admin,operator' };
+                if (this.isSuperAdmin) params.company_id = this.selectedCompanyId;
+                const response = await axios.get('/api/users', { params });
+                this.companyUsers = (response.data.data || []).map(u => ({
+                    value: u.id,
+                    label: `${u.surname || ''} ${u.name || ''}`.trim() || u.email,
+                }));
+            } catch (error) {
+                console.error('Error loading company users:', error);
+                this.companyUsers = [];
+            }
+        },
         async loadServiceStatuses() {
             if (!this.selectedCompanyId) return;
 
@@ -1336,6 +1883,31 @@ export default {
             } catch (error) {
                 console.error('Error loading service statuses:', error);
                 this.serviceStatuses = [];
+            }
+        },
+        async loadGmailAccounts() {
+            try {
+                const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
+                const response = await axios.get('/api/gmail-accounts', { params });
+                this.gmailAccounts = response.data.data || response.data || [];
+            } catch (error) {
+                console.error('Error loading Gmail accounts:', error);
+                this.gmailAccounts = [];
+            }
+        },
+        async loadEmailTemplates() {
+            try {
+                const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
+                const [assignmentRes, closureRes] = await Promise.all([
+                    axios.get('/api/quote-email-templates', { params: { ...params, type: 'service_assignment' } }),
+                    axios.get('/api/quote-email-templates', { params: { ...params, type: 'service_closure' } }),
+                ]);
+                this.assignmentTemplates = assignmentRes.data.data || [];
+                this.closureTemplates = closureRes.data.data || [];
+            } catch (error) {
+                console.error('Error loading email templates:', error);
+                this.assignmentTemplates = [];
+                this.closureTemplates = [];
             }
         },
         onFileChange(event, field) {

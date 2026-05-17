@@ -36,12 +36,6 @@
                             <div class="spinner-border text-primary"></div>
                         </div>
 
-                        <!-- Success/Error messages -->
-                        <div v-if="successMessage" class="alert alert-success alert-dismissible fade show">
-                            {{ successMessage }}
-                            <button type="button" class="btn-close" @click="successMessage = ''"></button>
-                        </div>
-
                         <!-- Table -->
                         <div v-if="!loading" class="table-responsive">
                             <table class="table table-hover align-middle mb-0">
@@ -167,6 +161,9 @@
 import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
+import { useNotify } from '@/composables/useNotify.js';
+
+const notify = useNotify();
 
 export default {
     components: { Layout, PageHeader },
@@ -180,7 +177,6 @@ export default {
             sortDir: 'asc',
             perPage: 20,
             searchTimeout: null,
-            successMessage: '',
             // Modal
             showModal: false,
             modalSaving: false,
@@ -263,10 +259,10 @@ export default {
             try {
                 if (this.editingContact) {
                     await axios.put(`/api/contacts/${this.editingContact.id}`, this.modalForm);
-                    this.successMessage = 'Contatto aggiornato con successo';
+                    notify.success('Contatto aggiornato con successo');
                 } else {
                     await axios.post('/api/contacts', this.modalForm);
-                    this.successMessage = 'Contatto creato con successo';
+                    notify.success('Contatto creato con successo');
                 }
                 this.showModal = false;
                 await this.loadContacts(this.meta.current_page);
@@ -281,13 +277,14 @@ export default {
             }
         },
         async deleteContact(contact) {
-            if (!confirm(`Eliminare il contatto "${contact.name}"?`)) return;
+            const confirmed = await notify.confirm('Elimina contatto', `Eliminare il contatto "${contact.name}"?`);
+            if (!confirmed) return;
             try {
                 await axios.delete(`/api/contacts/${contact.id}`);
-                this.successMessage = 'Contatto eliminato con successo';
+                notify.success('Contatto eliminato con successo');
                 await this.loadContacts(this.meta.current_page);
             } catch (e) {
-                alert(e.response?.data?.message || 'Errore nella cancellazione');
+                notify.error(e.response?.data?.message || 'Errore nella cancellazione');
             }
         },
     },

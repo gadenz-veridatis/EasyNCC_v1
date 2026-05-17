@@ -2,45 +2,103 @@
     <Head title="Servizi" />
 
     <Layout :collapsed-sidebar="true">
-        <PageHeader title="Servizi" pageTitle="EasyNCC" />
+        <!-- Sticky Header: titolo + pulsanti + preset -->
+        <div class="services-sticky-header">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <h5 class="mb-0">Servizi</h5>
+                <div class="d-flex gap-2">
+                    <button
+                        v-if="!isDriver"
+                        type="button"
+                        class="btn btn-soft-primary btn-sm"
+                        @click="showFilters = !showFilters"
+                    >
+                        <i :class="showFilters ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
+                        {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
+                        <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-soft-warning btn-sm"
+                        @click="loadUnavailabilities"
+                        :disabled="unavailabilitiesLoading"
+                    >
+                        <span v-if="unavailabilitiesLoading" class="spinner-border spinner-border-sm me-1"></span>
+                        <i v-else class="ri-forbid-line me-1"></i>
+                        Indisponibilità
+                    </button>
+                    <button
+                        v-if="!isDriver"
+                        type="button"
+                        class="btn btn-soft-info btn-sm"
+                        @click="toggleSummary"
+                    >
+                        <i class="ri-bar-chart-box-line me-1"></i>
+                        {{ showSummary ? 'Nascondi Riepilogo' : 'Riepilogo' }}
+                    </button>
+                    <Link v-if="!isDriver" :href="withReturnUrl(route('easyncc.services.create'))" class="btn btn-primary btn-sm">
+                        <i class="bx bx-plus me-1"></i>
+                        Nuovo Servizio
+                    </Link>
+                </div>
+            </div>
+            <!-- Preset Filter Buttons -->
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <button type="button" class="btn btn-sm btn-soft-primary px-2" @click="shiftDates(-1)" title="Giorno precedente">
+                    <i class="ri-arrow-left-s-line"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-soft-primary px-2" @click="shiftDates(1)" title="Giorno successivo">
+                    <i class="ri-arrow-right-s-line"></i>
+                </button>
+                <span class="text-muted mx-1">|</span>
+                <button type="button" class="btn btn-sm" :class="activePreset === 'oggi' ? 'btn-primary' : 'btn-soft-primary'" @click="filterToday">Oggi</button>
+                <button type="button" class="btn btn-sm" :class="activePreset === 'domani' ? 'btn-primary' : 'btn-soft-primary'" @click="filterTomorrow">Domani</button>
+                <button type="button" class="btn btn-sm" :class="activePreset === 'settimana' ? 'btn-primary' : 'btn-soft-primary'" @click="filterWeek">Settimana</button>
+                <button type="button" class="btn btn-sm" :class="activePreset === 'tutti' ? 'btn-primary' : 'btn-soft-primary'" @click="filterAll">Tutti</button>
+                <span class="text-muted mx-1">|</span>
+                <div class="d-inline-flex align-items-center gap-1">
+                    <input
+                        ref="specificDateInput"
+                        type="text"
+                        class="btn btn-sm"
+                        :class="activePreset === 'specific' ? 'btn-primary' : 'btn-soft-primary'"
+                        style="width: 130px; cursor: pointer; text-align: center;"
+                        placeholder="Servizi del..."
+                        title="Digita una data DD/MM/YYYY o clicca per il calendario"
+                    />
+                    <button
+                        v-if="activePreset === 'specific'"
+                        type="button"
+                        class="btn btn-sm btn-soft-danger p-0"
+                        style="width: 22px; height: 22px; line-height: 1; font-size: 0.7rem;"
+                        @click="clearSpecificDate"
+                        title="Annulla filtro data"
+                    >
+                        <i class="ri-close-line"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
 
-        <BRow>
+        <BRow class="mt-0">
             <BCol lg="12">
-                <BCard no-body>
-                    <BCardHeader class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">Lista Servizi</h5>
-                        <div class="d-flex gap-2">
-                            <button
-                                v-if="!isDriver"
-                                type="button"
-                                class="btn btn-soft-primary btn-sm"
-                                @click="showFilters = !showFilters"
-                            >
-                                <i :class="showFilters ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
-                                {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
-                                <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
-                            </button>
-                            <Link v-if="!isDriver" :href="route('easyncc.services.create')" class="btn btn-primary btn-sm">
-                                <i class="bx bx-plus me-1"></i>
-                                Nuovo Servizio
-                            </Link>
-                        </div>
-                    </BCardHeader>
-                    <BCardBody>
+                <BCard no-body class="mb-1">
+                    <BCardBody class="pt-2">
                         <!-- Collapsible Filters Section -->
                         <div v-show="!isDriver && showFilters" class="border rounded p-3 mb-3 bg-light">
-                        <BRow class="mb-4">
-                            <BCol md="2">
-                                <label class="form-label">Nominativo Riferimento</label>
+                        <!-- Riga 1: Cerca, Da, A, Stato -->
+                        <BRow class="mb-3">
+                            <BCol md="3">
+                                <label class="form-label">Cerca</label>
                                 <input
                                     v-model="filters.reference_name"
                                     type="text"
                                     class="form-control form-control-sm"
-                                    placeholder="Nome riferimento..."
+                                    placeholder="Rif., committente, passeggero..."
                                     @input="debouncedLoadServices"
                                 />
                             </BCol>
-                            <BCol md="2">
+                            <BCol md="3">
                                 <label class="form-label">Da</label>
                                 <input
                                     v-model="filters.date_from"
@@ -49,7 +107,7 @@
                                     @change="loadServicesFromFilter"
                                 />
                             </BCol>
-                            <BCol md="2">
+                            <BCol md="3">
                                 <label class="form-label">A</label>
                                 <input
                                     v-model="filters.date_to"
@@ -58,55 +116,7 @@
                                     @change="loadServicesFromFilter"
                                 />
                             </BCol>
-                            <BCol md="2">
-                                <label class="form-label">Tipo Servizio</label>
-                                <select v-model="filters.service_type_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
-                                    <option value="">Tutti i tipi</option>
-                                    <option v-for="type in serviceTypes" :key="type.id" :value="type.name">
-                                        {{ type.name }}
-                                    </option>
-                                </select>
-                            </BCol>
-                        </BRow>
-
-                        <BRow class="mb-4">
-                            <BCol md="2">
-                                <label class="form-label">Committente</label>
-                                <select v-model="filters.client_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
-                                    <option value="">Tutti i committenti</option>
-                                    <option v-for="client in clients" :key="client.id" :value="client.id">
-                                        {{ client.name }} {{ client.surname }}
-                                    </option>
-                                </select>
-                            </BCol>
-                            <BCol md="2">
-                                <label class="form-label">Intermediario</label>
-                                <select v-model="filters.intermediary_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
-                                    <option value="">Tutti gli intermediari</option>
-                                    <option v-for="intermediary in intermediaries" :key="intermediary.id" :value="intermediary.id">
-                                        {{ intermediary.name }} {{ intermediary.surname }}
-                                    </option>
-                                </select>
-                            </BCol>
-                            <BCol md="2">
-                                <label class="form-label">Autista</label>
-                                <select v-model="filters.driver_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
-                                    <option value="">Tutti gli autisti</option>
-                                    <option v-for="driver in drivers" :key="driver.id" :value="driver.id">
-                                        {{ driverLabel(driver) }}
-                                    </option>
-                                </select>
-                            </BCol>
-                            <BCol md="2">
-                                <label class="form-label">Veicolo</label>
-                                <select v-model="filters.vehicle_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
-                                    <option value="">Tutti i veicoli</option>
-                                    <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
-                                        {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
-                                    </option>
-                                </select>
-                            </BCol>
-                            <BCol md="2">
+                            <BCol md="3">
                                 <label class="form-label">Stato</label>
                                 <select v-model="filters.status" class="form-select form-select-sm" @change="loadServicesFromFilter">
                                     <option value="">Tutti gli stati</option>
@@ -118,7 +128,93 @@
                                     <option value="no-show">No Show</option>
                                 </select>
                             </BCol>
-                            <BCol md="2" v-if="isSuperAdmin">
+                        </BRow>
+
+                        <!-- Riga 2: Tipo Servizio, Committente, Intermediario, Collega -->
+                        <BRow class="mb-3">
+                            <BCol md="3">
+                                <label class="form-label">Tipo Servizio</label>
+                                <select v-model="filters.service_type_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
+                                    <option value="">Tutti i tipi</option>
+                                    <option v-for="type in serviceTypes" :key="type.id" :value="type.name">
+                                        {{ type.name }}
+                                    </option>
+                                </select>
+                            </BCol>
+                            <BCol md="3">
+                                <label class="form-label">Committente</label>
+                                <Multiselect
+                                    v-model="filters.client_id"
+                                    :options="searchClients"
+                                    :searchable="true"
+                                    :filter-results="false"
+                                    :min-chars="2"
+                                    :delay="300"
+                                    :resolve-on-load="false"
+                                    placeholder="Digita per cercare..."
+                                    no-options-text="Digita almeno 2 caratteri"
+                                    no-results-text="Nessun risultato"
+                                    :can-clear="true"
+                                    @change="() => nextTick(loadServicesFromFilter)"
+                                >
+                                    <template v-slot:singlelabel="{ value }">
+                                        <div class="multiselect-single-label text-truncate" style="max-width: 100%;">{{ value.label }}</div>
+                                    </template>
+                                </Multiselect>
+                            </BCol>
+                            <BCol md="3">
+                                <label class="form-label">Intermediario</label>
+                                <Multiselect
+                                    v-model="filters.intermediary_id"
+                                    :options="searchIntermediaries"
+                                    :searchable="true"
+                                    :filter-results="false"
+                                    :min-chars="2"
+                                    :delay="300"
+                                    :resolve-on-load="false"
+                                    placeholder="Digita per cercare..."
+                                    no-options-text="Digita almeno 2 caratteri"
+                                    no-results-text="Nessun risultato"
+                                    :can-clear="true"
+                                    @change="() => nextTick(loadServicesFromFilter)"
+                                >
+                                    <template v-slot:singlelabel="{ value }">
+                                        <div class="multiselect-single-label text-truncate" style="max-width: 100%;">{{ value.label }}</div>
+                                    </template>
+                                </Multiselect>
+                            </BCol>
+                            <BCol md="3">
+                                <label class="form-label">Collega</label>
+                                <select v-model="filters.supplier_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
+                                    <option value="">Tutti i colleghi</option>
+                                    <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
+                                        {{ supplier.surname }} {{ supplier.name }}
+                                    </option>
+                                </select>
+                            </BCol>
+                        </BRow>
+
+                        <!-- Riga 3: Autista, Veicolo, Azienda -->
+                        <BRow class="mb-3">
+                            <BCol md="3">
+                                <label class="form-label">Autista</label>
+                                <select v-model="filters.driver_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
+                                    <option value="">Tutti gli autisti</option>
+                                    <option v-for="driver in drivers" :key="driver.id" :value="driver.id">
+                                        {{ driverLabel(driver) }}
+                                    </option>
+                                </select>
+                            </BCol>
+                            <BCol md="3">
+                                <label class="form-label">Veicolo</label>
+                                <select v-model="filters.vehicle_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
+                                    <option value="">Tutti i veicoli</option>
+                                    <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
+                                        {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
+                                    </option>
+                                </select>
+                            </BCol>
+                            <BCol md="3" v-if="isSuperAdmin">
                                 <label class="form-label">Azienda</label>
                                 <select v-model="filters.company_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
                                     <option value="">Tutte le aziende</option>
@@ -144,66 +240,96 @@
                         </BRow>
                         </div>
 
-                        <!-- Preset Filter Buttons -->
-                        <div class="d-flex gap-2 mb-3 align-items-center">
-                            <button type="button" class="btn btn-sm btn-soft-primary px-2" @click="shiftDates(-1)" title="Giorno precedente">
-                                <i class="ri-arrow-left-s-line"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-soft-primary px-2" @click="shiftDates(1)" title="Giorno successivo">
-                                <i class="ri-arrow-right-s-line"></i>
-                            </button>
-                            <span class="text-muted mx-1">|</span>
-                            <button
-                                type="button"
-                                class="btn btn-sm"
-                                :class="activePreset === 'tutti' ? 'btn-primary' : 'btn-soft-primary'"
-                                @click="filterAll"
-                            >
-                                Tutti
-                            </button>
-                            <button
-                                type="button"
-                                class="btn btn-sm"
-                                :class="activePreset === 'da_oggi' ? 'btn-primary' : 'btn-soft-primary'"
-                                @click="filterFromToday"
-                            >
-                                Da Oggi
-                            </button>
-                            <button
-                                type="button"
-                                class="btn btn-sm"
-                                :class="activePreset === 'settimana' ? 'btn-primary' : 'btn-soft-primary'"
-                                @click="filterWeek"
-                            >
-                                Settimana
-                            </button>
-                            <button
-                                type="button"
-                                class="btn btn-sm"
-                                :class="activePreset === 'oggi' ? 'btn-primary' : 'btn-soft-primary'"
-                                @click="filterToday"
-                            >
-                                Oggi
-                            </button>
-                            <button
-                                type="button"
-                                class="btn btn-sm"
-                                :class="activePreset === 'domani' ? 'btn-primary' : 'btn-soft-primary'"
-                                @click="filterTomorrow"
-                            >
-                                Domani
-                            </button>
-                            <span class="text-muted mx-1">|</span>
-                            <span class="text-muted fw-medium me-1">Servizi del:</span>
-                            <input
-                                v-model="specificDate"
-                                type="date"
-                                class="btn btn-sm"
-                                :class="activePreset === 'specific' ? 'btn-primary' : 'btn-soft-primary'"
-                                style="width: auto; cursor: pointer;"
-                                @change="filterSpecificDate"
-                                title="Filtra per giorno specifico"
-                            />
+                        <!-- Summary Section -->
+                        <div v-show="showSummary && !isDriver" class="mb-2">
+                            <div v-if="summaryLoading" class="text-center py-3">
+                                <span class="spinner-border spinner-border-sm text-info me-2"></span>
+                                <span class="text-muted">Caricamento riepilogo...</span>
+                            </div>
+                            <div v-else-if="summaryData" class="d-flex gap-2 flex-wrap">
+                                <!-- Servizi -->
+                                <div class="card card-animate border border-primary flex-fill summary-card">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1">
+                                                <p class="text-uppercase fw-medium text-muted text-truncate mb-1" style="font-size: 0.65rem;">Servizi</p>
+                                                <h4 class="mb-0 fw-bold text-primary">{{ summaryData.service_count }}</h4>
+                                            </div>
+                                            <i class="ri-file-list-3-line fs-2 text-primary" style="opacity: 0.5;"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Ricavi -->
+                                <div class="card card-animate border border-success flex-fill summary-card">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1">
+                                                <p class="text-uppercase fw-medium text-muted text-truncate mb-1" style="font-size: 0.65rem;">Ricavi</p>
+                                                <h4 class="mb-0 fw-bold text-success">&euro; {{ formatCurrency(summaryData.revenue_collected + summaryData.revenue_to_collect) }}</h4>
+                                            </div>
+                                            <i class="ri-money-euro-circle-line fs-2 text-success" style="opacity: 0.5;"></i>
+                                        </div>
+                                        <div class="d-flex gap-1 mt-2">
+                                            <span class="badge bg-success px-2 py-1" style="font-size: 0.7rem;" title="Incassati"><i class="ri-check-line me-1"></i>&euro; {{ formatCurrency(summaryData.revenue_collected) }}</span>
+                                            <span class="badge bg-danger px-2 py-1" style="font-size: 0.7rem;" title="Da incassare"><i class="ri-time-line me-1"></i>&euro; {{ formatCurrency(summaryData.revenue_to_collect) }}</span>
+                                        </div>
+                                        <div class="d-flex gap-2 mt-1" style="font-size: 0.7rem;">
+                                            <span class="text-muted" title="Imponibile"><i class="ri-money-euro-circle-line"></i> {{ formatCurrency(summaryData.revenue_taxable) }}</span>
+                                            <span class="text-muted" title="Bonifico"><i class="ri-bank-line"></i> {{ formatCurrency(summaryData.revenue_handling) }}</span>
+                                            <span class="text-muted" title="Carta"><i class="ri-bank-card-line"></i> {{ formatCurrency(summaryData.revenue_card) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Commissioni -->
+                                <div class="card card-animate border border-warning flex-fill summary-card">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1">
+                                                <p class="text-uppercase fw-medium text-muted text-truncate mb-1" style="font-size: 0.65rem;">Commissioni</p>
+                                                <h4 class="mb-0 fw-bold text-warning">&euro; {{ formatCurrency(summaryData.commission_paid + summaryData.commission_to_pay) }}</h4>
+                                            </div>
+                                            <i class="ri-exchange-line fs-2 text-warning" style="opacity: 0.5;"></i>
+                                        </div>
+                                        <div class="d-flex gap-1 mt-2">
+                                            <span class="badge bg-success px-2 py-1" style="font-size: 0.7rem;" title="Pagate"><i class="ri-check-line me-1"></i>&euro; {{ formatCurrency(summaryData.commission_paid) }}</span>
+                                            <span class="badge bg-danger px-2 py-1" style="font-size: 0.7rem;" title="Da pagare"><i class="ri-time-line me-1"></i>&euro; {{ formatCurrency(summaryData.commission_to_pay) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Costi Guida -->
+                                <div class="card card-animate border border-danger flex-fill summary-card">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1">
+                                                <p class="text-uppercase fw-medium text-muted text-truncate mb-1" style="font-size: 0.65rem;">Costi Guida</p>
+                                                <h4 class="mb-0 fw-bold text-danger">&euro; {{ formatCurrency(summaryData.driver_cost_total + summaryData.colleague_cost_total) }}</h4>
+                                            </div>
+                                            <i class="ri-steering-2-line fs-2 text-danger" style="opacity: 0.5;"></i>
+                                        </div>
+                                        <div class="d-flex gap-1 mt-2">
+                                            <span class="badge bg-success px-2 py-1" style="font-size: 0.7rem;" title="Pagati"><i class="ri-check-line me-1"></i>&euro; {{ formatCurrency(summaryData.driver_cost_paid + summaryData.colleague_cost_paid) }}</span>
+                                            <span class="badge bg-danger px-2 py-1" style="font-size: 0.7rem;" title="Da pagare"><i class="ri-time-line me-1"></i>&euro; {{ formatCurrency(summaryData.driver_cost_to_pay + summaryData.colleague_cost_to_pay) }}</span>
+                                        </div>
+                                        <div class="d-flex gap-2 mt-1" style="font-size: 0.7rem;">
+                                            <span class="text-muted" title="Autista">Au &euro; {{ formatCurrency(summaryData.driver_cost_total) }}</span>
+                                            <span class="text-muted" title="Collega">Co &euro; {{ formatCurrency(summaryData.colleague_cost_total) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Costi Soste -->
+                                <div class="card card-animate border border-info flex-fill summary-card">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1">
+                                                <p class="text-uppercase fw-medium text-muted text-truncate mb-1" style="font-size: 0.65rem;">Costi Soste</p>
+                                                <h4 class="mb-0 fw-bold text-info">&euro; {{ formatCurrency(summaryData.experience_cost) }}</h4>
+                                            </div>
+                                            <i class="ri-map-pin-line fs-2 text-info" style="opacity: 0.5;"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else class="small text-muted text-center py-2">Nessun dato disponibile</div>
                         </div>
 
                         <!-- Bulk Actions Area (Collapsible) -->
@@ -227,27 +353,24 @@
                                                 <input type="checkbox" v-model="selectAll" @change="toggleSelectAll" class="form-check-input">
                                             </label>
                                         </th>
+                                        <th scope="col" @click="sortBy('client_id')" style="cursor: pointer;">
+                                            Comm. | Inter.
+                                            <i v-if="sortField === 'client_id'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
+                                        </th>
                                         <th scope="col" @click="sortBy('reference_number')" style="cursor: pointer;">
                                             Dati Identificativi
                                             <i v-if="sortField === 'reference_number'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
                                         </th>
                                         <th scope="col" @click="sortBy('pickup_datetime')" style="cursor: pointer;">
-                                            Data
+                                            Piano di viaggio
                                             <i v-if="sortField === 'pickup_datetime'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
-                                        </th>
-                                        <th scope="col">
-                                            Passeggeri<br/>Bagagli
-                                        </th>
-                                        <th scope="col" @click="sortBy('client_id')" style="cursor: pointer;">
-                                            Committente<br/>Intermediario
-                                            <i v-if="sortField === 'client_id'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
                                         </th>
                                         <th scope="col">Autista</th>
                                         <th scope="col" @click="sortBy('vehicle_id')" style="cursor: pointer;">
                                             Veicolo
                                             <i v-if="sortField === 'vehicle_id'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
                                         </th>
-                                        <th scope="col">Esperienze</th>
+                                        <th scope="col">Soste/Esperienze</th>
                                         <th scope="col" @click="sortBy('service_price')" style="cursor: pointer;">
                                             Ricavi
                                             <i v-if="sortField === 'service_price'" :class="sortDirection === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'"></i>
@@ -271,14 +394,14 @@
                                         <!-- Colonna unificata: Selezione + Azioni + Notifiche -->
                                         <td>
                                             <!-- Riga 1: Checkbox + Azioni -->
-                                            <div class="d-flex align-items-center gap-1 mb-2">
+                                            <div class="d-flex align-items-center gap-1 mb-1">
                                                     <label v-if="!isDriver" class="bulk-checkbox-touch" @click.stop>
                                                     <input type="checkbox" v-model="selectedServices" :value="service.id" class="form-check-input">
                                                 </label>
-                                                <Link v-if="!isDriver || isServiceAssignedOrAccepted(service)" :href="route('easyncc.services.show', service.id)" class="btn btn-sm btn-soft-primary" title="Visualizza">
+                                                <Link v-if="!isDriver || isServiceAssignedOrAccepted(service)" :href="withReturnUrl(route('easyncc.services.show', service.id))" class="btn btn-sm btn-soft-primary" title="Visualizza">
                                                     <i class="ri-eye-line"></i>
                                                 </Link>
-                                                <Link v-if="!isDriver" :href="route('easyncc.services.edit', service.id)" class="btn btn-sm btn-soft-info" title="Modifica">
+                                                <Link v-if="!isDriver" :href="withReturnUrl(route('easyncc.services.edit', service.id))" class="btn btn-sm btn-soft-info" title="Modifica">
                                                     <i class="ri-edit-line"></i>
                                                 </Link>
                                                 <!-- Dropdown menu azioni secondarie -->
@@ -345,52 +468,116 @@
                                                 </select>
                                             </div>
                                             <!-- Riga 3: Indicatori (driver: solo sovrapposizioni) -->
-                                            <div class="d-flex align-items-center gap-2 small">
-                                                <span v-if="!isDriver" style="cursor: pointer;" @click="showTransactionsPopup(service)" title="Movimenti contabili">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span v-if="!isDriver" style="cursor: pointer; font-size: 1.1rem;" @click="showTransactionsPopup(service)" title="Movimenti contabili">
                                                     <i class="ri-file-list-line" :class="service.accounting_transactions_count > 0 ? 'text-success' : 'text-muted'"></i>
-                                                    {{ service.accounting_transactions_count || 0 }}
+                                                    <small style="font-size: 0.7rem;">{{ service.accounting_transactions_count || 0 }}</small>
                                                 </span>
-                                                <span v-if="!isDriver" style="cursor: pointer;" @click="showTasksPopup(service)" title="Task">
+                                                <span v-if="!isDriver" style="cursor: pointer; font-size: 1.1rem;" @click="showTasksPopup(service)" title="Task">
                                                     <i class="ri-task-line" :class="service.tasks_count > 0 ? getTaskIconClass(service) : 'text-muted'"></i>
-                                                    {{ getCompletedTasksCount(service) }}/{{ service.tasks_count || 0 }}
+                                                    <small style="font-size: 0.7rem;">{{ getCompletedTasksCount(service) }}/{{ service.tasks_count || 0 }}</small>
                                                 </span>
                                                 <span v-if="getTotalOverlapsCount(service) > 0" style="cursor: pointer;" @click="showOverlapsPopup(service)" title="Sovrapposizioni">
                                                     <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background-color: #ffc107; color: #000; font-weight: bold; font-size: 0.7rem; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); line-height: 1; padding-top: 4px;">!</span>
                                                     {{ getTotalOverlapsCount(service) }}
                                                 </span>
                                             </div>
+                                            <!-- ID Servizio -->
+                                            <div class="text-muted" style="font-size: 0.65rem; opacity: 0.7;">
+                                                #{{ service.reference_number || service.id }}
+                                            </div>
+                                        </td>
+                                        <!-- Committente/Intermediario -->
+                                        <td>
+                                            <template v-if="!isDriver || isServiceAssignedOrAccepted(service)">
+                                                <!-- Committente -->
+                                                <div v-if="service.client" class="mb-1">
+                                                    <div class="d-flex align-items-center gap-1">
+                                                        <span class="fw-bold text-primary" style="font-size: 0.7rem;">C:</span>
+                                                        <span class="fw-bold text-truncate" style="max-width: 160px;" :title="`${(service.client.surname || '').toUpperCase()} ${service.client.name || ''}`">
+                                                            {{ (service.client.surname || '').toUpperCase() }} {{ service.client.name }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="small text-muted" v-if="service.client.phone">
+                                                        <i class="ri-phone-line"></i> {{ service.client.phone }}
+                                                    </div>
+                                                </div>
+
+                                                <!-- Intermediario -->
+                                                <div v-if="service.intermediary" class="mt-1 pt-1 border-top">
+                                                    <div class="d-flex align-items-center gap-1">
+                                                        <span class="fw-bold text-secondary" style="font-size: 0.7rem;">I:</span>
+                                                        <span class="small text-truncate" style="max-width: 160px;" :title="`${(service.intermediary.surname || '').toUpperCase()} ${service.intermediary.name || ''}`">
+                                                            {{ (service.intermediary.surname || '').toUpperCase() }} {{ service.intermediary.name }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="small text-muted" v-if="service.intermediary.phone">
+                                                        <i class="ri-phone-line"></i> {{ service.intermediary.phone }}
+                                                    </div>
+                                                </div>
+                                            </template>
+                                            <div v-else class="small text-muted fst-italic">
+                                                <i class="ri-information-line me-1"></i>Info visibili dopo assegnazione
+                                            </div>
                                         </td>
                                         <!-- Dati Identificativi -->
                                         <td>
-                                            <!-- Tipologia Servizio come Tag, più visibile -->
-                                            <div class="mb-2" v-if="service.service_type">
+                                          <div class="cell-scroll-inner">
+                                            <!-- 1. Tipologia Servizio + Pax/Bagagli sulla stessa riga -->
+                                            <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                                                 <span
+                                                    v-if="isDriver || editingServiceType !== service.id"
                                                     class="badge"
-                                                    :style="{ ...serviceTypeBadgeStyle(service.service_type), fontSize: '0.9rem', padding: '0.45rem 0.85rem' }"
+                                                    :class="[!isDriver ? 'inline-editable' : '']"
+                                                    :style="{ ...serviceTypeBadgeStyle(service.service_type || ''), fontSize: '0.8rem', padding: '0.3rem 0.6rem', cursor: isDriver ? 'default' : 'pointer' }"
+                                                    :title="isDriver ? (service.service_type || '') : 'Clicca per modificare tipo servizio'"
+                                                    @click="!isDriver && startEditServiceType(service)"
                                                 >
-                                                    {{ service.service_type }}
+                                                    {{ service.service_type ? getServiceTypeAbbreviation(service.service_type) : '—' }}
+                                                </span>
+                                                <select
+                                                    v-if="!isDriver && editingServiceType === service.id"
+                                                    v-model="editingServiceTypeValue"
+                                                    :ref="el => serviceTypeInputRefs[service.id] = el"
+                                                    @change="saveServiceType(service)"
+                                                    @keydown.escape="cancelEditServiceType"
+                                                    @blur="cancelEditServiceType"
+                                                    class="form-select form-select-sm"
+                                                    style="font-size: 0.7rem; min-width: 140px; padding: 2px 24px 2px 6px;"
+                                                >
+                                                    <option value="">—</option>
+                                                    <option v-for="type in serviceTypes" :key="type.id" :value="type.name">{{ type.name }}</option>
+                                                </select>
+                                                <span
+                                                    class="d-inline-flex align-items-center gap-1"
+                                                    :class="{ 'cursor-pointer text-primary': service.passengers && service.passengers.length > 0 }"
+                                                    @click="service.passengers && service.passengers.length > 0 && showPassengersModal(service)"
+                                                    :title="service.passengers && service.passengers.length > 0 ? `Vedi ${service.passengers.length} passeggeri` : 'Nessun passeggero'"
+                                                    style="font-size: 0.8rem;"
+                                                >
+                                                    <i class="ri-group-line"></i>
+                                                    <span class="fw-medium">{{ service.passenger_count || 0 }}</span>
+                                                </span>
+                                                <span
+                                                    v-if="getTotalLuggage(service) > 0"
+                                                    class="d-inline-flex align-items-center gap-1 cursor-pointer text-info"
+                                                    @click="showLuggageModal(service)"
+                                                    :title="`Bagagli: ${getTotalLuggage(service)} totali`"
+                                                    style="font-size: 0.8rem;"
+                                                >
+                                                    <i class="ri-luggage-cart-line"></i>
+                                                    <span class="fw-medium">{{ getTotalLuggage(service) }}</span>
                                                 </span>
                                             </div>
 
-                                            <!-- Primo Passeggero o Messaggio -->
+                                            <!-- 2. Primo Passeggero -->
                                             <div class="mb-1">
                                                 <div v-if="service.passengers && service.passengers.length > 0">
                                                     <div class="d-flex align-items-center gap-1">
-                                                        <span v-if="service.passengers[0].nationality">{{ getNationalityFlag(service.passengers[0].nationality) }} </span>
-                                                        <span class="fw-bold text-uppercase">{{ service.passengers[0].surname }}</span>
-                                                        <span>{{ service.passengers[0].name }}</span>
-                                                        <!-- Icona per aprire modale se ci sono più passeggeri -->
-                                                        <button
-                                                            v-if="service.passengers.length > 1"
-                                                            type="button"
-                                                            @click="showPassengersModal(service)"
-                                                            class="btn btn-link btn-sm p-0 text-primary"
-                                                            :title="`Vedi tutti i ${service.passengers.length} passeggeri`"
-                                                            style="line-height: 1;"
-                                                        >
-                                                            <i class="ri-group-line" style="font-size: 1rem;"></i>
-                                                            <span class="badge bg-primary rounded-pill ms-1" style="font-size: 0.7rem;">{{ service.passengers.length }}</span>
-                                                        </button>
+                                                        <span v-if="service.passengers[0].nationality">{{ getNationalityFlag(service.passengers[0].nationality) }}</span>
+                                                        <span class="fw-bold text-truncate" style="max-width: 180px;" :title="`${(service.passengers[0].surname || '').toUpperCase()} ${service.passengers[0].name || ''}`">
+                                                            {{ (service.passengers[0].surname || '').toUpperCase() }} {{ service.passengers[0].name }}
+                                                        </span>
                                                     </div>
                                                     <div v-if="service.passengers[0].phone" class="small text-muted">
                                                         <i class="ri-phone-line me-1"></i>
@@ -398,28 +585,26 @@
                                                     </div>
                                                 </div>
                                                 <div v-else class="text-muted small fst-italic">
-                                                    Nessun passeggero inserito
+                                                    Nessun passeggero
                                                 </div>
                                             </div>
-
-                                            <!-- Identificativo Servizio in fondo, visibilità ridotta -->
-                                            <div class="small text-muted">
-                                                #{{ service.reference_number || service.id }}
-                                            </div>
+                                          </div>
                                         </td>
                                         <!-- Data -->
-                                        <td>
+                                        <td style="max-width: 280px; word-wrap: break-word; white-space: normal;">
                                             <!-- Display mode -->
                                             <div v-if="isDriver || editingDatetimes !== service.id">
-                                                <div class="mb-2" :class="{ 'inline-editable': !isDriver }" @click="!isDriver && startEditDatetimes(service)" :title="isDriver ? '' : 'Clicca per modificare orari'">
-                                                    <div class="fw-bold text-success" style="font-size: 0.75rem;">Partenza:</div>
-                                                    <div class="fw-bold">{{ formatDate(service.pickup_datetime) }}</div>
-                                                    <div class="small text-muted">{{ service.pickup_address }}</div>
+                                                <div class="mb-1" :class="{ 'inline-editable': !isDriver }" @click="!isDriver && startEditDatetimes(service)" :title="[formatDate(service.pickup_datetime), service.pickup_location, service.pickup_address].filter(Boolean).join(' — ') + (isDriver ? '' : ' — Clicca per modificare')">
+                                                    <div class="fw-bold"><i class="ri-arrow-right-circle-fill text-success me-1" style="font-size: 1rem;"></i><span class="text-success" style="font-size: 0.65rem; font-weight: 700; margin-right: 4px;">START</span>{{ formatDate(service.pickup_datetime) }}</div>
+                                                    <div class="small text-muted text-truncate" style="max-width: 250px;">
+                                                        {{ [service.pickup_location, service.pickup_address].filter(Boolean).join(' | ').substring(0, 50) }}{{ [service.pickup_location, service.pickup_address].filter(Boolean).join(' | ').length > 50 ? '...' : '' }}
+                                                    </div>
                                                 </div>
-                                                <div :class="{ 'inline-editable': !isDriver }" @click="!isDriver && startEditDatetimes(service)" :title="isDriver ? '' : 'Clicca per modificare orari'">
-                                                    <div class="fw-bold text-danger" style="font-size: 0.75rem;">Arrivo:</div>
-                                                    <div class="fw-bold">{{ formatDate(service.dropoff_datetime) }}</div>
-                                                    <div class="small text-muted">{{ service.dropoff_address }}</div>
+                                                <div :class="{ 'inline-editable': !isDriver }" @click="!isDriver && startEditDatetimes(service)" :title="[formatDate(service.dropoff_datetime), service.dropoff_location, service.dropoff_address].filter(Boolean).join(' — ') + (isDriver ? '' : ' — Clicca per modificare')">
+                                                    <div class="fw-bold"><i class="ri-arrow-left-circle-fill text-danger me-1" style="font-size: 1rem;"></i><span class="text-danger" style="font-size: 0.65rem; font-weight: 700; margin-right: 4px;">STOP</span>{{ formatDate(service.dropoff_datetime) }}</div>
+                                                    <div class="small text-muted text-truncate" style="max-width: 250px;">
+                                                        {{ [service.dropoff_location, service.dropoff_address].filter(Boolean).join(' | ').substring(0, 50) }}{{ [service.dropoff_location, service.dropoff_address].filter(Boolean).join(' | ').length > 50 ? '...' : '' }}
+                                                    </div>
                                                 </div>
                                             </div>
                                             <!-- Edit mode (not for drivers) -->
@@ -428,6 +613,8 @@
                                                     <label class="text-success fw-bold" style="font-size: 0.65rem;">Pickup</label>
                                                     <input type="datetime-local" v-model="editingDatetimeValues.pickup_datetime"
                                                            class="form-control form-control-sm" style="font-size: 0.75rem;" />
+                                                    <input type="text" v-model="editingDatetimeValues.pickup_address"
+                                                           class="form-control form-control-sm mt-1" style="font-size: 0.75rem;" placeholder="Luogo pickup" />
                                                 </div>
                                                 <div class="mb-1">
                                                     <label class="text-muted" style="font-size: 0.65rem;">Uscita mezzo</label>
@@ -438,6 +625,8 @@
                                                     <label class="text-danger fw-bold" style="font-size: 0.65rem;">Dropoff</label>
                                                     <input type="datetime-local" v-model="editingDatetimeValues.dropoff_datetime"
                                                            class="form-control form-control-sm" style="font-size: 0.75rem;" />
+                                                    <input type="text" v-model="editingDatetimeValues.dropoff_address"
+                                                           class="form-control form-control-sm mt-1" style="font-size: 0.75rem;" placeholder="Luogo dropoff" />
                                                 </div>
                                                 <div class="mb-1">
                                                     <label class="text-muted" style="font-size: 0.65rem;">Rientro mezzo</label>
@@ -455,112 +644,16 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <!-- Passeggeri -->
-                                        <td>
-                                            <!-- Passenger Count Inline Edit -->
-                                            <div class="mb-1">
-                                                <!-- Display mode -->
-                                                <div
-                                                    v-if="isDriver || editingPassengerCount !== service.id"
-                                                    class="d-flex align-items-center gap-1"
-                                                    :class="{ 'inline-editable': !isDriver }"
-                                                    @click="!isDriver && startEditPassengerCount(service)"
-                                                    :title="isDriver ? '' : 'Clicca per modificare'"
-                                                >
-                                                    <div class="fw-bold">
-                                                        <i class="ri-user-line"></i> {{ service.passenger_count || 0 }}
-                                                    </div>
-                                                </div>
-
-                                                <!-- Edit mode (not for drivers) -->
-                                                <div v-else class="d-flex gap-2 align-items-center">
-                                                    <input
-                                                        v-model.number="editingPassengerCountValue"
-                                                        :ref="el => passengerCountInputRefs[service.id] = el"
-                                                        @keydown.enter="savePassengerCount(service)"
-                                                        @keydown.escape="cancelEditPassengerCount"
-                                                        @blur="savePassengerCount(service)"
-                                                        type="number"
-                                                        min="0"
-                                                        class="form-control form-control-sm"
-                                                        placeholder="N. passeggeri"
-                                                        style="font-size: 0.85rem; width: 80px;"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <!-- Bagagli -->
-                                            <div class="small mb-1">
-                                                <span class="text-muted me-2" style="font-size: 0.7rem;">Bagagli:</span>
-                                                <span class="d-inline-flex align-items-center gap-2">
-                                                    <span :title="`Bagaglio grande: ${service.large_luggage || 0}`" style="cursor: help;">
-                                                        <i class="ri-luggage-cart-line"></i>{{ service.large_luggage || 0 }}
-                                                    </span>
-                                                    <span :title="`Bagaglio medio: ${service.medium_luggage || 0}`" style="cursor: help;">
-                                                        <i class="ri-briefcase-line"></i>{{ service.medium_luggage || 0 }}
-                                                    </span>
-                                                    <span :title="`Bagaglio piccolo: ${service.small_luggage || 0}`" style="cursor: help;">
-                                                        <i class="ri-handbag-line"></i>{{ service.small_luggage || 0 }}
-                                                    </span>
-                                                </span>
-                                            </div>
-                                            <!-- Babyseat -->
-                                            <div class="small mb-1">
-                                                <span class="text-muted me-2" style="font-size: 0.7rem;">Carryons:</span>
-                                                <span class="d-inline-flex align-items-center gap-2">
-                                                    <span :title="`Ovetto: ${service.baby_seat_infant || 0}`" style="cursor: help;">
-                                                        <i class="ri-bear-smile-line"></i>{{ service.baby_seat_infant || 0 }}
-                                                    </span>
-                                                    <span :title="`Seggiolino standard: ${service.baby_seat_standard || 0}`" style="cursor: help;">
-                                                        <i class="ri-parent-line"></i>{{ service.baby_seat_standard || 0 }}
-                                                    </span>
-                                                    <span :title="`Booster: ${service.baby_seat_booster || 0}`" style="cursor: help;">
-                                                        <i class="ri-user-smile-line"></i>{{ service.baby_seat_booster || 0 }}
-                                                    </span>
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <!-- Committente/Intermediario -->
-                                        <td>
-                                            <template v-if="!isDriver || isServiceAssignedOrAccepted(service)">
-                                                <!-- Committente -->
-                                                <div v-if="service.client">
-                                                    <div class="small text-muted mb-1">
-                                                        <span class="badge bg-soft-primary text-primary" style="font-size: 0.7rem;">Committente</span>
-                                                    </div>
-                                                    <div class="fw-bold">
-                                                        {{ service.client.name }} {{ service.client.surname }}
-                                                    </div>
-                                                    <div class="small" v-if="service.client.phone">
-                                                        <i class="ri-phone-line"></i> {{ service.client.phone }}
-                                                    </div>
-                                                </div>
-
-                                                <!-- Intermediario -->
-                                                <div v-if="service.intermediary" class="mt-2 pt-2 border-top">
-                                                    <div class="small text-muted mb-1">
-                                                        <span class="badge bg-soft-secondary text-secondary" style="font-size: 0.7rem;">Intermediario</span>
-                                                    </div>
-                                                    <div class="small">
-                                                        {{ service.intermediary.name }} {{ service.intermediary.surname }}
-                                                    </div>
-                                                    <div class="small" v-if="service.intermediary.phone">
-                                                        <i class="ri-phone-line"></i> {{ service.intermediary.phone }}
-                                                    </div>
-                                                </div>
-                                            </template>
-                                            <div v-else class="small text-muted fst-italic">
-                                                <i class="ri-information-line me-1"></i>Le informazioni saranno visibili quando il servizio sarà assegnato
-                                            </div>
-                                        </td>
                                         <!-- Autista -->
                                         <td>
+                                          <div class="cell-scroll-inner">
                                             <!-- Driver user: conditional display -->
                                             <template v-if="isDriver">
                                                 <div v-if="isServiceAssignedOrAccepted(service)">
                                                     <div v-if="service.drivers && service.drivers.length > 0">
-                                                        <div v-for="driver in service.drivers" :key="driver.id" class="mb-2">
-                                                            <span class="badge text-start" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'}; padding: 0.5rem 0.75rem;`">
-                                                                <div class="fw-bold text-uppercase" style="font-size: 0.9rem;">{{ driverLabel(driver) }}</div>
+                                                        <div v-for="driver in service.drivers" :key="driver.id" class="mb-1">
+                                                            <span class="badge text-start" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'}; padding: 0.25rem 0.5rem;`">
+                                                                <div class="fw-bold text-uppercase" style="font-size: 0.75rem;">{{ driverLabel(driver) }}</div>
                                                             </span>
                                                         </div>
                                                     </div>
@@ -580,9 +673,9 @@
                                                 <!-- Display mode -->
                                                 <div v-if="editingDrivers !== service.id" class="inline-editable" @click="startEditDrivers(service)" title="Clicca per modificare">
                                                     <div v-if="service.drivers && service.drivers.length > 0">
-                                                        <div v-for="driver in service.drivers" :key="driver.id" class="mb-2">
-                                                            <span class="badge text-start" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'}; padding: 0.5rem 0.75rem;`">
-                                                                <div class="fw-bold text-uppercase" style="font-size: 0.9rem;">{{ driverLabel(driver) }}</div>
+                                                        <div v-for="driver in service.drivers" :key="driver.id" class="mb-1">
+                                                            <span class="badge text-start" :style="`background-color: ${driver.driver_profile?.color || '#6c757d'}; padding: 0.25rem 0.5rem;`">
+                                                                <div class="fw-bold text-uppercase" style="font-size: 0.75rem;">{{ driverLabel(driver) }}</div>
                                                             </span>
                                                         </div>
                                                     </div>
@@ -662,12 +755,15 @@
                                                         </div>
                                                     </div>
                                             </template>
+                                          </div>
                                         </td>
                                         <!-- Veicolo -->
                                         <td>
+                                          <div class="cell-scroll-inner">
                                             <!-- Driver user: conditional display -->
                                             <template v-if="isDriver">
                                                 <div v-if="isServiceAssignedOrAccepted(service) && service.vehicle">
+                                                    <div class="small fw-bold mb-1">{{ service.vehicle.model }}</div>
                                                     <div
                                                         class="targa-auto"
                                                         :title="`${service.vehicle.brand} ${service.vehicle.model} - ${service.vehicle.passenger_capacity} posti`"
@@ -689,6 +785,7 @@
                                                         @click="startEditVehicle(service)"
                                                         title="Clicca per modificare"
                                                     >
+                                                        <div class="small fw-bold mb-1">{{ service.vehicle.model }}</div>
                                                         <div
                                                             class="targa-auto"
                                                             :title="`${service.vehicle.brand} ${service.vehicle.model} - ${service.vehicle.passenger_capacity} posti`"
@@ -727,36 +824,50 @@
                                                 </div>
 
                                                 <!-- Fornitore trasporto -->
-                                                <div class="small mt-2" v-if="service.supplier">
-                                                    <span class="badge bg-soft-info text-info" style="font-size: 0.7rem;">Fornitore</span>
-                                                    <div class="text-muted mt-1">
-                                                        <i class="ri-building-line"></i> {{ service.supplier.name }} {{ service.supplier.surname }}
+                                                <div class="small mt-1" v-if="service.supplier">
+                                                    <div class="d-flex align-items-center gap-1 text-muted">
+                                                        <span class="fw-bold text-info" style="font-size: 0.7rem;">F:</span>
+                                                        <span class="text-truncate" style="max-width: 140px;" :title="`${(service.supplier.surname || '').toUpperCase()} ${service.supplier.name || ''}`">
+                                                            {{ (service.supplier.surname || '').toUpperCase() }} {{ service.supplier.name }}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </template>
+                                          </div>
                                         </td>
                                         <!-- Esperienze -->
                                         <td>
-                                            <div v-if="service.activities && service.activities.length > 0">
-                                                <div v-for="activity in service.activities" :key="activity.id" class="small mb-1">
-                                                    <!-- Ora | Tipologia -->
-                                                    <div class="fw-medium">
-                                                        {{ formatTime(activity.start_time) }} | {{ activity.activity_type?.name || '-' }}
-                                                    </div>
-                                                    <!-- Fornitore | Pagamento -->
-                                                    <div class="text-muted" style="font-size: 0.75rem;">
-                                                        <span v-if="activity.supplier?.name || activity.supplier?.surname">
-                                                            {{ activity.supplier.name }} {{ activity.supplier.surname }}
-                                                        </span>
-                                                        <span v-if="(activity.supplier?.name || activity.supplier?.surname) && activity.payment_type"> | </span>
-                                                        <span v-if="activity.payment_type" class="text-secondary">
-                                                            Pagamento: {{ activity.payment_type }}
-                                                        </span>
-                                                        <span v-if="!activity.supplier?.name && !activity.supplier?.surname && !activity.payment_type">-</span>
-                                                    </div>
-                                                </div>
+                                          <div class="cell-scroll-wrapper">
+                                            <div class="cell-scroll-inner" :ref="el => setActivityScrollRef(service.id, el)">
+                                              <div v-if="service.activities && service.activities.length > 0"
+                                                   class="cursor-pointer"
+                                                   @click="openActivitiesModal(service)"
+                                                   title="Clicca per dettaglio soste"
+                                              >
+                                                  <div v-for="activity in service.activities" :key="activity.id" class="small mb-1">
+                                                      <div class="fw-medium">
+                                                          {{ formatTime(activity.start_time) }} | {{ activity.activity_type?.name || '-' }}
+                                                      </div>
+                                                      <div v-if="activity.name" class="text-dark" style="font-size: 0.75rem;">
+                                                          {{ activity.name.length > 40 ? activity.name.substring(0, 40) + '...' : activity.name }}
+                                                      </div>
+                                                      <div v-if="activity.supplier?.name || activity.supplier?.surname || activity.payment_type" class="text-muted" style="font-size: 0.75rem;">
+                                                          <span v-if="activity.supplier?.name || activity.supplier?.surname">
+                                                              {{ activity.supplier.name }} {{ activity.supplier.surname }}
+                                                          </span>
+                                                          <span v-if="(activity.supplier?.name || activity.supplier?.surname) && activity.payment_type"> | </span>
+                                                          <span v-if="activity.payment_type" class="text-secondary">
+                                                              {{ activity.payment_type }}
+                                                          </span>
+                                                      </div>
+                                                  </div>
+                                              </div>
+                                              <div v-else class="text-muted small">—</div>
                                             </div>
-                                            <div v-else class="text-muted">-</div>
+                                            <div v-if="activityScrollOverflows[service.id]" class="scroll-fade">
+                                                <i class="ri-arrow-down-s-line"></i>
+                                            </div>
+                                          </div>
                                         </td>
                                         <!-- Ricavi -->
                                         <td>
@@ -784,19 +895,18 @@
                                                     @click="showEconomicsModal(service)"
                                                     title="Clicca per vedere i dettagli economici"
                                                 >
-                                                    <div v-if="(parseFloat(service.deposit_amount) || 0) > 0 || getBalanceValue(service) > 0">
-                                                        <div v-if="(parseFloat(service.deposit_amount) || 0) > 0" class="text-start mb-1">
-                                                            <div class="text-muted" style="font-size: 0.65rem;">Acconto</div>
-                                                            <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'deposit_amount', 'sale_deposit')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.deposit_amount) }}</span>
+                                                    <div v-if="getDepositValue(service) > 0 || getBalanceValue(service) > 0 || getExtraRevenuesTotal(service) > 0">
+                                                        <div v-if="getDepositValue(service) > 0" class="text-start mb-1">
+                                                            <span class="badge px-2 py-1" :style="{ ...transactionBadgeSolidStyle(service.transaction_status_map, 'deposit_amount', 'sale_deposit'), fontSize: '0.7rem', ...(isStatusCancelled(service.transaction_status_map, 'sale_deposit') ? { textDecoration: 'line-through', opacity: '0.6' } : {}) }" title="Acconto"><b class="me-1">A</b>&euro;{{ formatCurrency(getDepositValue(service)) }}<i class="ms-1" :class="getSaleTypeIcon(service.deposit_sale_type)" :title="getSaleTypeTooltip(service.deposit_sale_type)" style="opacity: 0.8;"></i></span>
                                                         </div>
                                                         <div v-if="getBalanceValue(service) > 0" class="text-start mb-1">
-                                                            <div class="text-muted" style="font-size: 0.65rem;">{{ getBalanceLabel(service) }}</div>
-                                                            <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'balance', 'sale_balance')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(getBalanceValue(service)) }}</span>
+                                                            <span class="badge px-2 py-1" :style="{ ...transactionBadgeSolidStyle(service.transaction_status_map, 'balance', 'sale_balance'), fontSize: '0.7rem', ...(isStatusCancelled(service.transaction_status_map, 'sale_balance') ? { textDecoration: 'line-through', opacity: '0.6' } : {}) }" :title="getBalanceLabel(service)"><b class="me-1">S</b>&euro;{{ formatCurrency(getBalanceValue(service)) }}<i class="ms-1" :class="getSaleTypeIcon(service.balance_sale_type)" :title="getSaleTypeTooltip(service.balance_sale_type)" style="opacity: 0.8;"></i></span>
                                                         </div>
-                                                        <hr class="my-1" style="border-color: #ccc;">
-                                                        <div class="text-start">
-                                                            <div class="text-muted" style="font-size: 0.65rem;">TOTALE</div>
-                                                            <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'sale')" style="font-size: 0.85rem;">&euro;{{ formatCurrency((parseFloat(service.deposit_amount) || 0) + getBalanceValue(service)) }}</span>
+                                                        <div v-if="getExtraRevenuesTotal(service) > 0" class="text-start mb-1">
+                                                            <span class="badge px-2 py-1" :style="{ ...transactionBadgeSolidStyle(service.transaction_status_map, 'extra_revenue', 'sale_extra'), fontSize: '0.7rem', ...(isStatusCancelled(service.transaction_status_map, 'sale_extra') ? { textDecoration: 'line-through', opacity: '0.6' } : {}) }" :title="getExtraRevenuesTooltip(service)"><b class="me-1">E</b>&euro;{{ formatCurrency(getExtraRevenuesTotal(service)) }}</span>
+                                                        </div>
+                                                        <div class="text-start" style="border-top: 2px solid #000; padding-top: 3px; margin-top: 3px;">
+                                                            <span class="badge px-2 py-1" :style="{ ...transactionBadgeAggregateStyle(service.transaction_status_map, ['sale_deposit', 'sale_balance', 'sale_extra']), fontSize: '0.85rem' }" title="Totale ricavi">&euro;{{ formatCurrency(getAggregateTotal(service)) }}</span>
                                                         </div>
                                                     </div>
                                                     <span v-else class="text-muted small">--</span>
@@ -806,37 +916,33 @@
                                         <!-- Costi -->
                                         <td>
                                             <span v-if="isDriver" class="text-muted small">--</span>
-                                            <div v-else-if="hasAnyCost(service)" class="d-flex flex-column gap-1">
+                                            <div v-else class="d-flex flex-column gap-1 cell-scroll-inner" style="cursor: pointer;" @click="showEconomicsModal(service)" title="Clicca per modificare importi">
                                                 <div v-if="service.driver_compensation > 0" class="text-start">
-                                                    <div class="text-muted" style="font-size: 0.65rem;">Autista</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'driver_compensation', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.driver_compensation) }}</span>
+                                                    <span class="badge px-2 py-1" :style="{ ...transactionBadgeSolidStyle(service.transaction_status_map, 'driver_compensation', 'purchase'), fontSize: '0.7rem' }" title="Autista"><b class="me-1">Au</b>&euro;{{ formatCurrency(service.driver_compensation) }}</span>
                                                 </div>
                                                 <div v-if="service.colleague_cost > 0" class="text-start">
-                                                    <div class="text-muted" style="font-size: 0.65rem;">Collega</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'colleague_cost', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.colleague_cost) }}</span>
+                                                    <span class="badge px-2 py-1" :style="{ ...transactionBadgeSolidStyle(service.transaction_status_map, 'colleague_cost', 'purchase'), fontSize: '0.7rem' }" title="Collega"><b class="me-1">Co</b>&euro;{{ formatCurrency(service.colleague_cost) }}</span>
                                                 </div>
                                                 <div v-if="service.intermediary_commission > 0" class="text-start">
-                                                    <div class="text-muted" style="font-size: 0.65rem;">Intermediazione</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'intermediary_commission', 'intermediation')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.intermediary_commission) }}</span>
+                                                    <span class="badge px-2 py-1" :style="{ ...transactionBadgeSolidStyle(service.transaction_status_map, 'intermediary_commission', 'intermediation'), fontSize: '0.7rem' }" title="Intermediazione"><b class="me-1">In</b>&euro;{{ formatCurrency(service.intermediary_commission) }}</span>
                                                 </div>
                                                 <div v-if="service.fuel_cost > 0" class="text-start">
-                                                    <div class="text-muted" style="font-size: 0.65rem;">Carburante</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'fuel_cost', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.fuel_cost) }}</span>
+                                                    <span class="badge px-2 py-1" :style="{ ...transactionBadgeSolidStyle(service.transaction_status_map, 'fuel_cost', 'purchase'), fontSize: '0.7rem' }" title="Carburante"><b class="me-1">Ca</b>&euro;{{ formatCurrency(service.fuel_cost) }}</span>
                                                 </div>
                                                 <div v-if="service.toll_cost > 0" class="text-start">
-                                                    <div class="text-muted" style="font-size: 0.65rem;">Pedaggi</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'toll_cost', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.toll_cost) }}</span>
+                                                    <span class="badge px-2 py-1" :style="{ ...transactionBadgeSolidStyle(service.transaction_status_map, 'toll_cost', 'purchase'), fontSize: '0.7rem' }" title="Pedaggi"><b class="me-1">Pe</b>&euro;{{ formatCurrency(service.toll_cost) }}</span>
                                                 </div>
                                                 <div v-if="service.parking_cost > 0" class="text-start">
-                                                    <div class="text-muted" style="font-size: 0.65rem;">Parcheggi</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'parking_cost', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.parking_cost) }}</span>
+                                                    <span class="badge px-2 py-1" :style="{ ...transactionBadgeSolidStyle(service.transaction_status_map, 'parking_cost', 'purchase'), fontSize: '0.7rem' }" title="Parcheggi"><b class="me-1">Pa</b>&euro;{{ formatCurrency(service.parking_cost) }}</span>
                                                 </div>
                                                 <div v-if="service.other_vehicle_costs > 0" class="text-start">
-                                                    <div class="text-muted" style="font-size: 0.65rem;">Altri costi</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'other_vehicle_costs', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.other_vehicle_costs) }}</span>
+                                                    <span class="badge px-2 py-1" :style="{ ...transactionBadgeSolidStyle(service.transaction_status_map, 'other_vehicle_costs', 'purchase'), fontSize: '0.7rem' }" title="Altri costi"><b class="me-1">Al</b>&euro;{{ formatCurrency(service.other_vehicle_costs) }}</span>
                                                 </div>
+                                                <div v-if="getExperienceCostTotal(service) > 0" class="text-start">
+                                                    <span class="badge px-2 py-1" :style="{ ...transactionBadgeSolidStyle(service.transaction_status_map, 'experience_cost', 'purchase'), fontSize: '0.7rem' }" :title="getExperienceCostTooltip(service)"><b class="me-1">Es</b>&euro;{{ formatCurrency(getExperienceCostTotal(service)) }}</span>
+                                                </div>
+                                                <span v-if="!hasAnyCost(service)" class="text-muted small">--</span>
                                             </div>
-                                            <span v-else class="text-muted small">--</span>
                                         </td>
                                         <!-- Azienda (solo per super-admin) -->
                                         <td v-if="isSuperAdmin">
@@ -860,6 +966,7 @@
                                     <option :value="15">15</option>
                                     <option :value="30">30</option>
                                     <option :value="50">50</option>
+                                    <option :value="9999">Tutti</option>
                                 </select>
                                 <span class="text-muted small">
                                     {{ (currentPage - 1) * perPage + 1 }}-{{ Math.min(currentPage * perPage, totalItems) }} di {{ totalItems }}
@@ -900,94 +1007,6 @@
                         </div>
 
                         <!-- Popup Movimenti Contabili -->
-                        <div v-if="showTransactionsModal" class="popup-overlay" @click="closeTransactionsPopup">
-                            <div class="popup-content popup-content-large" @click.stop>
-                                <div class="popup-header">
-                                    <h6 class="mb-0">Movimenti Contabili - Servizio #{{ selectedServiceForPopup?.reference_number || selectedServiceForPopup?.id }}</h6>
-                                    <button type="button" class="btn-close" @click="closeTransactionsPopup"></button>
-                                </div>
-                                <div class="popup-body">
-                                    <div v-if="selectedServiceForPopup?.accounting_transactions && selectedServiceForPopup.accounting_transactions.length > 0" class="table-responsive">
-                                        <table class="table table-sm table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th>Data</th>
-                                                    <th>Importo</th>
-                                                    <th>Tipo</th>
-                                                    <th>Rata</th>
-                                                    <th>Causale</th>
-                                                    <th>Stato</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr v-for="trans in selectedServiceForPopup.accounting_transactions" :key="trans.id">
-                                                    <td>{{ formatDate(trans.date) }}</td>
-                                                    <td class="fw-bold">€{{ formatCurrency(trans.amount) }}</td>
-                                                    <td>{{ trans.type || '-' }}</td>
-                                                    <td>{{ trans.installment || '-' }}</td>
-                                                    <td>{{ trans.payment_reason || '-' }}</td>
-                                                    <td>
-                                                        <span class="badge" :class="getTransactionStatusBadgeClass(trans.status)">
-                                                            {{ trans.status || '-' }}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div v-else class="text-center text-muted py-3">
-                                        <p class="mb-0">Nessun movimento contabile presente</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Popup Task -->
-                        <div v-if="showTasksModal" class="popup-overlay" @click="closeTasksPopup">
-                            <div class="popup-content" @click.stop>
-                                <div class="popup-header">
-                                    <h6 class="mb-0">Task - Servizio #{{ selectedServiceForPopup?.reference_number || selectedServiceForPopup?.id }}</h6>
-                                    <button type="button" class="btn-close" @click="closeTasksPopup"></button>
-                                </div>
-                                <div class="popup-body">
-                                    <div v-if="selectedServiceForPopup?.tasks && selectedServiceForPopup.tasks.length > 0" class="table-responsive">
-                                        <table class="table table-sm">
-                                            <thead>
-                                                <tr>
-                                                    <th>Nome</th>
-                                                    <th>Scadenza</th>
-                                                    <th>Stato</th>
-                                                    <th>Assegnato a</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr v-for="task in selectedServiceForPopup.tasks" :key="task.id">
-                                                    <td>{{ task.name }}</td>
-                                                    <td>{{ task.due_date ? formatDate(task.due_date) : '-' }}</td>
-                                                    <td>
-                                                        <span class="badge" :class="getTaskStatusBadgeClass(task.status)">
-                                                            {{ getTaskStatusLabel(task.status) }}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <div v-if="task.assigned_users && task.assigned_users.length > 0">
-                                                            <span v-for="(user, idx) in task.assigned_users" :key="user.id">
-                                                                {{ user.name }}<span v-if="idx < task.assigned_users.length - 1">, </span>
-                                                            </span>
-                                                        </div>
-                                                        <div v-else>-</div>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div v-else class="text-center text-muted py-3">
-                                        <p class="mb-0">Nessun task presente</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Popup Sovrapposizioni -->
                         <div v-if="showOverlapsModal" class="popup-overlay" @click="closeOverlapsPopup">
                             <div class="popup-content popup-content-large" @click.stop>
@@ -1146,6 +1165,49 @@
             </div>
         </BModal>
 
+        <!-- Luggage Modal -->
+        <BModal
+            v-model="showLuggageModalFlag"
+            title="Dettaglio Bagagli"
+            size="sm"
+            hide-footer
+            centered
+        >
+            <div v-if="luggageModalService">
+                <h6 class="mb-3">
+                    Servizio: <strong>#{{ luggageModalService.reference_number || luggageModalService.id }}</strong>
+                </h6>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr v-if="luggageModalService.large_luggage > 0">
+                            <td><i class="ri-luggage-cart-line me-1"></i> Bagaglio grande</td>
+                            <td class="fw-bold text-end">{{ luggageModalService.large_luggage }}</td>
+                        </tr>
+                        <tr v-if="luggageModalService.medium_luggage > 0">
+                            <td><i class="ri-briefcase-line me-1"></i> Bagaglio medio</td>
+                            <td class="fw-bold text-end">{{ luggageModalService.medium_luggage }}</td>
+                        </tr>
+                        <tr v-if="luggageModalService.small_luggage > 0">
+                            <td><i class="ri-handbag-line me-1"></i> Bagaglio piccolo</td>
+                            <td class="fw-bold text-end">{{ luggageModalService.small_luggage }}</td>
+                        </tr>
+                        <tr v-if="luggageModalService.baby_seat_infant > 0">
+                            <td><i class="ri-bear-smile-line me-1"></i> Ovetto</td>
+                            <td class="fw-bold text-end">{{ luggageModalService.baby_seat_infant }}</td>
+                        </tr>
+                        <tr v-if="luggageModalService.baby_seat_standard > 0">
+                            <td><i class="ri-parent-line me-1"></i> Seggiolino standard</td>
+                            <td class="fw-bold text-end">{{ luggageModalService.baby_seat_standard }}</td>
+                        </tr>
+                        <tr v-if="luggageModalService.baby_seat_booster > 0">
+                            <td><i class="ri-user-smile-line me-1"></i> Booster</td>
+                            <td class="fw-bold text-end">{{ luggageModalService.baby_seat_booster }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </BModal>
+
         <!-- Overlap Confirmation Modal -->
         <BModal
             v-model="showOverlapConfirmationModal"
@@ -1207,57 +1269,176 @@
         <!-- Economics Modal -->
         <BModal
             v-model="showEconomicsModalFlag"
-            title="Dettagli Economici"
-            size="lg"
-            hide-footer
+            title="Modifica Importi"
+            size="xl"
             centered
+            @hidden="resetEconomicsForm"
         >
-            <div v-if="selectedService">
+            <div v-if="economicsForm">
                 <h6 class="mb-3">
-                    Servizio: <strong>#{{ selectedService.reference_number || selectedService.id }}</strong>
+                    Servizio: <strong>#{{ selectedService?.reference_number || selectedService?.id }}</strong>
+                    <span v-if="selectedService?.passengers?.length" class="text-muted ms-2">
+                        - {{ selectedService.passengers[0]?.surname }} {{ selectedService.passengers[0]?.name }}
+                    </span>
                 </h6>
 
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <tbody>
-                            <tr>
-                                <td class="fw-bold">Prezzo Totale</td>
-                                <td class="text-end">
-                                    <span class="badge bg-success fs-6 px-3 py-2">€{{ formatCurrency(selectedService.service_price) }}</span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <i class="ri-wallet-3-line me-1 text-primary"></i>
-                                    Acconto
-                                </td>
-                                <td class="text-end">€{{ formatCurrency(selectedService.deposit_amount) }}</td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <i class="ri-money-euro-circle-line me-1 text-success"></i>
-                                    Saldo Imponibile
-                                </td>
-                                <td class="text-end">€{{ formatCurrency(selectedService.balance_taxable) }}</td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <i class="ri-percent-line me-1 text-warning"></i>
-                                    Diritti di Agenzia
-                                </td>
-                                <td class="text-end">€{{ formatCurrency(selectedService.balance_handling_fees) }}</td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <i class="ri-bank-card-line me-1 text-info"></i>
-                                    Commissioni Carta
-                                </td>
-                                <td class="text-end">€{{ formatCurrency(selectedService.balance_card_fees) }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <BRow>
+                    <!-- RICAVI -->
+                    <BCol md="6">
+                        <div class="border rounded p-3 mb-3">
+                            <h6 class="text-primary mb-3"><i class="ri-money-euro-circle-line me-1"></i>Ricavi</h6>
+
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Prezzo Imponibile (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.service_price" @change="recalculateTotals" />
+                            </div>
+
+                            <BRow class="mb-2">
+                                <BCol cols="4">
+                                    <label class="form-label small mb-1">IVA %</label>
+                                    <select class="form-select form-select-sm" v-model.number="economicsForm.vat_rate" @change="recalculateTotals">
+                                        <option :value="10">10%</option>
+                                        <option :value="22">22%</option>
+                                    </select>
+                                </BCol>
+                                <BCol cols="4">
+                                    <label class="form-label small mb-1">Card Fees %</label>
+                                    <input type="number" step="0.1" min="0" class="form-control form-control-sm"
+                                        v-model.number="economicsForm.card_fees_percentage" @change="recalculateTotals" />
+                                </BCol>
+                                <BCol cols="4">
+                                    <label class="form-label small mb-1">Acconto %</label>
+                                    <input type="number" step="1" min="0" max="100" class="form-control form-control-sm"
+                                        v-model.number="economicsForm.deposit_percentage" @change="recalculateTotals" />
+                                </BCol>
+                            </BRow>
+
+                            <div class="d-flex gap-3 mb-2">
+                                <div class="flex-fill">
+                                    <label class="form-label small mb-1">Tipo Acconto</label>
+                                    <select class="form-select form-select-sm" v-model="economicsForm.deposit_sale_type">
+                                        <option value="deposit_taxable">Imponibile</option>
+                                        <option value="deposit_handling_fees">Handling Fees</option>
+                                        <option value="deposit_card_fees">Card Fees</option>
+                                    </select>
+                                </div>
+                                <div class="flex-fill">
+                                    <label class="form-label small mb-1">Tipo Saldo</label>
+                                    <select class="form-select form-select-sm" v-model="economicsForm.balance_sale_type">
+                                        <option value="balance_taxable">Imponibile</option>
+                                        <option value="balance_handling_fees">Handling Fees</option>
+                                        <option value="balance_card_fees">Card Fees</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Corrispettivi editabili -->
+                            <div class="bg-light rounded p-2 mt-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small text-muted fw-bold">Corrispettivi</span>
+                                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size: 0.7rem;" @click="recalculateTotals" title="Ricalcola da prezzo e percentuali">
+                                        <i class="ri-refresh-line me-1"></i>Ricalcola
+                                    </button>
+                                </div>
+                                <BRow class="mb-1">
+                                    <BCol cols="6">
+                                        <label class="form-label small mb-0" style="font-size: 0.75rem;">Acconto Imponibile</label>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                            v-model.number="economicsForm.deposit_taxable" />
+                                    </BCol>
+                                    <BCol cols="6">
+                                        <label class="form-label small mb-0" style="font-size: 0.75rem;">Saldo Imponibile</label>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                            v-model.number="economicsForm.balance_taxable" />
+                                    </BCol>
+                                </BRow>
+                                <BRow class="mb-1">
+                                    <BCol cols="6">
+                                        <label class="form-label small mb-0" style="font-size: 0.75rem;">Acconto Handling Fees</label>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                            v-model.number="economicsForm.deposit_handling_fees" />
+                                    </BCol>
+                                    <BCol cols="6">
+                                        <label class="form-label small mb-0" style="font-size: 0.75rem;">Saldo Handling Fees</label>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                            v-model.number="economicsForm.balance_handling_fees" />
+                                    </BCol>
+                                </BRow>
+                                <BRow>
+                                    <BCol cols="6">
+                                        <label class="form-label small mb-0" style="font-size: 0.75rem;">Acconto Card Fees</label>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                            v-model.number="economicsForm.deposit_amount" />
+                                    </BCol>
+                                    <BCol cols="6">
+                                        <label class="form-label small mb-0" style="font-size: 0.75rem;">Saldo Card Fees</label>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                            v-model.number="economicsForm.balance_card_fees" />
+                                    </BCol>
+                                </BRow>
+                            </div>
+                        </div>
+                    </BCol>
+
+                    <!-- COSTI -->
+                    <BCol md="6">
+                        <div class="border rounded p-3 mb-3">
+                            <h6 class="text-danger mb-3"><i class="ri-shopping-cart-line me-1"></i>Costi</h6>
+
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Compenso Autista (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.driver_compensation" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Costo Collega (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.colleague_cost" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Intermediazione (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.intermediary_commission" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Carburante (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.fuel_cost" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Pedaggi (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.toll_cost" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Parcheggi (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.parking_cost" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Altri Costi (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.other_vehicle_costs" />
+                            </div>
+                        </div>
+                    </BCol>
+                </BRow>
+            </div>
+
+            <div v-if="economicsLoading" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Caricamento...</span>
                 </div>
             </div>
+
+            <template #footer>
+                <button type="button" class="btn btn-light" @click="showEconomicsModalFlag = false">Annulla</button>
+                <button type="button" class="btn btn-primary" @click="saveEconomics" :disabled="economicsSaving">
+                    <span v-if="economicsSaving" class="spinner-border spinner-border-sm me-1"></span>
+                    Salva
+                </button>
+            </template>
         </BModal>
         <!-- Floating Bottom Action Bar -->
         <Teleport to="body">
@@ -1359,6 +1540,454 @@
                 </div>
             </Transition>
         </Teleport>
+        <!-- Floating Service Panel (Soste / Movimenti / Task) -->
+        <div
+            v-if="activeServicePanel"
+            class="service-float-panel"
+            :style="servicePanelStyle"
+        >
+            <div class="unavail-panel-header" @mousedown.stop="startDragServicePanel" style="background-color: #4b38b3;">
+                <span class="fw-bold">
+                    <template v-if="activeServicePanel === 'activities'"><i class="ri-calendar-check-line me-1"></i>Soste</template>
+                    <template v-else-if="activeServicePanel === 'transactions'"><i class="ri-file-list-line me-1"></i>Movimenti</template>
+                    <template v-else-if="activeServicePanel === 'tasks'"><i class="ri-task-line me-1"></i>Task</template>
+                    <span class="ms-1" style="font-size: 0.75rem; opacity: 0.8;">{{ servicePanelReference || activeServicePanelData?.reference_number || '' }}</span>
+                </span>
+                <button type="button" class="btn-close btn-close-white btn-sm" @click="closeServicePanel"></button>
+            </div>
+            <div class="unavail-panel-body">
+                <!-- Loading state -->
+                <div v-if="servicePanelLoading" class="text-center py-4">
+                    <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                    <span class="text-muted small">Caricamento...</span>
+                </div>
+                <!-- Panel: Soste -->
+            <div v-if="activeServicePanel === 'activities' && activitiesModalService" class="table-responsive">
+                <table class="table table-sm table-hover table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Inizio</th>
+                            <th>Fine</th>
+                            <th>Descrizione Sosta</th>
+                            <th>Tipo</th>
+                            <th>Fornitore</th>
+                            <th>Costo</th>
+                            <th>€/Pax</th>
+                            <th>Pagamento</th>
+                            <th class="text-center">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="activity in activitiesModalService.activities" :key="activity.id">
+                            <!-- Inizio -->
+                            <td>
+                                <div v-if="!isEditingActivityModal(activity, 'start_time')" class="cursor-pointer" @click="startActivityModalEdit(activity, 'start_time')" :title="activity.start_time ? formatActivityDateTime(activity.start_time) : 'Clicca per impostare'">
+                                    <span class="fw-bold">{{ activity.start_time ? moment.utc(activity.start_time).format('HH:mm') : '-' }}</span>
+                                </div>
+                                <div v-else>
+                                    <input type="datetime-local" v-model="activityModalEditValue" class="form-control form-control-sm mb-1" style="font-size: 0.75rem; width: 155px;" @keyup.escape="activityModalEditing = null" />
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-success btn-sm py-0 px-1" @click="saveActivityModalEdit(activity)" style="font-size: 0.7rem;"><i class="ri-check-line"></i></button>
+                                        <button type="button" class="btn btn-secondary btn-sm py-0 px-1" @click="activityModalEditing = null" style="font-size: 0.7rem;"><i class="ri-close-line"></i></button>
+                                    </div>
+                                </div>
+                            </td>
+                            <!-- Fine -->
+                            <td>
+                                <div v-if="!isEditingActivityModal(activity, 'end_time')" class="cursor-pointer" @click="startActivityModalEdit(activity, 'end_time')" :title="activity.end_time ? formatActivityDateTime(activity.end_time) : 'Clicca per impostare'">
+                                    <span class="fw-bold">{{ activity.end_time ? moment.utc(activity.end_time).format('HH:mm') : '-' }}</span>
+                                </div>
+                                <div v-else>
+                                    <input type="datetime-local" v-model="activityModalEditValue" class="form-control form-control-sm mb-1" style="font-size: 0.75rem; width: 155px;" @keyup.escape="activityModalEditing = null" />
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-success btn-sm py-0 px-1" @click="saveActivityModalEdit(activity)" style="font-size: 0.7rem;"><i class="ri-check-line"></i></button>
+                                        <button type="button" class="btn btn-secondary btn-sm py-0 px-1" @click="activityModalEditing = null" style="font-size: 0.7rem;"><i class="ri-close-line"></i></button>
+                                    </div>
+                                </div>
+                            </td>
+                            <!-- Descrizione -->
+                            <td>
+                                <div v-if="!isEditingActivityModal(activity, 'name')" class="cursor-pointer" @click="startActivityModalEdit(activity, 'name')">
+                                    {{ activity.name || '-' }}
+                                </div>
+                                <div v-else>
+                                    <input type="text" v-model="activityModalEditValue" class="form-control form-control-sm mb-1" style="font-size: 0.75rem; min-width: 120px;" @keyup.escape="activityModalEditing = null" />
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-success btn-sm py-0 px-1" @click="saveActivityModalEdit(activity)" style="font-size: 0.7rem;"><i class="ri-check-line"></i></button>
+                                        <button type="button" class="btn btn-secondary btn-sm py-0 px-1" @click="activityModalEditing = null" style="font-size: 0.7rem;"><i class="ri-close-line"></i></button>
+                                    </div>
+                                </div>
+                            </td>
+                            <!-- Tipo -->
+                            <td>
+                                <div v-if="!isEditingActivityModal(activity, 'activity_type_id')" class="cursor-pointer" @click="startActivityModalEdit(activity, 'activity_type_id')">
+                                    <span v-if="activity.activity_type?.name" class="badge bg-info-subtle text-info">{{ activity.activity_type.name }}</span>
+                                    <span v-else class="text-muted">-</span>
+                                </div>
+                                <div v-else>
+                                    <select v-model="activityModalEditValue" class="form-select form-select-sm mb-1" style="font-size: 0.75rem; min-width: 100px;" @keyup.escape="activityModalEditing = null">
+                                        <option value="">-</option>
+                                        <option v-for="type in activityTypes" :key="type.id" :value="type.id">{{ type.name }}</option>
+                                    </select>
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-success btn-sm py-0 px-1" @click="saveActivityModalEdit(activity)" style="font-size: 0.7rem;"><i class="ri-check-line"></i></button>
+                                        <button type="button" class="btn btn-secondary btn-sm py-0 px-1" @click="activityModalEditing = null" style="font-size: 0.7rem;"><i class="ri-close-line"></i></button>
+                                    </div>
+                                </div>
+                            </td>
+                            <!-- Fornitore -->
+                            <td>
+                                <div v-if="!isEditingActivityModal(activity, 'supplier_id')" class="cursor-pointer" @click="startActivityModalEdit(activity, 'supplier_id')">
+                                    <span v-if="activity.supplier">{{ activity.supplier.name }} {{ activity.supplier.surname }}</span>
+                                    <span v-else class="text-muted">-</span>
+                                </div>
+                                <div v-else>
+                                    <select v-model="activityModalEditValue" class="form-select form-select-sm mb-1" style="font-size: 0.75rem; min-width: 120px;" @keyup.escape="activityModalEditing = null">
+                                        <option value="">-</option>
+                                        <option v-for="s in activitySuppliers" :key="s.value" :value="s.value">{{ s.label }}</option>
+                                    </select>
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-success btn-sm py-0 px-1" @click="saveActivityModalEdit(activity)" style="font-size: 0.7rem;"><i class="ri-check-line"></i></button>
+                                        <button type="button" class="btn btn-secondary btn-sm py-0 px-1" @click="activityModalEditing = null" style="font-size: 0.7rem;"><i class="ri-close-line"></i></button>
+                                    </div>
+                                </div>
+                            </td>
+                            <!-- Costo -->
+                            <td>
+                                <div v-if="!isEditingActivityModal(activity, 'cost')" class="cursor-pointer" @click="startActivityModalEdit(activity, 'cost')">
+                                    € {{ formatCurrency(activity.cost) }}
+                                </div>
+                                <div v-else>
+                                    <input type="number" v-model.number="activityModalEditValue" step="0.01" min="0" class="form-control form-control-sm mb-1" style="font-size: 0.75rem; width: 80px;" @keyup.escape="activityModalEditing = null" />
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-success btn-sm py-0 px-1" @click="saveActivityModalEdit(activity)" style="font-size: 0.7rem;"><i class="ri-check-line"></i></button>
+                                        <button type="button" class="btn btn-secondary btn-sm py-0 px-1" @click="activityModalEditing = null" style="font-size: 0.7rem;"><i class="ri-close-line"></i></button>
+                                    </div>
+                                </div>
+                            </td>
+                            <!-- €/Pax -->
+                            <td>
+                                <div v-if="!isEditingActivityModal(activity, 'cost_per_person')" class="cursor-pointer" @click="startActivityModalEdit(activity, 'cost_per_person')">
+                                    € {{ formatCurrency(activity.cost_per_person) }}
+                                </div>
+                                <div v-else>
+                                    <input type="number" v-model.number="activityModalEditValue" step="0.01" min="0" class="form-control form-control-sm mb-1" style="font-size: 0.75rem; width: 80px;" @keyup.escape="activityModalEditing = null" />
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-success btn-sm py-0 px-1" @click="saveActivityModalEdit(activity)" style="font-size: 0.7rem;"><i class="ri-check-line"></i></button>
+                                        <button type="button" class="btn btn-secondary btn-sm py-0 px-1" @click="activityModalEditing = null" style="font-size: 0.7rem;"><i class="ri-close-line"></i></button>
+                                    </div>
+                                </div>
+                            </td>
+                            <!-- Pagamento -->
+                            <td>
+                                <div v-if="!isEditingActivityModal(activity, 'payment_type')" class="cursor-pointer" @click="startActivityModalEdit(activity, 'payment_type')">
+                                    <span v-if="activity.payment_type" class="badge" :class="getPaymentTypeBadge(activity.payment_type)">{{ activity.payment_type }}</span>
+                                    <span v-else class="text-muted">-</span>
+                                </div>
+                                <div v-else>
+                                    <select v-model="activityModalEditValue" class="form-select form-select-sm mb-1" style="font-size: 0.75rem; min-width: 100px;" @keyup.escape="activityModalEditing = null">
+                                        <option value="">-</option>
+                                        <option v-for="pt in activityPaymentTypes" :key="pt.id" :value="pt.code">{{ pt.name }}</option>
+                                    </select>
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-success btn-sm py-0 px-1" @click="saveActivityModalEdit(activity)" style="font-size: 0.7rem;"><i class="ri-check-line"></i></button>
+                                        <button type="button" class="btn btn-secondary btn-sm py-0 px-1" @click="activityModalEditing = null" style="font-size: 0.7rem;"><i class="ri-close-line"></i></button>
+                                    </div>
+                                </div>
+                            </td>
+                            <!-- Azioni -->
+                            <td class="text-center">
+                                <Link :href="withReturnUrl(route('easyncc.services.edit', activitiesModalService.id))" class="btn btn-sm btn-soft-info" title="Apri servizio">
+                                    <i class="ri-external-link-line"></i>
+                                </Link>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+                <!-- Panel: Movimenti Contabili -->
+                <div v-if="activeServicePanel === 'transactions' && activeServicePanelData">
+                    <div v-if="activeServicePanelData.accounting_transactions && activeServicePanelData.accounting_transactions.length > 0" class="table-responsive">
+                        <table class="table table-sm table-hover table-bordered mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Data</th>
+                                    <th>Importo</th>
+                                    <th style="max-width: 180px;">Causale</th>
+                                    <th>Controparte</th>
+                                    <th>Documenti</th>
+                                    <th>Pagamento</th>
+                                    <th>Stato</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="trans in sortedPanelTransactions" :key="trans.id">
+                                    <!-- TIPO + RATA -->
+                                    <td>
+                                        <span class="badge" :class="getTxTypeBadge(trans.transaction_type)" :title="getTxTypeLabel(trans.transaction_type)">
+                                            {{ getTxTypeAbbr(trans.transaction_type) }}
+                                        </span>
+                                        <span v-if="trans.is_automatic" class="badge bg-info-subtle text-info ms-1" title="Automatico">A</span>
+                                        <span v-else class="badge bg-warning-subtle text-warning ms-1" title="Manuale">M</span>
+                                        <span class="badge bg-secondary-subtle text-secondary ms-1" :title="getTxInstallmentLabel(trans.installment)">
+                                            {{ getTxInstallmentAbbr(trans.installment) }}
+                                        </span>
+                                    </td>
+                                    <!-- DATA -->
+                                    <td><small>{{ formatDateShort(trans.transaction_date) }}</small></td>
+                                    <!-- IMPORTO -->
+                                    <td class="fw-medium">€ {{ formatCurrency(trans.amount) }}</td>
+                                    <!-- CAUSALE -->
+                                    <td style="max-width: 180px; word-wrap: break-word; white-space: normal;">
+                                        <span v-if="trans.payment_reason || trans.accounting_entry">
+                                            <span v-if="trans.payment_reason">{{ trans.payment_reason }}</span>
+                                            <br v-if="trans.payment_reason && trans.accounting_entry">
+                                            <small v-if="trans.accounting_entry" class="text-muted">
+                                                {{ trans.accounting_entry.abbreviation || trans.accounting_entry.name }}
+                                            </small>
+                                        </span>
+                                        <span v-else class="text-muted">-</span>
+                                    </td>
+                                    <!-- CONTROPARTE con link -->
+                                    <td>
+                                        <span v-if="trans.counterpart">
+                                            <a :href="'/easyncc/users/' + trans.counterpart.id + '/edit'" class="text-primary text-decoration-none" :title="'Apri scheda ' + trans.counterpart.name + ' ' + trans.counterpart.surname">
+                                                {{ trans.counterpart.name }} {{ trans.counterpart.surname }}
+                                            </a>
+                                        </span>
+                                        <span v-else class="text-muted">-</span>
+                                    </td>
+                                    <!-- DOCUMENTI con inline editing -->
+                                    <td>
+                                        <div>
+                                            <!-- N. documento -->
+                                            <span
+                                                v-if="txPanelEditing !== trans.id + '_document_number'"
+                                                class="cursor-pointer"
+                                                :class="trans.document_number ? '' : 'text-muted'"
+                                                @click="startTxPanelEdit(trans, 'document_number')"
+                                                title="Clicca per modificare"
+                                            >
+                                                {{ trans.document_number || '-' }}
+                                            </span>
+                                            <div v-else>
+                                                <input
+                                                    type="text"
+                                                    v-model="txPanelEditValue"
+                                                    class="form-control form-control-sm mb-1"
+                                                    style="max-width: 110px; font-size: 0.75rem;"
+                                                    placeholder="N. doc"
+                                                    @keyup.escape="txPanelEditing = null"
+                                                />
+                                                <div class="d-flex gap-1">
+                                                    <button type="button" class="btn btn-success btn-sm py-0 px-1" @click="saveTxPanelEdit(trans, 'document_number')" style="font-size: 0.7rem;"><i class="ri-check-line"></i></button>
+                                                    <button type="button" class="btn btn-secondary btn-sm py-0 px-1" @click="txPanelEditing = null" style="font-size: 0.7rem;"><i class="ri-close-line"></i></button>
+                                                </div>
+                                            </div>
+                                            <br>
+                                            <!-- Scadenza documento -->
+                                            <small
+                                                v-if="txPanelEditing !== trans.id + '_document_due_date'"
+                                                class="cursor-pointer"
+                                                :class="trans.document_due_date ? getTxDueDateClass(trans) : 'text-muted'"
+                                                @click="startTxPanelEdit(trans, 'document_due_date')"
+                                                title="Clicca per modificare scadenza"
+                                            >
+                                                {{ trans.document_due_date ? formatDateShort(trans.document_due_date) : '-' }}
+                                            </small>
+                                            <div v-else>
+                                                <input
+                                                    type="date"
+                                                    v-model="txPanelEditValue"
+                                                    class="form-control form-control-sm mb-1"
+                                                    style="max-width: 140px; font-size: 0.75rem;"
+                                                    @keyup.escape="txPanelEditing = null"
+                                                />
+                                                <div class="d-flex gap-1">
+                                                    <button type="button" class="btn btn-success btn-sm py-0 px-1" @click="saveTxPanelEdit(trans, 'document_due_date')" style="font-size: 0.7rem;"><i class="ri-check-line"></i></button>
+                                                    <button type="button" class="btn btn-secondary btn-sm py-0 px-1" @click="txPanelEditing = null" style="font-size: 0.7rem;"><i class="ri-close-line"></i></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <!-- PAGAMENTO con inline editing -->
+                                    <td>
+                                        <div>
+                                            <!-- Data pagamento -->
+                                            <small
+                                                v-if="txPanelEditing !== trans.id + '_payment_date'"
+                                                class="cursor-pointer"
+                                                :class="trans.payment_date ? '' : 'text-muted'"
+                                                @click="startTxPanelEdit(trans, 'payment_date')"
+                                                title="Clicca per modificare data pagamento"
+                                            >
+                                                {{ trans.payment_date ? formatDateShort(trans.payment_date) : '-' }}
+                                            </small>
+                                            <div v-else>
+                                                <input
+                                                    type="date"
+                                                    v-model="txPanelEditValue"
+                                                    class="form-control form-control-sm mb-1"
+                                                    style="max-width: 140px; font-size: 0.75rem;"
+                                                    @keyup.escape="txPanelEditing = null"
+                                                />
+                                                <div class="d-flex gap-1">
+                                                    <button type="button" class="btn btn-success btn-sm py-0 px-1" @click="saveTxPanelEdit(trans, 'payment_date')" style="font-size: 0.7rem;"><i class="ri-check-line"></i></button>
+                                                    <button type="button" class="btn btn-secondary btn-sm py-0 px-1" @click="txPanelEditing = null" style="font-size: 0.7rem;"><i class="ri-close-line"></i></button>
+                                                </div>
+                                            </div>
+                                            <br>
+                                            <!-- Metodo pagamento -->
+                                            <small
+                                                v-if="txPanelEditing !== trans.id + '_payment_type'"
+                                                class="cursor-pointer"
+                                                :class="trans.payment_type ? '' : 'text-muted'"
+                                                @click="startTxPanelEdit(trans, 'payment_type')"
+                                                title="Clicca per modificare metodo"
+                                            >
+                                                {{ trans.payment_type || '-' }}
+                                            </small>
+                                            <div v-else>
+                                                <select
+                                                    v-model="txPanelEditValue"
+                                                    class="form-select form-select-sm mb-1"
+                                                    style="max-width: 140px; font-size: 0.75rem;"
+                                                    @keyup.escape="txPanelEditing = null"
+                                                >
+                                                    <option value="">Nessuno</option>
+                                                    <option v-for="type in txPanelPaymentTypes" :key="type.id" :value="type.name">
+                                                        {{ type.name }}
+                                                    </option>
+                                                </select>
+                                                <div class="d-flex gap-1">
+                                                    <button type="button" class="btn btn-success btn-sm py-0 px-1" @click="saveTxPanelEdit(trans, 'payment_type')" style="font-size: 0.7rem;"><i class="ri-check-line"></i></button>
+                                                    <button type="button" class="btn btn-secondary btn-sm py-0 px-1" @click="txPanelEditing = null" style="font-size: 0.7rem;"><i class="ri-close-line"></i></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <!-- STATO con inline editing -->
+                                    <td>
+                                        <span
+                                            v-if="txPanelEditing !== trans.id + '_status'"
+                                            class="badge cursor-pointer"
+                                            :style="getTxStatusBadgeStyle(trans.status)"
+                                            @click="startTxPanelEdit(trans, 'status')"
+                                            :title="(trans.status || '-') + ' - Clicca per modificare'"
+                                        >
+                                            {{ getTxStatusAbbr(trans.status) }}
+                                        </span>
+                                        <div v-else>
+                                            <select
+                                                v-model="txPanelEditValue"
+                                                class="form-select form-select-sm mb-1"
+                                                style="max-width: 130px; font-size: 0.75rem;"
+                                                @keyup.escape="txPanelEditing = null"
+                                            >
+                                                <option v-for="ts in getTxPanelFilteredStatuses(trans.transaction_type)" :key="ts.code" :value="ts.code">
+                                                    {{ ts.name }}
+                                                </option>
+                                            </select>
+                                            <div class="d-flex gap-1">
+                                                <button type="button" class="btn btn-success btn-sm py-0 px-1" @click="saveTxPanelStatus(trans)" style="font-size: 0.7rem;"><i class="ri-check-line"></i></button>
+                                                <button type="button" class="btn btn-secondary btn-sm py-0 px-1" @click="txPanelEditing = null" style="font-size: 0.7rem;"><i class="ri-close-line"></i></button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div v-else class="text-center text-muted py-3 small">Nessun movimento contabile</div>
+                </div>
+
+                <!-- Panel: Task -->
+                <div v-if="activeServicePanel === 'tasks' && activeServicePanelData">
+                    <div v-if="activeServicePanelData.tasks && activeServicePanelData.tasks.length > 0" class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="max-width: 250px;">Nome</th>
+                                    <th>Scadenza</th>
+                                    <th>Stato</th>
+                                    <th>Assegnato a</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="task in activeServicePanelData.tasks" :key="task.id">
+                                    <td style="max-width: 250px; word-wrap: break-word; white-space: normal;">{{ task.name }}</td>
+                                    <td>{{ task.due_date ? formatDate(task.due_date) : '-' }}</td>
+                                    <td>
+                                        <span class="badge" :class="getTaskStatusBadgeClass(task.status)">
+                                            {{ getTaskStatusLabel(task.status) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div v-if="task.assigned_users && task.assigned_users.length > 0">
+                                            <span v-for="(user, idx) in task.assigned_users" :key="user.id">
+                                                {{ user.name }}<span v-if="idx < task.assigned_users.length - 1">, </span>
+                                            </span>
+                                        </div>
+                                        <div v-else class="text-muted">-</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div v-else class="text-center text-muted py-3 small">Nessun task</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unavailabilities Floating Panel -->
+        <div
+            v-if="showUnavailabilitiesModal"
+            class="unavail-panel"
+            :style="unavailPanelStyle"
+            @mousedown="startDragPanel"
+        >
+            <div class="unavail-panel-header" @mousedown.stop="startDragPanel">
+                <span class="fw-bold"><i class="ri-forbid-line me-1"></i>Indisponibilità</span>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-light py-0 px-1" @click.stop="loadUnavailabilities" title="Aggiorna" style="font-size: 0.7rem;">
+                        <i class="ri-refresh-line"></i>
+                    </button>
+                    <button type="button" class="btn-close btn-close-white btn-sm" @click="showUnavailabilitiesModal = false"></button>
+                </div>
+            </div>
+            <div class="unavail-panel-body">
+                <div v-if="unavailabilitiesLoading" class="text-center py-4">
+                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                </div>
+                <div v-else-if="groupedUnavailabilities.length === 0" class="text-center text-muted py-3 small">
+                    <i class="ri-check-double-line fs-4 d-block mb-1"></i>
+                    Nessuna indisponibilità nel periodo.
+                </div>
+                <div v-else>
+                    <div v-for="group in groupedUnavailabilities" :key="group.date" class="mb-3">
+                        <div class="fw-bold border-bottom pb-1 mb-2" style="font-size: 0.8rem;">
+                            {{ group.dateFormatted }}
+                        </div>
+                        <div v-for="item in group.items" :key="item.type + '_' + item.id + '_' + group.date" class="d-flex align-items-center gap-2 mb-2 ps-2" style="border-left: 3px solid;" :style="{ borderColor: item.color }">
+                            <template v-if="item.type === 'driver'">
+                                <span class="badge px-2 py-1" :style="{ backgroundColor: item.color, color: '#fff', fontSize: '0.7rem' }">
+                                    🚫 {{ item.name }}
+                                </span>
+                                <span class="small text-muted">{{ item.reason }}</span>
+                                <span class="small text-muted ms-auto">{{ item.timeLabel }}</span>
+                            </template>
+                            <template v-else>
+                                <span class="unavail-targa"><span class="unavail-codice-targa">{{ item.plate }}</span></span>
+                                <span class="small text-muted">{{ item.reason }}</span>
+                                <span class="small text-muted ms-auto">{{ item.timeLabel }}</span>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </Layout>
 </template>
 
@@ -1366,17 +1995,38 @@
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
 import Layout from '@/Layouts/vertical.vue';
-import PageHeader from '@/Components/page-header.vue';
+
 import axios from 'axios';
 import moment from 'moment';
-import Swal from 'sweetalert2';
+import Multiselect from '@vueform/multiselect';
+import '@vueform/multiselect/themes/default.css';
 import { driverLabel } from '@/composables/useDriverLabel.js';
 import { useServiceTypeColor } from '@/composables/useServiceTypeColor.js';
 import { useTransactionStatusColor } from '@/composables/useTransactionStatusColor.js';
+import { useUrlFilters } from '@/composables/useUrlFilters.js';
+import { useServicePricing } from '@/composables/useServicePricing.js';
+import { useNotify } from '@/composables/useNotify.js';
+import flatpickr from 'flatpickr';
+import 'flatpickr/dist/flatpickr.min.css';
+import { Italian as flatpickrIt } from 'flatpickr/dist/l10n/it.js';
+
+const { calculateServiceTotals, buildAccountingOperations } = useServicePricing();
+const notify = useNotify();
 
 const services = ref([]);
 const loading = ref(false);
 const error = ref('');
+const activityScrollOverflows = ref({});
+const activityScrollRefs = {};
+
+const setActivityScrollRef = (serviceId, el) => {
+    if (el) {
+        activityScrollRefs[serviceId] = el;
+        nextTick(() => {
+            activityScrollOverflows.value[serviceId] = el.scrollHeight > el.clientHeight;
+        });
+    }
+};
 const selectedServices = ref([]);
 const selectAll = ref(false);
 
@@ -1384,8 +2034,16 @@ const selectAll = ref(false);
 const showPassengersModalFlag = ref(false);
 const selectedService = ref(null);
 
+// Luggage Modal
+const showLuggageModalFlag = ref(false);
+const luggageModalService = ref(null);
+
 // Economics Modal
 const showEconomicsModalFlag = ref(false);
+const economicsForm = ref(null);
+const economicsSettings = ref(null);
+const economicsLoading = ref(false);
+const economicsSaving = ref(false);
 
 // Inline editing
 const editingDressCode = ref(null);
@@ -1415,12 +2073,19 @@ const editingDatetimeValues = ref({
     dropoff_datetime: '',
     vehicle_departure_datetime: '',
     vehicle_return_datetime: '',
+    pickup_address: '',
+    dropoff_address: '',
 });
 
 // Inline status editing
 const editingStatus = ref(null);
 const editingStatusValue = ref(null);
 const statusInputRefs = ref({});
+
+// Inline service type editing
+const editingServiceType = ref(null);
+const editingServiceTypeValue = ref(null);
+const serviceTypeInputRefs = ref({});
 
 // Overlap confirmation state
 const showOverlapConfirmationModal = ref(false);
@@ -1432,8 +2097,12 @@ const savingField = ref(false);
 // Dictionaries
 // Lazy-loaded dropdown data (null = not loaded yet, [] = loaded empty)
 const serviceTypes = ref(null);
+const activityTypes = ref(null);
+const activityPaymentTypes = ref(null);
+const activitySuppliers = ref(null);
 const clients = ref(null);
 const intermediaries = ref(null);
+const suppliers = ref(null);
 const drivers = ref(null);
 const vehicles = ref(null);
 const companies = ref(null);
@@ -1445,22 +2114,52 @@ const currentUser = ref(null);
 const filters = ref({
     reference_name: '',
     date_from: moment().format('YYYY-MM-DD'),
-    date_to: '',
+    date_to: moment().format('YYYY-MM-DD'),
     service_type_id: '',
     client_id: '',
     intermediary_id: '',
     driver_id: '',
     vehicle_id: '',
+    supplier_id: '',
     status: '',
     company_id: ''
 });
 
 // Active preset filter tracking
-const activePreset = ref('da_oggi');
+const activePreset = ref('oggi');
 const specificDate = ref('');
+const specificDateInput = ref(null);
+let specificDateFlatpickr = null;
 
 // Show/Hide filters
-const showFilters = ref(true);
+const showFilters = ref(false);
+
+// Summary section
+const showSummary = ref(false);
+const summaryData = ref(null);
+const summaryLoading = ref(false);
+
+const loadSummary = async () => {
+    summaryLoading.value = true;
+    try {
+        const response = await axios.get('/api/services/summary', {
+            params: { ...filters.value }
+        });
+        summaryData.value = response.data.data;
+    } catch (err) {
+        console.error('Error loading summary:', err);
+        summaryData.value = null;
+    } finally {
+        summaryLoading.value = false;
+    }
+};
+
+const toggleSummary = () => {
+    showSummary.value = !showSummary.value;
+    if (showSummary.value) {
+        loadSummary();
+    }
+};
 
 const hasActiveFilters = computed(() => {
     return Object.values(filters.value).some(value => value !== '');
@@ -1478,13 +2177,26 @@ const sortDirection = ref('asc');
 const currentPage = ref(1);
 const totalPages = ref(1);
 const totalItems = ref(0);
-const perPage = ref(15);
+const perPage = ref(50);
+
+// URL sync for filters, pagination, sorting
+const { readFromUrl, withReturnUrl } = useUrlFilters(filters, {
+    page: currentPage,
+    sortField,
+    sortDirection,
+});
 
 const isSuperAdmin = computed(() => currentUser.value?.role === 'super-admin');
 const isDriver = computed(() => currentUser.value?.role === 'driver');
 
-const { loadServiceTypes: loadServiceTypeColors, serviceTypeBadgeStyle } = useServiceTypeColor();
-const { loadTransactionStatuses, transactionBadgeClass } = useTransactionStatusColor();
+const { serviceTypes: serviceTypeColors, loadServiceTypes: loadServiceTypeColors, serviceTypeBadgeStyle } = useServiceTypeColor();
+
+const getServiceTypeAbbreviation = (serviceTypeName) => {
+    if (!serviceTypeName || !serviceTypeColors.value.length) return serviceTypeName;
+    const found = serviceTypeColors.value.find(st => st.name?.toLowerCase() === serviceTypeName.toLowerCase());
+    return found?.abbreviation || serviceTypeName;
+};
+const { loadTransactionStatuses, transactionBadgeSolidStyle, transactionBadgeAggregateStyle } = useTransactionStatusColor();
 const acceptedStatusId = ref(null);
 const triggerStatusId = ref(null);
 
@@ -1552,6 +2264,14 @@ const ensureClients = async () => {
         } catch (e) { clients.value = []; }
     }
 };
+const ensureSuppliers = async () => {
+    if (suppliers.value === null) {
+        try {
+            const { data } = await axios.get('/api/users', { params: { role: 'collaboratore', is_fornitore: true, is_collega: true, per_page: 200, light: 1 } });
+            suppliers.value = data.data || [];
+        } catch (e) { suppliers.value = []; }
+    }
+};
 const ensureIntermediaries = async () => {
     if (intermediaries.value === null) {
         try {
@@ -1576,10 +2296,65 @@ const ensureCompanies = async () => {
         } catch (e) { companies.value = []; }
     }
 };
+const ensureActivityTypes = async () => {
+    if (activityTypes.value === null) {
+        try {
+            const { data } = await axios.get('/api/dictionaries/activity-types');
+            activityTypes.value = data.data || [];
+        } catch (e) { activityTypes.value = []; }
+    }
+};
+const ensureActivityPaymentTypes = async () => {
+    if (activityPaymentTypes.value === null) {
+        try {
+            const { data } = await axios.get('/api/dictionaries/activity-payment-types');
+            activityPaymentTypes.value = data.data || [];
+        } catch (e) { activityPaymentTypes.value = []; }
+    }
+};
+const ensureActivitySuppliers = async () => {
+    if (activitySuppliers.value === null) {
+        try {
+            const { data } = await axios.get('/api/users', { params: { is_fornitore: 1, is_collega: 1, per_page: 200 } });
+            activitySuppliers.value = (data.data || []).map(u => ({ value: u.id, label: `${u.surname || ''} ${u.name || ''}`.trim() || u.email }));
+        } catch (e) { activitySuppliers.value = []; }
+    }
+};
 
 // Legacy compatibility: load all dictionaries (used by filters dropdown rendering)
 const loadDictionaries = async () => {
     // No-op: dictionaries are now lazy-loaded on demand
+};
+
+// Autocomplete search functions for Multiselect filters
+const searchClients = async (query) => {
+    const params = { type: 'client' };
+    if (isSuperAdmin.value && filters.value.company_id) params.company_id = filters.value.company_id;
+    if (query && query.length >= 2) params.search = query;
+    else return [];
+
+    try {
+        const response = await axios.get('/api/services/filter-users', { params });
+        return response.data.data || [];
+    } catch (error) {
+        console.error('Error searching clients:', error);
+        return [];
+    }
+};
+
+const searchIntermediaries = async (query) => {
+    const params = { type: 'intermediary' };
+    if (isSuperAdmin.value && filters.value.company_id) params.company_id = filters.value.company_id;
+    if (query && query.length >= 2) params.search = query;
+    else return [];
+
+    try {
+        const response = await axios.get('/api/services/filter-users', { params });
+        return response.data.data || [];
+    } catch (error) {
+        console.error('Error searching intermediaries:', error);
+        return [];
+    }
 };
 
 const loadServicesFromFilter = () => {
@@ -1606,7 +2381,13 @@ const shiftDates = (days) => {
 };
 
 // Preset filter functions
+const clearFlatpickr = () => {
+    specificDate.value = '';
+    if (specificDateFlatpickr) specificDateFlatpickr.clear();
+};
+
 const filterFromToday = () => {
+    clearFlatpickr();
     const today = moment().format('YYYY-MM-DD');
     filters.value.date_from = today;
     filters.value.date_to = '';
@@ -1616,6 +2397,7 @@ const filterFromToday = () => {
 };
 
 const filterToday = () => {
+    clearFlatpickr();
     const today = moment().format('YYYY-MM-DD');
     filters.value.date_from = today;
     filters.value.date_to = today;
@@ -1625,6 +2407,7 @@ const filterToday = () => {
 };
 
 const filterTomorrow = () => {
+    clearFlatpickr();
     const tomorrow = moment().add(1, 'days').format('YYYY-MM-DD');
     filters.value.date_from = tomorrow;
     filters.value.date_to = tomorrow;
@@ -1634,6 +2417,7 @@ const filterTomorrow = () => {
 };
 
 const filterWeek = () => {
+    clearFlatpickr();
     const startOfWeek = moment().startOf('isoWeek').format('YYYY-MM-DD');
     const endOfWeek = moment().endOf('isoWeek').format('YYYY-MM-DD');
     filters.value.date_from = startOfWeek;
@@ -1641,6 +2425,12 @@ const filterWeek = () => {
     activePreset.value = 'settimana';
     currentPage.value = 1;
     loadServices();
+};
+
+const clearSpecificDate = () => {
+    specificDate.value = '';
+    if (specificDateFlatpickr) specificDateFlatpickr.clear();
+    filterToday();
 };
 
 const filterSpecificDate = () => {
@@ -1652,6 +2442,7 @@ const filterSpecificDate = () => {
         loadServices();
     }
 };
+
 
 const filterAll = () => {
     filters.value = {
@@ -1667,6 +2458,7 @@ const filterAll = () => {
         company_id: ''
     };
     specificDate.value = '';
+    if (specificDateFlatpickr) specificDateFlatpickr.clear();
     activePreset.value = 'tutti';
     currentPage.value = 1;
     loadServices();
@@ -1686,9 +2478,159 @@ const showPassengersModal = (service) => {
     showPassengersModalFlag.value = true;
 };
 
-const showEconomicsModal = (service) => {
+const getTotalLuggage = (service) => {
+    return (service.large_luggage || 0) + (service.medium_luggage || 0) + (service.small_luggage || 0)
+        + (service.baby_seat_infant || 0) + (service.baby_seat_standard || 0) + (service.baby_seat_booster || 0);
+};
+
+const showLuggageModal = (service) => {
+    luggageModalService.value = service;
+    showLuggageModalFlag.value = true;
+};
+
+const showEconomicsModal = async (service) => {
     selectedService.value = service;
+    economicsLoading.value = true;
     showEconomicsModalFlag.value = true;
+
+    try {
+        // Load full service data
+        const serviceRes = await axios.get(`/api/services/${service.id}`);
+        const svc = serviceRes.data.data || serviceRes.data;
+
+        // Load settings for this company
+        const companyId = svc.company_id || currentUser.value?.company_id;
+        const cacheKey = `easyncc_settings_${companyId}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        let settingsData;
+
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Date.now() - parsed._cachedAt < 300000) {
+                settingsData = parsed.data;
+            }
+        }
+
+        if (!settingsData) {
+            const params = isSuperAdmin.value ? { company_id: companyId } : {};
+            const settingsRes = await axios.get('/api/settings', { params });
+            settingsData = settingsRes.data.data;
+            sessionStorage.setItem(cacheKey, JSON.stringify({ data: settingsData, _cachedAt: Date.now() }));
+        }
+
+        economicsSettings.value = settingsData;
+
+        // Build form from service data
+        economicsForm.value = {
+            service_price: parseFloat(svc.service_price) || 0,
+            vat_rate: parseFloat(svc.vat_rate) || 10,
+            card_fees_percentage: parseFloat(svc.card_fees_percentage) || 0,
+            deposit_percentage: parseFloat(svc.deposit_percentage) || 0,
+            deposit_sale_type: svc.deposit_sale_type || 'deposit_card_fees',
+            balance_sale_type: svc.balance_sale_type || 'balance_taxable',
+            deposit_taxable: parseFloat(svc.deposit_taxable) || 0,
+            deposit_handling_fees: parseFloat(svc.deposit_handling_fees) || 0,
+            deposit_amount: parseFloat(svc.deposit_amount) || 0,
+            balance_taxable: parseFloat(svc.balance_taxable) || 0,
+            balance_handling_fees: parseFloat(svc.balance_handling_fees) || 0,
+            balance_card_fees: parseFloat(svc.balance_card_fees) || 0,
+            driver_compensation: parseFloat(svc.driver_compensation) || 0,
+            colleague_cost: parseFloat(svc.colleague_cost) || 0,
+            intermediary_commission: parseFloat(svc.intermediary_commission) || 0,
+            fuel_cost: parseFloat(svc.fuel_cost) || 0,
+            toll_cost: parseFloat(svc.toll_cost) || 0,
+            parking_cost: parseFloat(svc.parking_cost) || 0,
+            other_vehicle_costs: parseFloat(svc.other_vehicle_costs) || 0,
+            // Context fields needed for accounting operations
+            client_id: svc.client_id,
+            intermediary_id: svc.intermediary_id,
+            supplier_id: svc.supplier_id,
+            pickup_datetime: svc.pickup_datetime,
+            driver_ids: (svc.drivers || []).map(d => d.id),
+            activities: svc.activities || [],
+        };
+    } catch (err) {
+        console.error('Error loading economics data:', err);
+        notify.error('Impossibile caricare i dati economici.');
+        showEconomicsModalFlag.value = false;
+    } finally {
+        economicsLoading.value = false;
+    }
+};
+
+const recalculateTotals = () => {
+    if (economicsForm.value) {
+        calculateServiceTotals(economicsForm.value);
+    }
+};
+
+const resetEconomicsForm = () => {
+    economicsForm.value = null;
+    economicsSettings.value = null;
+};
+
+const saveEconomics = async () => {
+    if (!selectedService.value || !economicsForm.value) return;
+
+    economicsSaving.value = true;
+    try {
+        const serviceId = selectedService.value.id;
+        const form = economicsForm.value;
+
+        // Recalculate totals before saving
+        calculateServiceTotals(form);
+
+        // Save service financial fields
+        const payload = {
+            service_price: form.service_price,
+            vat_rate: form.vat_rate,
+            card_fees_percentage: form.card_fees_percentage,
+            deposit_percentage: form.deposit_percentage,
+            deposit_sale_type: form.deposit_sale_type,
+            balance_sale_type: form.balance_sale_type,
+            deposit_taxable: form.deposit_taxable,
+            deposit_handling_fees: form.deposit_handling_fees,
+            deposit_amount: form.deposit_amount,
+            balance_taxable: form.balance_taxable,
+            balance_handling_fees: form.balance_handling_fees,
+            balance_card_fees: form.balance_card_fees,
+            driver_compensation: form.driver_compensation,
+            colleague_cost: form.colleague_cost,
+            intermediary_commission: form.intermediary_commission,
+            fuel_cost: form.fuel_cost,
+            toll_cost: form.toll_cost,
+            parking_cost: form.parking_cost,
+            other_vehicle_costs: form.other_vehicle_costs,
+        };
+
+        await axios.put(`/api/services/${serviceId}`, payload);
+
+        // Regenerate accounting transactions
+        if (economicsSettings.value) {
+            const operations = buildAccountingOperations(form, economicsSettings.value);
+            if (operations.length > 0) {
+                await axios.post('/api/accounting-transactions/batch', {
+                    service_id: serviceId,
+                    operations: operations,
+                });
+            }
+        }
+
+        // Update local service data in the list
+        const idx = services.value.findIndex(s => s.id === serviceId);
+        if (idx !== -1) {
+            Object.assign(services.value[idx], payload);
+        }
+
+        showEconomicsModalFlag.value = false;
+        notify.success('Importi aggiornati con successo.');
+    } catch (err) {
+        console.error('Error saving economics:', err);
+        const msg = err.response?.data?.message || 'Errore durante il salvataggio.';
+        notify.error(msg);
+    } finally {
+        economicsSaving.value = false;
+    }
 };
 
 const loadServices = async () => {
@@ -1716,25 +2658,26 @@ const loadServices = async () => {
     } finally {
         loading.value = false;
     }
+
+    // Refresh summary if visible (non-blocking)
+    if (showSummary.value) {
+        loadSummary();
+    }
 };
 
 const deleteService = async (id) => {
-    const { isConfirmed } = await Swal.fire({
-        title: 'Conferma eliminazione',
-        html: 'Eliminando il servizio verranno rimossi anche:<ul class="text-start mt-2">'
+    const confirmed = await notify.confirm(
+        'Conferma eliminazione',
+        'Eliminando il servizio verranno rimossi anche:<ul class="text-start mt-2">'
             + '<li>Esperienze collegate</li>'
             + '<li>Task collegati</li>'
             + '<li>Movimenti contabili</li>'
             + '<li>Allegati</li>'
             + '<li>Passeggeri</li>'
             + '</ul>Vuoi procedere?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Elimina tutto',
-        cancelButtonText: 'Annulla',
-    });
-    if (!isConfirmed) return;
+        { confirmText: 'Elimina tutto' }
+    );
+    if (!confirmed) return;
 
     try {
         await axios.delete(`/api/services/${id}`);
@@ -1761,15 +2704,12 @@ const clearSelection = () => {
 
 const applyBulkAction = async (payload, label) => {
     const count = selectedServices.value.length;
-    const { isConfirmed } = await Swal.fire({
-        title: `Conferma azione`,
-        text: `Applicare ${label} a ${count} servizi?`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Applica',
-        cancelButtonText: 'Annulla',
-    });
-    if (!isConfirmed) return;
+    const confirmed = await notify.confirm(
+        'Conferma azione',
+        `Applicare ${label} a ${count} servizi?`,
+        { icon: 'question', confirmText: 'Applica', confirmColor: '#3085d6' }
+    );
+    if (!confirmed) return;
 
     bulkApplying.value = true;
     try {
@@ -1778,10 +2718,10 @@ const applyBulkAction = async (payload, label) => {
         ));
         clearSelection();
         await loadServices();
-        Swal.fire({ icon: 'success', title: 'Fatto', text: `${label} applicato a ${count} servizi.`, timer: 1500, showConfirmButton: false });
+        notify.success(`${label} applicato a ${count} servizi.`);
     } catch (err) {
         console.error('Bulk action error:', err);
-        Swal.fire({ icon: 'error', title: 'Errore', text: 'Errore durante l\'applicazione. Alcuni servizi potrebbero non essere stati aggiornati.' });
+        notify.error('Errore durante l\'applicazione. Alcuni servizi potrebbero non essere stati aggiornati.');
     } finally {
         bulkApplying.value = false;
     }
@@ -1808,22 +2748,18 @@ const applyBulkDriver = () => {
 
 const deleteSelected = async () => {
     const count = selectedServices.value.length;
-    const { isConfirmed } = await Swal.fire({
-        title: 'Conferma eliminazione',
-        html: `Eliminando <strong>${count} servizi</strong> verranno rimossi anche per ciascuno:<ul class="text-start mt-2">`
+    const confirmed = await notify.confirm(
+        'Conferma eliminazione',
+        `Eliminando <strong>${count} servizi</strong> verranno rimossi anche per ciascuno:<ul class="text-start mt-2">`
             + '<li>Esperienze collegate</li>'
             + '<li>Task collegati</li>'
             + '<li>Movimenti contabili</li>'
             + '<li>Allegati</li>'
             + '<li>Passeggeri</li>'
             + '</ul>Vuoi procedere?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Elimina tutto',
-        cancelButtonText: 'Annulla',
-    });
-    if (!isConfirmed) return;
+        { confirmText: 'Elimina tutto' }
+    );
+    if (!confirmed) return;
 
     bulkApplying.value = true;
     try {
@@ -1935,18 +2871,12 @@ const saveStatus = async (service) => {
     if (newStatusName.includes('assegnato') && service.status_id !== newStatusId) {
         editingStatus.value = null;
 
-        const result = await Swal.fire({
-            title: 'Notifica al Driver',
-            html: 'Cambiando lo stato in <strong>"Assegnato"</strong> verrà inviato un messaggio Telegram al driver per richiedere la conferma del servizio.<br><br>Vuoi procedere?',
-            icon: 'info',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Sì, procedi',
-            cancelButtonText: 'Annulla',
-        });
+        const confirmed = await notify.confirmInfo(
+            'Notifica al Driver',
+            'Cambiando lo stato in <strong>"Assegnato"</strong> verrà inviato un messaggio Telegram al driver per richiedere la conferma del servizio.<br><br>Vuoi procedere?',
+        );
 
-        if (!result.isConfirmed) {
+        if (!confirmed) {
             editingStatusValue.value = null;
             return;
         }
@@ -1977,6 +2907,42 @@ const saveStatus = async (service) => {
 const cancelEditStatus = () => {
     editingStatus.value = null;
     editingStatusValue.value = null;
+};
+
+// Inline service type editing
+const startEditServiceType = async (service) => {
+    await ensureServiceTypes();
+    editingServiceType.value = service.id;
+    editingServiceTypeValue.value = service.service_type || '';
+    nextTick(() => {
+        const select = serviceTypeInputRefs.value[service.id];
+        if (select) select.focus();
+    });
+};
+
+const saveServiceType = async (service) => {
+    if (!editingServiceType.value || editingServiceType.value !== service.id) return;
+    const newType = editingServiceTypeValue.value;
+    try {
+        await axios.patch(`/api/services/${service.id}/inline`, { service_type: newType });
+        const serviceIndex = services.value.findIndex(s => s.id === service.id);
+        if (serviceIndex !== -1) {
+            services.value[serviceIndex].service_type = newType;
+        }
+        editingServiceType.value = null;
+        editingServiceTypeValue.value = null;
+    } catch (err) {
+        error.value = 'Errore nell\'aggiornamento del tipo servizio';
+        console.error('Error updating service type:', err);
+        await loadServices();
+        editingServiceType.value = null;
+        editingServiceTypeValue.value = null;
+    }
+};
+
+const cancelEditServiceType = () => {
+    editingServiceType.value = null;
+    editingServiceTypeValue.value = null;
 };
 
 // Inline vehicle editing functions
@@ -2206,17 +3172,22 @@ const resetFilters = () => {
         intermediary_id: '',
         driver_id: '',
         vehicle_id: '',
+        supplier_id: '',
         status: '',
         company_id: ''
     };
     specificDate.value = '';
+    if (specificDateFlatpickr) specificDateFlatpickr.clear();
     activePreset.value = null;
     currentPage.value = 1;
     loadServices();
 };
 
+const dayAbbr = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const formatDate = (datetime) => {
-    return moment.utc(datetime).format('DD/MM/YYYY HH:mm');
+    if (!datetime) return '-';
+    const m = moment.utc(datetime);
+    return `${dayAbbr[m.day()]} ${m.format('DD/MM/YYYY HH:mm')}`;
 };
 
 const formatTime = (datetime) => {
@@ -2227,11 +3198,259 @@ const formatCurrency = (value) => {
     return value ? parseFloat(value).toFixed(2) : '0.00';
 };
 
+const formatActivityDateTime = (datetime) => {
+    return datetime ? moment.utc(datetime).format('DD/MM/YYYY HH:mm') : '-';
+};
+
+// Activities modal
+const showActivitiesModal = ref(false);
+const activitiesModalService = ref(null);
+const activityModalEditing = ref(null);
+const activityModalEditValue = ref(null);
+
+const openActivitiesModal = async (service) => {
+    activitiesModalService.value = service;
+    activityModalEditing.value = null;
+    activeServicePanel.value = 'activities';
+    activeServicePanelData.value = service;
+    servicePanelReference.value = service.reference_number || service.id;
+    // Lazy load dictionaries for inline editing
+    Promise.all([ensureActivityTypes(), ensureActivityPaymentTypes(), ensureActivitySuppliers()]);
+};
+
+const startActivityModalEdit = (activity, field) => {
+    activityModalEditing.value = { id: activity.id, field };
+    if (field === 'start_time' || field === 'end_time') {
+        activityModalEditValue.value = activity[field] ? moment.utc(activity[field]).format('YYYY-MM-DDTHH:mm') : '';
+    } else if (field === 'activity_type_id') {
+        activityModalEditValue.value = activity.activity_type_id || '';
+    } else if (field === 'supplier_id') {
+        activityModalEditValue.value = activity.supplier_id || '';
+    } else if (field === 'payment_type') {
+        activityModalEditValue.value = activity.payment_type || '';
+    } else {
+        activityModalEditValue.value = activity[field] ?? '';
+    }
+};
+
+const isEditingActivityModal = (activity, field) => {
+    return activityModalEditing.value?.id === activity.id && activityModalEditing.value?.field === field;
+};
+
+const saveActivityModalEdit = async (activity) => {
+    if (!activityModalEditing.value) return;
+    const field = activityModalEditing.value.field;
+    try {
+        const payload = {};
+        payload[field] = activityModalEditValue.value || null;
+        const response = await axios.put(`/api/activities/${activity.id}`, payload);
+        // Update local with full response data
+        const updated = response.data.data;
+        if (updated) {
+            Object.assign(activity, updated);
+        } else {
+            activity[field] = activityModalEditValue.value;
+        }
+        activityModalEditing.value = null;
+    } catch (err) {
+        console.error('Error saving activity field:', err);
+        activityModalEditing.value = null;
+    }
+};
+
+// Unavailabilities
+const showUnavailabilitiesModal = ref(false);
+
+// Floating panels management — one service panel at a time, unavailabilities independent
+const activeServicePanel = ref(null); // 'activities' | 'transactions' | 'tasks' | null
+const activeServicePanelData = ref(null);
+const servicePanelLoading = ref(false);
+const servicePanelReference = ref('');
+
+const servicePanelPos = ref({ x: 60, y: 100 });
+const servicePanelStyle = computed(() => ({
+    left: `${servicePanelPos.value.x}px`,
+    top: `${servicePanelPos.value.y}px`,
+}));
+
+let serviceDragOffset = { x: 0, y: 0 };
+const startDragServicePanel = (e) => {
+    if (e.target.closest('.btn-close') || e.target.closest('.btn')) return;
+    serviceDragOffset.x = e.clientX - servicePanelPos.value.x;
+    serviceDragOffset.y = e.clientY - servicePanelPos.value.y;
+    const onMove = (ev) => {
+        servicePanelPos.value.x = Math.max(0, Math.min(window.innerWidth - 500, ev.clientX - serviceDragOffset.x));
+        servicePanelPos.value.y = Math.max(0, Math.min(window.innerHeight - 100, ev.clientY - serviceDragOffset.y));
+    };
+    const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+};
+
+const closeServicePanel = () => {
+    activeServicePanel.value = null;
+    activeServicePanelData.value = null;
+    servicePanelLoading.value = false;
+    servicePanelReference.value = '';
+};
+const unavailabilitiesLoading = ref(false);
+const groupedUnavailabilities = ref([]);
+const unavailPanelPos = ref({ x: window.innerWidth - 480, y: 80 });
+const unavailPanelStyle = computed(() => ({
+    left: `${unavailPanelPos.value.x}px`,
+    top: `${unavailPanelPos.value.y}px`,
+}));
+
+let dragOffset = { x: 0, y: 0 };
+const startDragPanel = (e) => {
+    if (e.target.closest('.btn-close')) return;
+    dragOffset.x = e.clientX - unavailPanelPos.value.x;
+    dragOffset.y = e.clientY - unavailPanelPos.value.y;
+    const onMove = (ev) => {
+        unavailPanelPos.value.x = Math.max(0, Math.min(window.innerWidth - 400, ev.clientX - dragOffset.x));
+        unavailPanelPos.value.y = Math.max(0, Math.min(window.innerHeight - 100, ev.clientY - dragOffset.y));
+    };
+    const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+};
+
+const loadUnavailabilities = async () => {
+    unavailabilitiesLoading.value = true;
+    showUnavailabilitiesModal.value = true;
+
+    try {
+        const params = {};
+        if (isSuperAdmin.value && filters.value.company_id) params.company_id = filters.value.company_id;
+
+        const [driverRes, vehicleRes] = await Promise.all([
+            axios.get('/api/driver-unavailabilities', { params }),
+            axios.get('/api/vehicle-unavailabilities', { params }),
+        ]);
+
+        const driverUnavails = (driverRes.data || []);
+        const vehicleUnavails = (vehicleRes.data || []);
+
+        // Filter by date range from filters
+        const dateFrom = filters.value.date_from ? moment(filters.value.date_from).startOf('day') : null;
+        const dateTo = filters.value.date_to ? moment(filters.value.date_to).endOf('day') : null;
+
+        const allItems = [];
+
+        driverUnavails.forEach(u => {
+            const start = moment(u.start_date);
+            const end = moment(u.end_date);
+            if (dateFrom && end.isBefore(dateFrom)) return;
+            if (dateTo && start.isAfter(dateTo)) return;
+
+            const driverName = u.user ? `${u.user.surname || ''} ${u.user.name || ''}`.trim() : 'Driver';
+            const color = u.user?.driver_profile?.color || '#dc3545';
+            const timeLabel = u.all_day ? 'Tutto il giorno' : `${start.format('HH:mm')} - ${end.format('HH:mm')}`;
+
+            // Expand multi-day into individual days
+            const current = start.clone().startOf('day');
+            const endDay = end.clone().startOf('day');
+            while (current.isSameOrBefore(endDay)) {
+                if ((!dateFrom || current.isSameOrAfter(dateFrom.clone().startOf('day'))) &&
+                    (!dateTo || current.isSameOrBefore(dateTo.clone().startOf('day')))) {
+                    allItems.push({
+                        date: current.format('YYYY-MM-DD'),
+                        type: 'driver',
+                        id: u.id,
+                        name: driverName,
+                        color: color,
+                        reason: u.leave_type?.name || u.notes || 'Indisponibile',
+                        timeLabel: timeLabel,
+                    });
+                }
+                current.add(1, 'day');
+            }
+        });
+
+        vehicleUnavails.forEach(u => {
+            const start = moment(u.start_date);
+            const end = moment(u.end_date);
+            if (dateFrom && end.isBefore(dateFrom)) return;
+            if (dateTo && start.isAfter(dateTo)) return;
+
+            const plate = u.vehicle?.license_plate || '???';
+            const timeLabel = u.all_day ? 'Tutto il giorno' : `${start.format('HH:mm')} - ${end.format('HH:mm')}`;
+
+            const current = start.clone().startOf('day');
+            const endDay = end.clone().startOf('day');
+            while (current.isSameOrBefore(endDay)) {
+                if ((!dateFrom || current.isSameOrAfter(dateFrom.clone().startOf('day'))) &&
+                    (!dateTo || current.isSameOrBefore(dateTo.clone().startOf('day')))) {
+                    allItems.push({
+                        date: current.format('YYYY-MM-DD'),
+                        type: 'vehicle',
+                        id: u.id,
+                        plate: plate,
+                        color: '#6c757d',
+                        reason: u.unavailability_type?.name || u.notes || 'Non disponibile',
+                        timeLabel: timeLabel,
+                    });
+                }
+                current.add(1, 'day');
+            }
+        });
+
+        // Group by date
+        const grouped = {};
+        allItems.forEach(item => {
+            if (!grouped[item.date]) grouped[item.date] = [];
+            grouped[item.date].push(item);
+        });
+
+        // Sort dates and format
+        const dayNames = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+        groupedUnavailabilities.value = Object.keys(grouped)
+            .sort()
+            .map(date => {
+                const m = moment(date);
+                return {
+                    date,
+                    dateFormatted: `${dayNames[m.day()]} ${m.format('DD/MM/YYYY')}`,
+                    items: grouped[date],
+                };
+            });
+    } catch (err) {
+        console.error('Error loading unavailabilities:', err);
+        groupedUnavailabilities.value = [];
+    } finally {
+        unavailabilitiesLoading.value = false;
+    }
+};
+
+const getPaymentTypeBadge = (type) => {
+    const classes = {
+        'INCLUSO': 'bg-success-subtle text-success',
+        'CLIENTE': 'bg-primary-subtle text-primary',
+        'AGENZIA': 'bg-warning-subtle text-warning',
+        'NESSUNO': 'bg-secondary-subtle text-secondary',
+    };
+    return classes[type] || 'bg-secondary-subtle text-secondary';
+};
+
 const getBalanceLabel = (service) => {
     switch (service.balance_sale_type) {
         case 'balance_handling_fees': return 'Saldo Handling';
         case 'balance_card_fees': return 'Saldo Card';
         default: return 'Saldo Imponibile';
+    }
+};
+
+const getDepositValue = (service) => {
+    switch (service.deposit_sale_type) {
+        case 'deposit_taxable': return parseFloat(service.deposit_taxable) || 0;
+        case 'deposit_handling_fees': return parseFloat(service.deposit_handling_fees) || 0;
+        default: return parseFloat(service.deposit_amount) || 0; // deposit_card_fees (default)
     }
 };
 
@@ -2243,6 +3462,81 @@ const getBalanceValue = (service) => {
     }
 };
 
+const getSaleTypeIcon = (saleType) => {
+    if (!saleType) return '';
+    if (saleType.includes('card')) return 'ri-bank-card-line';
+    if (saleType.includes('handling')) return 'ri-bank-line';
+    return 'ri-money-euro-circle-line';
+};
+
+const getSaleTypeTooltip = (saleType) => {
+    if (!saleType) return '';
+    if (saleType.includes('card')) return 'Carta di credito';
+    if (saleType.includes('handling')) return 'Bonifico bancario';
+    return 'Contanti/Imponibile';
+};
+
+const isStatusCancelled = (statusMap, key) => {
+    if (!statusMap) return false;
+    return statusMap[key] === 'cancelled';
+};
+
+const getExtraRevenueAmount = (extra) => {
+    switch (extra.sale_type) {
+        case 'amount_taxable': return parseFloat(extra.amount_taxable) || 0;
+        case 'amount_handling': return parseFloat(extra.amount_handling) || 0;
+        default: return parseFloat(extra.amount_card) || parseFloat(extra.amount) || 0;
+    }
+};
+
+const getExtraRevenuesTotal = (service) => {
+    if (!service.extra_revenues || !service.extra_revenues.length) return 0;
+    return service.extra_revenues.reduce((sum, extra) => sum + getExtraRevenueAmount(extra), 0);
+};
+
+const getExtraRevenuesTooltip = (service) => {
+    if (!service.extra_revenues || !service.extra_revenues.length) return 'Extra';
+    const lines = service.extra_revenues
+        .filter(e => getExtraRevenueAmount(e) > 0)
+        .map(e => `• ${e.description || '-'} — €${formatCurrency(getExtraRevenueAmount(e))}`);
+    if (!lines.length) return 'Extra';
+    return 'Ricavi extra:\n' + lines.join('\n');
+};
+
+const getAggregateTotal = (service) => {
+    const map = service.transaction_status_map;
+    let total = 0;
+    // Add deposit if not cancelled
+    if (!isStatusCancelled(map, 'sale_deposit')) {
+        total += getDepositValue(service);
+    }
+    // Add balance if not cancelled
+    if (!isStatusCancelled(map, 'sale_balance')) {
+        total += getBalanceValue(service);
+    }
+    // Add extra revenues if not cancelled
+    if (!isStatusCancelled(map, 'sale_extra')) {
+        total += getExtraRevenuesTotal(service);
+    }
+    return total;
+};
+
+const getAccountableActivities = (service) => {
+    if (!service.activities || !service.activities.length) return [];
+    return service.activities.filter(a => a.should_account && parseFloat(a.cost) > 0);
+};
+
+const getExperienceCostTotal = (service) => {
+    return getAccountableActivities(service).reduce((sum, a) => sum + (parseFloat(a.cost) || 0), 0);
+};
+
+const getExperienceCostTooltip = (service) => {
+    const items = getAccountableActivities(service);
+    if (!items.length) return 'Esperienze';
+    const lines = items.map(a => `• ${a.name || a.activity_type?.name || '-'} — €${formatCurrency(a.cost)}`);
+    return 'Esperienze:\n' + lines.join('\n');
+};
+
 const hasAnyCost = (service) => {
     return (parseFloat(service.driver_compensation) || 0) > 0
         || (parseFloat(service.colleague_cost) || 0) > 0
@@ -2250,7 +3544,8 @@ const hasAnyCost = (service) => {
         || (parseFloat(service.fuel_cost) || 0) > 0
         || (parseFloat(service.toll_cost) || 0) > 0
         || (parseFloat(service.parking_cost) || 0) > 0
-        || (parseFloat(service.other_vehicle_costs) || 0) > 0;
+        || (parseFloat(service.other_vehicle_costs) || 0) > 0
+        || getExperienceCostTotal(service) > 0;
 };
 
 // Get nationality flag emoji
@@ -2372,41 +3667,213 @@ const getTransactionStatusBadgeClass = (status) => {
     return statusMap[status?.toLowerCase()] || 'bg-secondary';
 };
 
+// Transaction panel: dictionaries and inline editing state
+const txPanelPaymentTypes = ref([]);
+const txPanelTransactionStatuses = ref([]);
+const txPanelDictionariesLoaded = ref(false);
+const txPanelEditing = ref(null); // format: 'transactionId_fieldName'
+const txPanelEditValue = ref('');
+
+// Transaction panel: load dictionaries once
+const loadTxPanelDictionaries = async () => {
+    if (txPanelDictionariesLoaded.value) return;
+    try {
+        const [ptRes, tsRes] = await Promise.all([
+            axios.get('/api/dictionaries/payment-types'),
+            axios.get('/api/dictionaries/transaction-statuses'),
+        ]);
+        txPanelPaymentTypes.value = ptRes.data.data || [];
+        txPanelTransactionStatuses.value = tsRes.data.data || [];
+        txPanelDictionariesLoaded.value = true;
+    } catch (err) {
+        console.error('Error loading tx panel dictionaries:', err);
+    }
+};
+
+// Transaction panel: helper functions
+const getTxTypeBadge = (type) => {
+    const map = { sale: 'bg-success-subtle text-success', purchase: 'bg-danger-subtle text-danger', intermediation: 'bg-warning-subtle text-warning' };
+    return map[type] || 'bg-secondary-subtle text-secondary';
+};
+const getTxTypeLabel = (type) => {
+    const map = { sale: 'Vendita', purchase: 'Acquisto', intermediation: 'Intermediazione' };
+    return map[type] || type;
+};
+const getTxTypeAbbr = (type) => {
+    const map = { sale: 'VEN', purchase: 'ACQ', intermediation: 'INT' };
+    return map[type] || type;
+};
+const getTxInstallmentLabel = (inst) => {
+    const map = { deposit: 'Acconto', extra: 'Extra', balance: 'Saldo', supplier_refund: 'Reso Fornitore', customer_refund: 'Rimborso Cliente' };
+    return map[inst] || inst;
+};
+const getTxInstallmentAbbr = (inst) => {
+    const map = { deposit: 'ACC', extra: 'EXT', balance: 'SAL', supplier_refund: 'RES', customer_refund: 'RIM' };
+    return map[inst] || inst;
+};
+const getTxStatusAbbr = (status) => {
+    const found = txPanelTransactionStatuses.value.find(s => s.code === status);
+    return found ? (found.abbreviation || found.name) : (status || '-');
+};
+const txBootstrapColorMap = {
+    primary: '#405189', secondary: '#6c757d', success: '#0ab39c',
+    danger: '#f06548', warning: '#f7b84b', info: '#299cdb',
+};
+const getTxStatusBadgeStyle = (status) => {
+    const fallback = { backgroundColor: '#6c757d20', color: '#6c757d', fontWeight: '500' };
+    const found = txPanelTransactionStatuses.value.find(s => s.code === status);
+    if (!found || !found.color) return fallback;
+    const hex = found.color.startsWith('#') ? found.color : (txBootstrapColorMap[found.color] || '#6c757d');
+    return { backgroundColor: hex + '20', color: hex, fontWeight: '500' };
+};
+const getTxPanelFilteredStatuses = (transactionType) => {
+    if (!transactionType) return txPanelTransactionStatuses.value;
+    const typeGroup = transactionType === 'sale' ? 'sale' : 'purchase';
+    return txPanelTransactionStatuses.value.filter(s =>
+        s.transaction_type_group === typeGroup || s.transaction_type_group === 'both'
+    );
+};
+const formatDateShort = (datetime) => {
+    if (!datetime) return '-';
+    return moment.utc(datetime).format('DD/MM/YYYY');
+};
+const getTxDueDateClass = (trans) => {
+    if (!trans.document_due_date) return 'text-muted';
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(trans.document_due_date); dueDate.setHours(0, 0, 0, 0);
+    if (dueDate < today) return 'text-danger fw-bold';
+    const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 7) return 'text-warning fw-bold';
+    return 'text-muted';
+};
+
+// Transaction panel: sorted list (same order as Form.vue)
+const sortedPanelTransactions = computed(() => {
+    const txs = activeServicePanelData.value?.accounting_transactions;
+    if (!txs || txs.length === 0) return [];
+    const installmentOrder = { deposit: 0, extra: 1, balance: 2, supplier_refund: 3, customer_refund: 4 };
+    const typeOrder = { sale: 0, intermediation: 1, purchase: 2 };
+    return [...txs].sort((a, b) => {
+        const instA = installmentOrder[a.installment] ?? 9;
+        const instB = installmentOrder[b.installment] ?? 9;
+        if (instA !== instB) return instA - instB;
+        const typeA = typeOrder[a.transaction_type] ?? 9;
+        const typeB = typeOrder[b.transaction_type] ?? 9;
+        return typeA - typeB;
+    });
+});
+
+// Transaction panel: inline editing functions
+const startTxPanelEdit = (trans, field) => {
+    txPanelEditing.value = trans.id + '_' + field;
+    if (field === 'document_due_date' || field === 'payment_date') {
+        txPanelEditValue.value = trans[field] ? moment.utc(trans[field]).format('YYYY-MM-DD') : '';
+    } else {
+        txPanelEditValue.value = trans[field] || '';
+    }
+};
+
+const saveTxPanelEdit = async (trans, field) => {
+    try {
+        const payload = {};
+        payload[field] = txPanelEditValue.value || null;
+        const response = await axios.put(`/api/accounting-transactions/${trans.id}`, payload);
+        // Update in local panel data
+        const txList = activeServicePanelData.value.accounting_transactions;
+        const index = txList.findIndex(t => t.id === trans.id);
+        if (index !== -1) {
+            txList[index] = response.data.data;
+        }
+        txPanelEditing.value = null;
+        txPanelEditValue.value = '';
+    } catch (error) {
+        console.error('Error updating transaction field:', error);
+        txPanelEditing.value = null;
+    }
+};
+
+const saveTxPanelStatus = async (trans) => {
+    if (!txPanelEditValue.value) return;
+    try {
+        const payload = {
+            service_id: trans.service_id,
+            transaction_date: trans.transaction_date,
+            amount: trans.amount,
+            transaction_type: trans.transaction_type,
+            installment: trans.installment,
+            accounting_entry_id: trans.accounting_entry_id || null,
+            counterpart_id: trans.counterpart_id || null,
+            document_number: trans.document_number || null,
+            document_due_date: trans.document_due_date || null,
+            payment_date: trans.payment_date || null,
+            payment_type: trans.payment_type || null,
+            payment_reason: trans.payment_reason || null,
+            iban: trans.iban || null,
+            status: txPanelEditValue.value,
+            notes: trans.notes || null
+        };
+        const response = await axios.put(`/api/accounting-transactions/${trans.id}`, payload);
+        const txList = activeServicePanelData.value.accounting_transactions;
+        const index = txList.findIndex(t => t.id === trans.id);
+        if (index !== -1) {
+            txList[index] = response.data.data;
+        }
+        txPanelEditing.value = null;
+        txPanelEditValue.value = '';
+    } catch (error) {
+        console.error('Error updating transaction status:', error);
+        txPanelEditing.value = null;
+    }
+};
+
 // Popup functions
 const showTransactionsPopup = async (service) => {
+    activeServicePanel.value = 'transactions';
+    servicePanelReference.value = service.reference_number || service.id;
+    servicePanelLoading.value = true;
+    activeServicePanelData.value = null;
+    txPanelEditing.value = null;
+    // Load dictionaries in parallel
+    loadTxPanelDictionaries();
     try {
-        // Load full service data with accounting transactions
-        const response = await axios.get(`/api/services/${service.id}`);
-        // The API returns the service directly without a 'data' wrapper
-        selectedServiceForPopup.value = response.data;
-        showTransactionsModal.value = true;
+        const response = await axios.get('/api/accounting-transactions', {
+            params: { service_id: service.id, per_page: 100 }
+        });
+        activeServicePanelData.value = {
+            accounting_transactions: response.data.data || response.data || [],
+        };
     } catch (err) {
         console.error('Error loading transactions:', err);
-        error.value = 'Errore nel caricamento dei movimenti contabili';
+    } finally {
+        servicePanelLoading.value = false;
     }
 };
 
 const closeTransactionsPopup = () => {
-    showTransactionsModal.value = false;
-    selectedServiceForPopup.value = null;
+    if (activeServicePanel.value === 'transactions') closeServicePanel();
 };
 
 const showTasksPopup = async (service) => {
+    activeServicePanel.value = 'tasks';
+    servicePanelReference.value = service.reference_number || service.id;
+    servicePanelLoading.value = true;
+    activeServicePanelData.value = null;
     try {
-        // Load full service data with tasks
-        const response = await axios.get(`/api/services/${service.id}`);
-        // The API returns the service directly without a 'data' wrapper
-        selectedServiceForPopup.value = response.data;
-        showTasksModal.value = true;
+        const response = await axios.get('/api/tasks', {
+            params: { service_id: service.id }
+        });
+        activeServicePanelData.value = {
+            tasks: response.data.data || response.data || [],
+        };
     } catch (err) {
         console.error('Error loading tasks:', err);
-        error.value = 'Errore nel caricamento dei task';
+    } finally {
+        servicePanelLoading.value = false;
     }
 };
 
 const closeTasksPopup = () => {
-    showTasksModal.value = false;
-    selectedServiceForPopup.value = null;
+    if (activeServicePanel.value === 'tasks') closeServicePanel();
 };
 
 // Overlaps functions
@@ -2575,6 +4042,8 @@ const startEditDatetimes = (service) => {
         dropoff_datetime: formatDateTimeForInput(service.dropoff_datetime),
         vehicle_departure_datetime: formatDateTimeForInput(service.vehicle_departure_datetime),
         vehicle_return_datetime: formatDateTimeForInput(service.vehicle_return_datetime),
+        pickup_address: service.pickup_address || '',
+        dropoff_address: service.dropoff_address || '',
     };
 };
 
@@ -2586,6 +4055,8 @@ const saveDatetimes = async (service) => {
         dropoff_datetime: editingDatetimeValues.value.dropoff_datetime,
         vehicle_departure_datetime: editingDatetimeValues.value.vehicle_departure_datetime,
         vehicle_return_datetime: editingDatetimeValues.value.vehicle_return_datetime,
+        pickup_address: editingDatetimeValues.value.pickup_address,
+        dropoff_address: editingDatetimeValues.value.dropoff_address,
     };
 
     const success = await saveServiceField(service.id, payload);
@@ -2601,6 +4072,8 @@ const cancelEditDatetimes = () => {
         dropoff_datetime: '',
         vehicle_departure_datetime: '',
         vehicle_return_datetime: '',
+        pickup_address: '',
+        dropoff_address: '',
     };
 };
 
@@ -2616,6 +4089,19 @@ onMounted(async () => {
             console.error('Error loading public settings:', e);
         }
     }
+    // Restore filters/pagination from URL query params (if any)
+    const hadUrlParams = readFromUrl();
+    if (hadUrlParams) {
+        activePreset.value = null; // don't apply default preset when restoring from URL
+    }
+    // Detect which preset matches current filters (including default)
+    const today = moment().format('YYYY-MM-DD');
+    if (filters.value.date_from === today && filters.value.date_to === today) {
+        activePreset.value = 'oggi';
+    } else if (filters.value.date_from === today && !filters.value.date_to) {
+        activePreset.value = 'oggi';
+        filters.value.date_to = today;
+    }
     // Load services immediately (critical for page display)
     await loadServices();
 
@@ -2625,15 +4111,69 @@ onMounted(async () => {
     loadTransactionStatuses();
     ensureClients();
     ensureIntermediaries();
+    ensureSuppliers();
     ensureDrivers();
     ensureVehicles();
     ensureServiceStatuses();
     if (isSuperAdmin.value) ensureCompanies();
+
+    // Initialize flatpickr on specific date input
+    await nextTick();
+    if (specificDateInput.value) {
+        specificDateFlatpickr = flatpickr(specificDateInput.value, {
+            dateFormat: 'd/m/Y',
+            locale: flatpickrIt,
+            allowInput: true,
+            clickOpens: true,
+            onChange: (selectedDates) => {
+                if (selectedDates.length > 0) {
+                    const d = selectedDates[0];
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    specificDate.value = `${yyyy}-${mm}-${dd}`;
+                    filterSpecificDate();
+                }
+            },
+        });
+
+        // Handle manual typing with Enter
+        specificDateInput.value.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = specificDateInput.value.value.trim();
+                const parts = val.split('/');
+                if (parts.length === 3) {
+                    const parsed = new Date(parts[2], parts[1] - 1, parts[0]);
+                    if (!isNaN(parsed.getTime())) {
+                        specificDateFlatpickr.setDate(parsed, true);
+                    }
+                }
+            }
+        });
+    }
 });
 </script>
 
 <style scoped>
+/* Sticky header for services page */
+.services-sticky-header {
+    position: sticky;
+    top: 70px; /* navbar height */
+    z-index: 1000;
+    background-color: var(--vz-secondary-bg, #fff);
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
 /* Cursor pointer for clickable elements */
+/* Summary cards: uniform size */
+.summary-card {
+    min-width: 170px;
+    flex-basis: 0;
+}
+
 .cursor-pointer {
     cursor: pointer;
 }
@@ -2675,12 +4215,61 @@ onMounted(async () => {
 }
 
 .table-responsive {
-    font-size: 0.875rem;
+    font-size: 0.8rem;
+}
+
+.table td, .table th {
+    border: 1px solid #a8b0b8 !important;
 }
 
 .table td {
     vertical-align: top;
-    padding: 0.75rem 0.5rem;
+    padding: 0.35rem 0.4rem;
+}
+
+/* Scrollable cells: limit height on columns that can grow */
+.table td.cell-scrollable {
+    max-height: 120px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Make td act as a scroll container with fade indicator */
+.cell-scroll-inner {
+    max-height: 85px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+}
+
+.cell-scroll-wrapper {
+    position: relative;
+}
+
+.cell-scroll-wrapper .scroll-fade {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 24px;
+    background: linear-gradient(transparent, rgba(255,255,255,0.95));
+    pointer-events: none;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 2px;
+    transition: opacity 0.2s;
+}
+
+.cell-scroll-wrapper .scroll-fade i {
+    font-size: 0.7rem;
+    color: #adb5bd;
+    animation: bounce-down 1.5s infinite;
+}
+
+@keyframes bounce-down {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(3px); }
 }
 
 .table th {
@@ -2835,5 +4424,77 @@ onMounted(async () => {
 
 .popup-body .table {
     margin-bottom: 0;
+}
+
+/* Pannello floating servizio (soste/movimenti/task) */
+.service-float-panel {
+    position: fixed;
+    z-index: 1049;
+    width: 900px;
+    max-width: 90vw;
+    max-height: 70vh;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Pannello floating indisponibilità */
+.unavail-panel {
+    position: fixed;
+    z-index: 1050;
+    width: 420px;
+    max-height: 70vh;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+}
+
+.unavail-panel-header {
+    background-color: #f7b84b;
+    color: #fff;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem 0.5rem 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: grab;
+    user-select: none;
+}
+
+.unavail-panel-header:active {
+    cursor: grabbing;
+}
+
+.unavail-panel-body {
+    padding: 0.75rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Targa stile italiano nella modale indisponibilità */
+.unavail-targa {
+    background: linear-gradient(to right, #003399 0%, #003399 8%, #ffffff 8%, #ffffff 92%, #003399 92%, #003399 100%);
+    border: 1px solid #000;
+    border-radius: 3px;
+    padding: 2px 6px;
+    display: inline-block;
+    font-family: 'Arial', sans-serif;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    min-width: 70px;
+}
+
+.unavail-codice-targa {
+    font-size: 11px;
+    font-weight: bold;
+    color: #000;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 </style>

@@ -328,6 +328,9 @@
 import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
+import { useNotify } from '@/composables/useNotify.js';
+
+const notify = useNotify();
 
 export default {
   components: {
@@ -566,16 +569,15 @@ export default {
       this.showModal = true;
     },
     async deleteItem(item) {
-      if (!confirm(`Sei sicuro di voler eliminare "${item.name}"?`)) {
-        return;
-      }
+      const confirmed = await notify.confirm('Elimina elemento', `Sei sicuro di voler eliminare "${item.name}"?`);
+      if (!confirmed) return;
 
       try {
         await axios.delete(`/api/dictionaries/${this.type}/${item.id}`);
         await this.loadItems();
       } catch (error) {
         console.error("Error deleting item:", error);
-        alert("Errore durante l'eliminazione");
+        notify.error("Errore durante l'eliminazione");
       }
     },
     async saveItem() {
@@ -595,7 +597,7 @@ export default {
         await this.loadItems();
       } catch (error) {
         console.error("Error saving item:", error);
-        alert("Errore durante il salvataggio");
+        notify.error("Errore durante il salvataggio");
       }
     },
   },

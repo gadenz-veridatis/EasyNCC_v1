@@ -193,8 +193,7 @@
                     <div v-if="selectedService.service_type" class="mb-1">
                         <span
                             class="badge"
-                            :class="serviceTypeBadgeClass(selectedService.service_type, 'bg-light text-dark')"
-                            style="font-size: 0.8rem;"
+                            :style="{ ...serviceTypeBadgeStyle(selectedService.service_type, '#6c757d'), fontSize: '0.8rem' }"
                         >{{ selectedService.service_type }}</span>
                     </div>
                     <!-- Nome primo passeggero -->
@@ -480,6 +479,121 @@
                 </div>
             </div>
         </div>
+        <!-- Unavailability Detail Popover -->
+        <div
+            v-if="showUnavailPopover && selectedUnavail"
+            ref="unavailPopoverEl"
+            class="service-detail-popover"
+            :style="unavailPopoverStyle"
+            @click.stop
+        >
+            <div class="popover-header d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <div class="fw-bold">
+                        <template v-if="selectedUnavail.unavailabilityType === 'driver'">
+                            🚫 Indisponibilità Driver
+                        </template>
+                        <template v-else>
+                            🚗 Indisponibilità Veicolo
+                        </template>
+                    </div>
+                    <div class="small mt-1" style="opacity: 0.9;">
+                        <template v-if="selectedUnavail.unavailabilityType === 'driver'">
+                            {{ selectedUnavail.unavailData?.driver_name }}
+                        </template>
+                        <template v-else>
+                            {{ selectedUnavail.unavailData?.vehicle_plate }}
+                            <span v-if="selectedUnavail.unavailData?.vehicle_label" class="ms-1">{{ selectedUnavail.unavailData.vehicle_label }}</span>
+                        </template>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-2" @click="closeUnavailPopover"></button>
+            </div>
+            <div class="popover-body">
+                <!-- Periodo: inline editable -->
+                <div class="mb-2">
+                    <div class="text-muted small">Periodo</div>
+                    <div v-if="unavailEditingField !== 'dates'" class="fw-bold popover-inline-editable" @click="startUnavailFieldEdit('dates')">
+                        {{ formatUnavailDate(selectedUnavail.unavailData?.start_date, selectedUnavail.unavailData?.all_day) }} — {{ formatUnavailDate(selectedUnavail.unavailData?.end_date, selectedUnavail.unavailData?.all_day) }}
+                        <i class="ri-pencil-line ms-1 text-muted" style="font-size: 0.65rem;"></i>
+                    </div>
+                    <div v-else>
+                        <div class="d-flex gap-2 align-items-center mb-1">
+                            <input type="date" v-model="unavailEditValues.start_date" class="form-control form-control-sm" style="font-size: 0.8rem;" />
+                            <span class="text-muted">—</span>
+                            <input type="date" v-model="unavailEditValues.end_date" class="form-control form-control-sm" style="font-size: 0.8rem;" />
+                        </div>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-success py-0 px-2" @click="saveUnavailField('dates')" :disabled="unavailSaving" style="font-size: 0.7rem;">
+                                <i class="ri-check-line"></i>
+                            </button>
+                            <button class="btn btn-sm btn-secondary py-0 px-2" @click="unavailEditingField = null" style="font-size: 0.7rem;">
+                                <i class="ri-close-line"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tipologia: inline editable -->
+                <div class="mb-2">
+                    <div class="text-muted small">Tipologia</div>
+                    <div v-if="unavailEditingField !== 'type'" class="popover-inline-editable" @click="startUnavailFieldEdit('type')">
+                        {{ selectedUnavail.unavailData?.reason || '-' }}
+                        <i class="ri-pencil-line ms-1 text-muted" style="font-size: 0.65rem;"></i>
+                    </div>
+                    <div v-else>
+                        <select v-model="unavailEditValues.type_id" class="form-select form-select-sm" style="font-size: 0.8rem;" @change="saveUnavailField('type')">
+                            <option :value="null">-- Nessuna --</option>
+                            <template v-if="selectedUnavail.unavailabilityType === 'driver'">
+                                <option v-for="lt in allLeaveTypes" :key="lt.id" :value="lt.id">{{ lt.name }}</option>
+                            </template>
+                            <template v-else>
+                                <option v-for="vt in allVehicleUnavailabilityTypes" :key="vt.id" :value="vt.id">{{ vt.name }}</option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Note: inline editable -->
+                <div class="mb-2">
+                    <div class="text-muted small">Note</div>
+                    <div v-if="unavailEditingField !== 'notes'" class="popover-inline-editable small" @click="startUnavailFieldEdit('notes')">
+                        {{ selectedUnavail.unavailData?.notes || '-' }}
+                        <i class="ri-pencil-line ms-1 text-muted" style="font-size: 0.65rem;"></i>
+                    </div>
+                    <div v-else>
+                        <textarea v-model="unavailEditValues.notes" class="form-control form-control-sm" rows="2" style="font-size: 0.8rem;"></textarea>
+                        <div class="d-flex gap-1 mt-1">
+                            <button class="btn btn-sm btn-success py-0 px-2" @click="saveUnavailField('notes')" :disabled="unavailSaving" style="font-size: 0.7rem;">
+                                <i class="ri-check-line"></i>
+                            </button>
+                            <button class="btn btn-sm btn-secondary py-0 px-2" @click="unavailEditingField = null" style="font-size: 0.7rem;">
+                                <i class="ri-close-line"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Azioni -->
+                <div class="d-flex gap-2 mt-3 pt-2 border-top">
+                    <Link
+                        v-if="selectedUnavail.unavailabilityType === 'driver'"
+                        :href="'/easyncc/users/' + selectedUnavail.unavailData?.driver_id + '/edit'"
+                        class="btn btn-sm btn-soft-secondary"
+                    >
+                        <i class="ri-user-line me-1"></i>Scheda Driver
+                    </Link>
+                    <Link
+                        v-else
+                        :href="'/easyncc/vehicles/' + selectedUnavail.unavailData?.vehicle_id + '/edit'"
+                        class="btn btn-sm btn-soft-secondary"
+                    >
+                        <i class="ri-car-line me-1"></i>Scheda Veicolo
+                    </Link>
+                </div>
+            </div>
+        </div>
+
         <!-- Context Menu (right-click on event) -->
         <div
             v-if="showContextMenu && !isDriver"
@@ -506,6 +620,38 @@
                 <li class="context-menu-divider"></li>
                 <li>
                     <a href="#" class="context-menu-item text-danger" @click.prevent="contextMenuDelete">
+                        <i class="ri-delete-bin-line me-2"></i>Elimina
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Context Menu (right-click on unavailability event) -->
+        <div
+            v-if="showUnavailContextMenu && !isDriver && contextMenuUnavailData"
+            class="context-menu"
+            :style="unavailContextMenuStyle"
+            @click.stop
+        >
+            <ul class="list-unstyled mb-0">
+                <li>
+                    <Link
+                        :href="contextMenuUnavailData.unavailabilityType === 'driver'
+                            ? '/easyncc/settings/driver-unavailabilities?driver_id=' + contextMenuUnavailData.unavailData?.driver_id
+                            : '/easyncc/settings/vehicle-unavailabilities?vehicle_id=' + contextMenuUnavailData.unavailData?.vehicle_id"
+                        class="context-menu-item"
+                    >
+                        <i class="ri-pencil-line me-2"></i>Modifica
+                    </Link>
+                </li>
+                <li>
+                    <a href="#" class="context-menu-item" @click.prevent="unavailContextMenuDuplicate">
+                        <i class="ri-file-copy-line me-2"></i>Duplica
+                    </a>
+                </li>
+                <li class="context-menu-divider"></li>
+                <li>
+                    <a href="#" class="context-menu-item text-danger" @click.prevent="unavailContextMenuDelete">
                         <i class="ri-delete-bin-line me-2"></i>Elimina
                     </a>
                 </li>
@@ -596,18 +742,23 @@ const toggleVehicleUnavailabilities = () => {
     updateUnavailabilityVisibility();
 };
 
+let unavailRequestCounter = 0;
+
 const loadUnavailabilities = async (start = null, end = null) => {
     if (!start || !end) return;
+    const thisRequest = ++unavailRequestCounter;
     try {
         const params = {
             start: moment(start).subtract(7, 'days').format('YYYY-MM-DD'),
             end: moment(end).add(7, 'days').format('YYYY-MM-DD'),
         };
         const response = await axios.get('/api/unavailabilities/calendar', { params });
+        if (thisRequest !== unavailRequestCounter) return;
         driverUnavailabilities.value = response.data.driver_unavailabilities || [];
         vehicleUnavailabilities.value = response.data.vehicle_unavailabilities || [];
         renderUnavailabilityEvents();
     } catch (err) {
+        if (thisRequest !== unavailRequestCounter) return;
         console.error('Error loading unavailabilities:', err);
     }
 };
@@ -628,22 +779,29 @@ const renderUnavailabilityEvents = () => {
             // Skip if driver is hidden
             if (hiddenDriverIds.value.has(item.driver_id)) return;
 
-            const endDate = moment(item.end_date).add(1, 'day').format('YYYY-MM-DD');
+            const isAllDay = !!item.all_day;
+            const startStr = isAllDay ? moment(item.start_date).format('YYYY-MM-DD') : item.start_date;
+            const endStr = isAllDay ? moment(item.end_date).add(1, 'day').format('YYYY-MM-DD') : item.end_date;
+            const timeLabel = !isAllDay ? ` ${moment(item.start_date).format('HH:mm')}-${moment(item.end_date).format('HH:mm')}` : '';
+            const color = item.driver_color || '#dc3545';
+
             calendarInstance.addEvent({
                 id: item.id,
-                title: `🚫 ${item.driver_name} - ${item.reason}`,
-                start: item.start_date,
-                end: endDate,
-                allDay: true,
+                title: `🚫 ${item.driver_name} - ${item.reason}${timeLabel}`,
+                start: startStr,
+                end: endStr,
+                allDay: isAllDay,
                 display: 'auto',
-                backgroundColor: item.driver_color || '#dc3545',
-                borderColor: item.driver_color || '#dc3545',
+                backgroundColor: color,
+                borderColor: color,
                 textColor: '#fff',
                 classNames: ['fc-unavailability-driver'],
                 extendedProps: {
                     isUnavailability: true,
                     unavailabilityType: 'driver',
+                    unavailData: item,
                     driverId: item.driver_id,
+                    driverColors: [color],
                     notes: item.notes,
                 }
             });
@@ -653,13 +811,17 @@ const renderUnavailabilityEvents = () => {
     // Add vehicle unavailabilities
     if (showVehicleUnavailabilities.value) {
         vehicleUnavailabilities.value.forEach(item => {
-            const endDate = moment(item.end_date).add(1, 'day').format('YYYY-MM-DD');
+            const isAllDay = !!item.all_day;
+            const startStr = isAllDay ? moment(item.start_date).format('YYYY-MM-DD') : item.start_date;
+            const endStr = isAllDay ? moment(item.end_date).add(1, 'day').format('YYYY-MM-DD') : item.end_date;
+            const timeLabel = !isAllDay ? ` ${moment(item.start_date).format('HH:mm')}-${moment(item.end_date).format('HH:mm')}` : '';
+
             calendarInstance.addEvent({
                 id: item.id,
-                title: `🚗 ${item.vehicle_plate} - ${item.reason}`,
-                start: item.start_date,
-                end: endDate,
-                allDay: true,
+                title: `🚗 ${item.vehicle_plate} - ${item.reason}${timeLabel}`,
+                start: startStr,
+                end: endStr,
+                allDay: isAllDay,
                 display: 'auto',
                 backgroundColor: '#6c757d',
                 borderColor: '#6c757d',
@@ -668,6 +830,7 @@ const renderUnavailabilityEvents = () => {
                 extendedProps: {
                     isUnavailability: true,
                     unavailabilityType: 'vehicle',
+                    unavailData: item,
                     vehicleId: item.vehicle_id,
                     notes: item.notes,
                 }
@@ -678,6 +841,11 @@ const renderUnavailabilityEvents = () => {
 
 const updateUnavailabilityVisibility = () => {
     renderUnavailabilityEvents();
+};
+
+const formatUnavailDate = (d, allDay) => {
+    if (!d) return '-';
+    return allDay ? moment(d).format('DD/MM/YYYY') : moment(d).format('DD/MM/YYYY HH:mm');
 };
 
 const updateEventVisibility = () => {
@@ -752,9 +920,15 @@ const showCellContextMenu = ref(false);
 const cellContextMenuStyle = ref({});
 const cellContextMenuDate = ref('');
 
+// Unavailability context menu
+const showUnavailContextMenu = ref(false);
+const unavailContextMenuStyle = ref({});
+const contextMenuUnavailData = ref(null);
+
 const closeAllContextMenus = () => {
     showContextMenu.value = false;
     showCellContextMenu.value = false;
+    showUnavailContextMenu.value = false;
 };
 
 const openEventContextMenu = (e, serviceId) => {
@@ -833,6 +1007,217 @@ const contextMenuDelete = async () => {
     }
 };
 
+// Unavailability context menu functions
+const openUnavailContextMenu = (e, extendedProps) => {
+    e.preventDefault();
+    closeAllContextMenus();
+    contextMenuUnavailData.value = extendedProps;
+    unavailContextMenuStyle.value = {
+        position: 'fixed',
+        top: `${e.clientY}px`,
+        left: `${e.clientX}px`,
+        zIndex: 9999,
+    };
+    showUnavailContextMenu.value = true;
+};
+
+const unavailContextMenuDuplicate = async () => {
+    const data = contextMenuUnavailData.value;
+    closeAllContextMenus();
+    try {
+        if (data.unavailabilityType === 'driver') {
+            const item = data.unavailData;
+            await axios.post(`/api/users/${item.driver_id}/unavailabilities`, {
+                leave_type_id: item.leave_type_id || null,
+                start_date: item.start_date,
+                end_date: item.end_date,
+                notes: item.notes ? `(Copia) ${item.notes}` : '(Copia)',
+            });
+        } else {
+            const item = data.unavailData;
+            await axios.post(`/api/vehicles/${item.vehicle_id}/unavailabilities`, {
+                vehicle_unavailability_type_id: item.vehicle_unavailability_type_id || null,
+                start_date: item.start_date,
+                end_date: item.end_date,
+                notes: item.notes ? `(Copia) ${item.notes}` : '(Copia)',
+            });
+        }
+        // Reload unavailabilities
+        if (calendarInstance) {
+            const view = calendarInstance.view;
+            loadUnavailabilities(view.activeStart, view.activeEnd);
+        }
+    } catch (err) {
+        error.value = 'Errore nella duplicazione dell\'indisponibilità';
+        console.error(err);
+    }
+};
+
+const unavailContextMenuDelete = async () => {
+    const data = contextMenuUnavailData.value;
+    closeAllContextMenus();
+    const label = data.unavailabilityType === 'driver'
+        ? `indisponibilità di ${data.unavailData.driver_name}`
+        : `indisponibilità veicolo ${data.unavailData.vehicle_plate}`;
+    const { isConfirmed } = await Swal.fire({
+        title: 'Conferma eliminazione',
+        text: `Eliminare ${label}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Elimina',
+        cancelButtonText: 'Annulla',
+    });
+    if (!isConfirmed) return;
+    try {
+        const item = data.unavailData;
+        const realId = String(item.id).replace(/^(driver|vehicle)_unavail_/, '');
+        if (data.unavailabilityType === 'driver') {
+            await axios.delete(`/api/users/${item.driver_id}/unavailabilities/${realId}`);
+        } else {
+            await axios.delete(`/api/vehicles/${item.vehicle_id}/unavailabilities/${realId}`);
+        }
+        // Reload
+        if (calendarInstance) {
+            const view = calendarInstance.view;
+            loadUnavailabilities(view.activeStart, view.activeEnd);
+        }
+    } catch (err) {
+        error.value = 'Errore nell\'eliminazione dell\'indisponibilità';
+        console.error(err);
+    }
+};
+
+// Unavailability detail popover
+const showUnavailPopover = ref(false);
+const selectedUnavail = ref(null);
+const unavailPopoverEl = ref(null);
+const unavailPopoverStyle = ref({});
+const unavailEditingField = ref(null); // 'dates', 'type', 'notes'
+const selectedUnavailEvent = ref(null);
+const unavailEditValues = ref({ start_date: '', end_date: '', type_id: null, notes: '' });
+const unavailSaving = ref(false);
+
+const openUnavailPopover = (extendedProps, el, jsEvent) => {
+    closePopover();
+    closeAllContextMenus();
+    selectedUnavail.value = extendedProps;
+    selectedUnavailEvent.value = el;
+    showUnavailPopover.value = true;
+    unavailEditingField.value = null;
+
+    setTimeout(() => {
+        positionUnavailPopover(jsEvent);
+    }, 0);
+};
+
+const closeUnavailPopover = () => {
+    showUnavailPopover.value = false;
+    selectedUnavail.value = null;
+    selectedUnavailEvent.value = null;
+    unavailEditingField.value = null;
+};
+
+const positionUnavailPopover = (event) => {
+    if (!unavailPopoverEl.value || !event) return;
+
+    const rect = event.target.getBoundingClientRect();
+    const popoverWidth = 320;
+    const popoverHeight = unavailPopoverEl.value.offsetHeight;
+
+    let left = rect.left + window.scrollX;
+    let top = rect.bottom + window.scrollY + 5;
+
+    if (left + popoverWidth > window.innerWidth) {
+        left = rect.right - popoverWidth + window.scrollX;
+    }
+    if (top + popoverHeight > window.innerHeight + window.scrollY) {
+        top = rect.top + window.scrollY - popoverHeight - 5;
+    }
+
+    unavailPopoverStyle.value = {
+        position: 'absolute',
+        left: `${left}px`,
+        top: `${top}px`,
+        zIndex: 9999,
+    };
+};
+
+const startUnavailFieldEdit = (field) => {
+    const item = selectedUnavail.value?.unavailData;
+    if (!item) return;
+    const isDriverType = selectedUnavail.value.unavailabilityType === 'driver';
+    // Initialize edit values from current data
+    unavailEditValues.value = {
+        start_date: item.start_date,
+        end_date: item.end_date,
+        type_id: isDriverType ? (item.leave_type_id || null) : (item.vehicle_unavailability_type_id || null),
+        notes: item.notes || '',
+    };
+    unavailEditingField.value = field;
+};
+
+const saveUnavailField = async (field) => {
+    const data = selectedUnavail.value;
+    const item = data?.unavailData;
+    if (!item) return;
+
+    unavailSaving.value = true;
+    try {
+        const realId = String(item.id).replace(/^(driver|vehicle)_unavail_/, '');
+        let payload;
+
+        if (data.unavailabilityType === 'driver') {
+            payload = {
+                leave_type_id: unavailEditValues.value.type_id,
+                start_date: unavailEditValues.value.start_date,
+                end_date: unavailEditValues.value.end_date,
+                notes: unavailEditValues.value.notes,
+            };
+            await axios.put(`/api/users/${item.driver_id}/unavailabilities/${realId}`, payload);
+        } else {
+            payload = {
+                vehicle_unavailability_type_id: unavailEditValues.value.type_id,
+                start_date: unavailEditValues.value.start_date,
+                end_date: unavailEditValues.value.end_date,
+                notes: unavailEditValues.value.notes,
+            };
+            await axios.put(`/api/vehicles/${item.vehicle_id}/unavailabilities/${realId}`, payload);
+        }
+
+        // Update local data so popover reflects changes without closing
+        if (field === 'dates') {
+            item.start_date = unavailEditValues.value.start_date;
+            item.end_date = unavailEditValues.value.end_date;
+        } else if (field === 'type') {
+            if (data.unavailabilityType === 'driver') {
+                item.leave_type_id = unavailEditValues.value.type_id;
+                const found = allLeaveTypes.value.find(t => t.id === unavailEditValues.value.type_id);
+                item.reason = found?.name || '';
+            } else {
+                item.vehicle_unavailability_type_id = unavailEditValues.value.type_id;
+                const found = allVehicleUnavailabilityTypes.value.find(t => t.id === unavailEditValues.value.type_id);
+                item.reason = found?.name || '';
+            }
+        } else if (field === 'notes') {
+            item.notes = unavailEditValues.value.notes;
+        }
+
+        unavailEditingField.value = null;
+
+        // Reload calendar events in background
+        if (calendarInstance) {
+            const view = calendarInstance.view;
+            loadUnavailabilities(view.activeStart, view.activeEnd);
+        }
+    } catch (err) {
+        error.value = 'Errore nel salvataggio';
+        console.error(err);
+    } finally {
+        unavailSaving.value = false;
+    }
+};
+
 const showDetailPopover = ref(false);
 const selectedService = ref(null);
 const popoverEl = ref(null);
@@ -873,7 +1258,15 @@ const pendingSavePayload = ref(null);
 const allDrivers = ref([]);
 const allVehicles = ref([]);
 const allDressCodes = ref([]);
-const { loadServiceTypes, serviceTypeBadgeClass } = useServiceTypeColor();
+const allLeaveTypes = ref([]);
+const allVehicleUnavailabilityTypes = ref([]);
+const { serviceTypes, loadServiceTypes, serviceTypeBadgeStyle } = useServiceTypeColor();
+
+const getServiceTypeAbbreviation = (serviceTypeName) => {
+    if (!serviceTypeName || !serviceTypes.value.length) return serviceTypeName || '';
+    const found = serviceTypes.value.find(st => st.name?.toLowerCase() === serviceTypeName.toLowerCase());
+    return found?.abbreviation || serviceTypeName;
+};
 
 // Track if we're currently loading to prevent duplicate requests
 let isLoadingServices = false;
@@ -883,7 +1276,7 @@ const mapServicesToEvents = (servicesList) => {
         const drivers = service.drivers || [];
         const pickupTime = moment.utc(service.pickup_datetime).format('HH:mm');
         const passengerCount = service.passenger_count || 0;
-        const serviceType = service.service_type || '';
+        const serviceType = getServiceTypeAbbreviation(service.service_type);
 
         // Passenger label: COGNOME + Nome from first passenger, fallback to contact_name
         let passengerLabel = '';
@@ -976,11 +1369,12 @@ const loadServices = async (start = null, end = null) => {
             params.passenger_name = filters.value.passenger_name;
         }
 
-        const response = await axios.get('/api/services', { params });
-        services.value = response.data.data || [];
-
-        // Load unavailabilities in parallel (non-blocking)
-        loadUnavailabilities(start, end);
+        // Load services and unavailabilities in parallel
+        const [serviceResponse] = await Promise.all([
+            axios.get('/api/services', { params }),
+            loadUnavailabilities(start, end),
+        ]);
+        services.value = serviceResponse.data.data || [];
 
         // Update calendar events if calendar exists
         if (calendarInstance) {
@@ -1023,6 +1417,7 @@ const initializeCalendar = async () => {
 
             calendarInstance = new CalendarCore(calendarEl, {
                 plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
+                contentHeight: 'auto',
                 customButtons: {
                     goToDateBtn: {
                         text: 'Vai a...',
@@ -1053,8 +1448,17 @@ const initializeCalendar = async () => {
                     loadServices(dateInfo.start, dateInfo.end);
                 },
                 eventDidMount: (info) => {
-                    // Applica pattern a strisce oblique ripetute per tutti gli eventi
-                    if (info.event.extendedProps.driverColors && info.event.extendedProps.driverColors.length > 0) {
+                    // Applica colore per eventi indisponibilità
+                    if (info.event.extendedProps?.isUnavailability) {
+                        const color = info.event.extendedProps.unavailabilityType === 'driver'
+                            ? (info.event.extendedProps.driverColors?.[0] || info.event.backgroundColor || '#dc3545')
+                            : (info.event.backgroundColor || '#6c757d');
+                        info.el.style.setProperty('background-color', color, 'important');
+                        info.el.style.setProperty('border-color', color, 'important');
+                        info.el.style.setProperty('color', '#fff', 'important');
+                    }
+                    // Applica pattern a strisce oblique ripetute per servizi
+                    else if (info.event.extendedProps.driverColors && info.event.extendedProps.driverColors.length > 0) {
                         const colors = info.event.extendedProps.driverColors;
                         info.el.style.background = createStripedGradient(colors);
                         info.el.style.color = '#fff';
@@ -1082,14 +1486,26 @@ const initializeCalendar = async () => {
                     info.el.addEventListener('mouseenter', (e) => handleEventHover(e, info));
                     info.el.addEventListener('mouseleave', handleEventLeave);
 
+                    // Unavailability events: pointer cursor
+                    if (info.event.extendedProps?.isUnavailability) {
+                        info.el.style.cursor = 'pointer';
+                    }
+
                     // Context menu (right-click) on event
                     if (!isDriver.value) {
                         info.el.addEventListener('contextmenu', (e) => {
                             e.stopPropagation();
-                            const serviceId = info.event.id;
-                            if (serviceId) {
+                            if (info.event.extendedProps?.isUnavailability) {
                                 closePopover();
-                                openEventContextMenu(e, serviceId);
+                                closeUnavailPopover();
+                                openUnavailContextMenu(e, info.event.extendedProps);
+                            } else {
+                                const serviceId = info.event.id;
+                                if (serviceId) {
+                                    closePopover();
+                                    closeUnavailPopover();
+                                    openEventContextMenu(e, serviceId);
+                                }
                             }
                         });
                     }
@@ -1163,16 +1579,20 @@ const createStripedGradient = (colors) => {
 };
 
 const handleEventClick = (info) => {
-    // Skip unavailability events
-    if (info.event.extendedProps?.isUnavailability) return;
+    // Unavailability events: open dedicated popover (same pattern as service popover)
+    if (info.event.extendedProps?.isUnavailability) {
+        openUnavailPopover(info.event.extendedProps, info.el, info.jsEvent);
+        return;
+    }
 
     // Driver: non aprire popup per eventi non assegnati
     if (isDriver.value && !info.event.extendedProps.isAssignedToCurrentDriver) {
         return;
     }
 
-    // Chiudi l'hover popover se aperto
+    // Chiudi l'hover popover e il popover indisponibilità se aperti
     closeHoverPopover();
+    closeUnavailPopover();
 
     selectedService.value = info.event.extendedProps.service;
     selectedEvent.value = info.el;
@@ -1191,7 +1611,7 @@ const handleEventClick = (info) => {
 };
 
 const handleEventHover = (event, info) => {
-    // Skip unavailability events
+    // Unavailability events: show simple tooltip via title attribute, no hover popover
     if (info.event.extendedProps?.isUnavailability) return;
 
     // Driver: non mostrare hover per eventi non assegnati
@@ -1302,14 +1722,18 @@ const resetPopoverEditing = () => {
 
 const loadDictionaries = async () => {
     try {
-        const [driversRes, vehiclesRes, dressCodesRes] = await Promise.all([
+        const [driversRes, vehiclesRes, dressCodesRes, leaveTypesRes, vehicleUnavailTypesRes] = await Promise.all([
             axios.get('/api/users', { params: { role: 'driver', per_page: 200 } }),
             axios.get('/api/vehicles', { params: { per_page: 200 } }),
-            axios.get('/api/dictionaries/dress-codes')
+            axios.get('/api/dictionaries/dress-codes'),
+            axios.get('/api/dictionaries/leave-types'),
+            axios.get('/api/dictionaries/vehicle-unavailability-types'),
         ]);
         allDrivers.value = driversRes.data.data || [];
         allVehicles.value = vehiclesRes.data.data || [];
         allDressCodes.value = dressCodesRes.data.data || [];
+        allLeaveTypes.value = leaveTypesRes.data.data || [];
+        allVehicleUnavailabilityTypes.value = vehicleUnavailTypesRes.data.data || [];
         loadServiceTypes();
     } catch (err) {
         console.error('Error loading dictionaries:', err);
@@ -1570,7 +1994,7 @@ const formatCurrency = (value) => {
 const getHoverEventTitle = (service) => {
     const pickupTime = moment.utc(service.pickup_datetime).format('HH:mm');
     const passengerCount = service.passenger_count || 0;
-    const serviceType = service.service_type || '';
+    const serviceType = getServiceTypeAbbreviation(service.service_type);
 
     let passengerLabel = '';
     if (service.passengers && service.passengers.length > 0) {
@@ -1600,6 +2024,12 @@ const handleClickOutside = (event) => {
     if (showDetailPopover.value && popoverEl.value && !popoverEl.value.contains(event.target)) {
         if (!selectedEvent.value || !selectedEvent.value.contains(event.target)) {
             closePopover();
+        }
+    }
+
+    if (showUnavailPopover.value && unavailPopoverEl.value && !unavailPopoverEl.value.contains(event.target)) {
+        if (!selectedUnavailEvent.value || !selectedUnavailEvent.value.contains(event.target)) {
+            closeUnavailPopover();
         }
     }
 };
@@ -1810,6 +2240,21 @@ onUnmounted(() => {
     font-weight: 600 !important;
     border-radius: 3px !important;
     cursor: default !important;
+}
+
+/* Force timed unavailability events to render as full block (like allDay) in month view */
+:deep(.fc-daygrid .fc-unavailability-driver),
+:deep(.fc-daygrid .fc-unavailability-vehicle) {
+    display: block !important;
+    padding: 1px 4px !important;
+}
+:deep(.fc-daygrid .fc-unavailability-driver .fc-daygrid-event-dot),
+:deep(.fc-daygrid .fc-unavailability-vehicle .fc-daygrid-event-dot) {
+    display: none !important;
+}
+:deep(.fc-daygrid .fc-unavailability-driver .fc-event-time),
+:deep(.fc-daygrid .fc-unavailability-vehicle .fc-event-time) {
+    display: none !important;
 }
 
 :deep(.fc-unavailability-driver) {

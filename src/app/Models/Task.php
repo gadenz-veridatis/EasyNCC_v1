@@ -16,6 +16,7 @@ class Task extends Model
     protected $fillable = [
         'company_id',
         'service_id',
+        'activity_id',
         'name',
         'due_date',
         'notes',
@@ -35,6 +36,11 @@ class Task extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function activity(): BelongsTo
+    {
+        return $this->belongsTo(Activity::class);
     }
 
     public function assignedUsers(): BelongsToMany

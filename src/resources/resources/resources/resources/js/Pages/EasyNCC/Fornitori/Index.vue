@@ -19,7 +19,7 @@
                                 {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
                                 <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
                             </button>
-                            <Link :href="route('easyncc.users.create')" class="btn btn-primary btn-sm">
+                            <Link :href="withReturnUrl(route('easyncc.users.create'))" class="btn btn-primary btn-sm">
                                 <i class="bx bx-plus me-1"></i>
                                 Nuovo Fornitore
                             </Link>
@@ -45,7 +45,7 @@
                                         type="text"
                                         class="form-control form-control-sm"
                                         placeholder="Nome, cognome, ragione sociale, email..."
-                                        @input="applyFilters"
+                                        @input="debouncedApplyFilters"
                                     />
                                 </BCol>
                                 <BCol :md="isSuperAdmin ? 3 : 4">
@@ -59,6 +59,16 @@
                                 <BCol :md="isSuperAdmin ? 3 : 4">
                                     <label class="form-label">Intermediario</label>
                                     <select v-model="filters.is_intermediario" class="form-select form-select-sm" @change="applyFilters">
+                                        <option value="">Tutti</option>
+                                        <option value="1">Sì</option>
+                                        <option value="0">No</option>
+                                    </select>
+                                </BCol>
+                            </BRow>
+                            <BRow class="mb-3">
+                                <BCol md="3">
+                                    <label class="form-label">Collega</label>
+                                    <select v-model="filters.is_collega" class="form-select form-select-sm" @change="applyFilters">
                                         <option value="">Tutti</option>
                                         <option value="1">Sì</option>
                                         <option value="0">No</option>
@@ -118,10 +128,10 @@
                                         <td>{{ fornitore.client_profile?.business_name || '-' }}</td>
                                         <td>{{ fornitore.client_profile?.vat_number || '-' }}</td>
                                         <td>
-                                            <Link :href="route('easyncc.users.show', fornitore.id)" class="btn btn-sm btn-soft-info me-1" title="Visualizza Dettagli">
+                                            <Link :href="withReturnUrl(route('easyncc.users.show', fornitore.id))" class="btn btn-sm btn-soft-info me-1" title="Visualizza Dettagli">
                                                 <i class="bx bx-show"></i>
                                             </Link>
-                                            <Link :href="route('easyncc.users.edit', fornitore.id)" class="btn btn-sm btn-soft-primary me-1" title="Modifica">
+                                            <Link :href="withReturnUrl(route('easyncc.users.edit', fornitore.id))" class="btn btn-sm btn-soft-primary me-1" title="Modifica">
                                                 <i class="bx bx-edit"></i>
                                             </Link>
                                             <button
@@ -254,6 +264,7 @@ import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import { useUrlFilters } from '@/composables/useUrlFilters.js';
 
 const fornitori = ref([]);
 const companies = ref([]);
@@ -275,12 +286,19 @@ const filters = ref({
     company_id: '',
     search: '',
     is_active: '',
-    is_intermediario: ''
+    is_intermediario: '',
+    is_collega: ''
 });
 
 // Sorting
 const sortField = ref('surname');
 const sortDirection = ref('asc');
+
+const { readFromUrl, withReturnUrl } = useUrlFilters(filters, { page: currentPage, sortField, sortDirection });
+
+// Debounce & request counter
+let searchTimer = null;
+let requestCounter = 0;
 
 // Computed
 const isSuperAdmin = computed(() => currentUser.value?.role === 'super-admin');
@@ -317,6 +335,7 @@ const loadCompanies = async () => {
 const loadFornitori = async () => {
     loading.value = true;
     error.value = '';
+    const thisRequest = ++requestCounter;
 
     try {
         const params = {
@@ -330,6 +349,9 @@ const loadFornitori = async () => {
         };
 
         const response = await axios.get('/api/users', { params });
+
+        if (thisRequest !== requestCounter) return;
+
         fornitori.value = response.data.data || [];
 
         // Handle pagination metadata
@@ -346,10 +368,13 @@ const loadFornitori = async () => {
             totalRecords.value = fornitori.value.length;
         }
     } catch (err) {
+        if (thisRequest !== requestCounter) return;
         error.value = 'Errore nel caricamento dei fornitori';
         console.error('Error loading fornitori:', err);
     } finally {
-        loading.value = false;
+        if (thisRequest === requestCounter) {
+            loading.value = false;
+        }
     }
 };
 
@@ -358,12 +383,21 @@ const applyFilters = () => {
     loadFornitori();
 };
 
+const debouncedApplyFilters = () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        applyFilters();
+    }, 300);
+};
+
 const resetFilters = () => {
+    clearTimeout(searchTimer);
     filters.value = {
         company_id: '',
         search: '',
         is_active: '',
-        is_intermediario: ''
+        is_intermediario: '',
+        is_collega: ''
     };
     currentPage.value = 1;
     loadFornitori();
@@ -416,6 +450,7 @@ const deleteFornitore = async (id) => {
 
 onMounted(async () => {
     await loadCurrentUser();
+    readFromUrl();
     await loadCompanies();
     await loadFornitori();
 });

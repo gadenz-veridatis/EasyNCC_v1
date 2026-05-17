@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Company;
 use App\Models\DriverAttachment;
 use App\Models\Service;
+use App\Models\ServiceAttachment;
 use App\Models\TelegramConfig;
 use App\Models\TelegramMessage;
 use App\Models\TelegramNotification;
@@ -78,6 +79,9 @@ class TelegramNotificationService
             }
 
             try {
+                // Save PDF as service attachment
+                $this->saveAsServiceAttachment($service, $driver, $pdfPath);
+
                 $this->sendToDriver($driver, $service, $pdfPath, $companyId, $api);
             } finally {
                 if (file_exists($pdfPath)) {
@@ -115,8 +119,12 @@ class TelegramNotificationService
             ? \Carbon\Carbon::parse($service->pickup_datetime)->format('d/m/Y H:i')
             : 'N/D';
 
+        $serviceLabel = TelegramServiceLabel::getHtml($service);
+        $serviceLabelPlain = TelegramServiceLabel::get($service);
+
         // HTML version for Telegram API
-        $caption = "<b>NUOVO SERVIZIO ASSEGNATO</b>\n\n"
+        $caption = "<b>🚗 NUOVO SERVIZIO ASSEGNATO</b>\n\n"
+            . "<b>Servizio:</b> {$serviceLabel}\n"
             . "<b>Rif.:</b> {$service->reference_number}\n"
             . "<b>Data Pickup:</b> {$pickupDate}\n"
             . "<b>Pickup:</b> {$service->pickup_address}\n"
@@ -125,7 +133,8 @@ class TelegramNotificationService
             . "Premi il bottone per accettare il servizio.";
 
         // Plain text version for DB storage (web chat display)
-        $captionPlain = "NUOVO SERVIZIO ASSEGNATO\n\n"
+        $captionPlain = "🚗 NUOVO SERVIZIO ASSEGNATO\n\n"
+            . "Servizio: {$serviceLabelPlain}\n"
             . "Rif.: {$service->reference_number}\n"
             . "Data Pickup: {$pickupDate}\n"
             . "Pickup: {$service->pickup_address}\n"
@@ -187,6 +196,37 @@ class TelegramNotificationService
     }
 
     /**
+     * Save the generated PDF as a service attachment.
+     */
+    private function saveAsServiceAttachment(Service $service, $driver, string $tempPdfPath): void
+    {
+        try {
+            $driverName = $driver ? $driver->display_name : 'driver';
+            $pickupDate = $service->pickup_datetime
+                ? Carbon::parse($service->pickup_datetime)->format('Y-m-d')
+                : 'no-date';
+            $fileName = "Servizio_{$service->id}_{$driverName}_{$pickupDate}.pdf";
+
+            $storagePath = "service_attachments/{$service->id}/{$fileName}";
+            Storage::disk('private')->put($storagePath, file_get_contents($tempPdfPath));
+
+            ServiceAttachment::create([
+                'service_id' => $service->id,
+                'file_name' => $fileName,
+                'file_path' => $storagePath,
+                'file_size' => filesize($tempPdfPath),
+                'mime_type' => 'application/pdf',
+                'notes' => "PDF inviato via Telegram a {$driverName}",
+            ]);
+        } catch (\Exception $e) {
+            Log::channel('telegram')->warning('Failed to save PDF as service attachment', [
+                'service_id' => $service->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Generate a PDF with service details.
      * Returns the temp file path, or null on failure.
      */
@@ -234,14 +274,15 @@ class TelegramNotificationService
             }
         }
 
-        // Driver name
+        // Driver name: COGNOME (maiuscolo) + Nome
         $driverName = '';
+        if (!$driver && $service->drivers && $service->drivers->isNotEmpty()) {
+            $driver = $service->drivers->first();
+        }
         if ($driver) {
-            $driverName = $driver->display_name;
-        } elseif ($service->drivers && $service->drivers->isNotEmpty()) {
-            $firstDriver = $service->drivers->first();
-            $driverName = $firstDriver->display_name;
-            $driver = $firstDriver;
+            $surname = mb_strtoupper(trim($driver->surname ?? ''));
+            $name = trim($driver->name ?? '');
+            $driverName = trim("{$surname} {$name}");
         }
 
         // Date/time fields
@@ -276,13 +317,17 @@ class TelegramNotificationService
             }
         }
 
-        // Passenger (first one)
-        $nomePasseggero = '';
-        $telefonoPasseggero = '';
+        // Passengers: build array with formatted names (COGNOME Nome)
+        $passengers = collect();
         if ($service->passengers && $service->passengers->isNotEmpty()) {
-            $firstPassenger = $service->passengers->first();
-            $nomePasseggero = $firstPassenger->name ?? '';
-            $telefonoPasseggero = $firstPassenger->phone ?? '';
+            $passengers = $service->passengers->map(function ($p) {
+                $surname = mb_strtoupper(trim($p->surname ?? ''));
+                $name = trim($p->name ?? '');
+                return [
+                    'fullName' => trim("{$surname} {$name}"),
+                    'phone' => $p->phone ?? '',
+                ];
+            });
         }
 
         // Driver digital signature
@@ -311,8 +356,7 @@ class TelegramNotificationService
             'dataDropoff' => $dataDropoff,
             'oraDropoff' => $oraDropoff,
             'kmVeicolo' => $kmVeicolo,
-            'nomePasseggero' => $nomePasseggero,
-            'telefonoPasseggero' => $telefonoPasseggero,
+            'passengers' => $passengers,
             'firmaDriverUrl' => $firmaDriverUrl,
         ];
     }

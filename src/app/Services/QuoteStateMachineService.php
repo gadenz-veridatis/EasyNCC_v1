@@ -8,16 +8,19 @@ use App\Models\QuoteStateTransition;
 use App\Models\Settings;
 use App\Models\SumupConfig;
 use App\Models\GmailAccount;
+use App\Models\ThreadEmail;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class QuoteStateMachineService
 {
     private const ALLOWED_TRANSITIONS = [
-        Quote::STATUS_DRAFT => [Quote::STATUS_APPROVED],
-        Quote::STATUS_APPROVED => [Quote::STATUS_SENT, Quote::STATUS_DRAFT],
-        Quote::STATUS_SENT => [Quote::STATUS_DEPOSIT_RECEIVED],
+        Quote::STATUS_DRAFT => [Quote::STATUS_APPROVED, Quote::STATUS_IN_APPROVAZIONE],
+        Quote::STATUS_IN_APPROVAZIONE => [Quote::STATUS_APPROVED, Quote::STATUS_DRAFT],
+        Quote::STATUS_APPROVED => [Quote::STATUS_SENT, Quote::STATUS_DRAFT, Quote::STATUS_DEPOSIT_RECEIVED],
+        Quote::STATUS_SENT => [Quote::STATUS_DEPOSIT_RECEIVED, Quote::STATUS_SCADUTO],
     ];
 
     /**
@@ -136,11 +139,34 @@ class QuoteStateMachineService
                 $quote->rendered_body_html = $body;
             }
 
-            $gmailService->sendDraft($quote->gmail_draft_id);
+            $sendResult = $gmailService->sendDraft($quote->gmail_draft_id);
 
             $quote->status = Quote::STATUS_SENT;
             $quote->sent_at = now();
             $quote->save();
+
+            // Register sent email in thread_emails if quote is linked to a richiesta
+            if ($quote->richiesta_id) {
+                try {
+                    ThreadEmail::create([
+                        'id' => Str::uuid(),
+                        'company_id' => $quote->company_id,
+                        'richiesta_id' => $quote->richiesta_id,
+                        'mailbox_id' => $gmailAccount->id,
+                        'thread_id_gmail' => $sendResult['thread_id'] ?? $quote->gmail_thread_id ?? '',
+                        'message_id_rfc' => '<quote-' . $quote->id . '-' . time() . '@' . $gmailAccount->email_address . '>',
+                        'direzione' => 'outbound',
+                        'mittente' => $gmailAccount->email_address,
+                        'destinatario' => $quote->client_email,
+                        'subject' => $quote->rendered_subject ?? 'Preventivo #' . $quote->id,
+                        'body_html' => $quote->rendered_body_html,
+                        'ricevuto_at' => now(),
+                        'created_at' => now(),
+                    ]);
+                } catch (\Exception $e) {
+                    Log::channel('gmail')->warning("Failed to register quote email in thread_emails: " . $e->getMessage());
+                }
+            }
 
             $this->logTransition($quote, Quote::STATUS_APPROVED, Quote::STATUS_SENT, $actor, 'user');
 
@@ -226,6 +252,68 @@ class QuoteStateMachineService
                 'webhook',
                 $webhookPayload
             );
+
+            // Promote contact to user if linked to a richiesta
+            if ($quote->richiesta_id && $quote->contact) {
+                try {
+                    $promotionService = new ContactPromotionService();
+                    $promotionService->promote($quote->contact);
+                } catch (\Exception $e) {
+                    Log::warning("Failed to promote contact for quote {$quote->id}: " . $e->getMessage());
+                }
+            }
+
+            // Auto-transition richiesta to confermata if linked
+            if ($quote->richiesta_id) {
+                $richiesta = $quote->richiesta;
+                if ($richiesta && $richiesta->stato !== 'confermata' && $richiesta->stato !== 'completata') {
+                    $richiestaStateMachine = new RichiestaStateMachineService();
+                    try {
+                        $richiestaStateMachine->transition($richiesta, 'confermata', 'Deposito ricevuto via webhook');
+                    } catch (\Exception $e) {
+                        Log::warning("Failed to auto-confirm richiesta {$richiesta->id}: " . $e->getMessage());
+                    }
+                }
+            }
+
+            return $quote->fresh();
+        });
+    }
+
+    /**
+     * Transition draft → in_approvazione.
+     * Only for quotes linked to a richiesta (multi-service quotes).
+     */
+    public function transitionToInApprovazione(Quote $quote, User $actor): Quote
+    {
+        $this->validateTransition($quote, Quote::STATUS_IN_APPROVAZIONE);
+
+        return DB::transaction(function () use ($quote, $actor) {
+            $quote->status = Quote::STATUS_IN_APPROVAZIONE;
+            $quote->save();
+
+            $this->logTransition($quote, Quote::STATUS_DRAFT, Quote::STATUS_IN_APPROVAZIONE, $actor, 'user');
+
+            return $quote->fresh();
+        });
+    }
+
+    /**
+     * Transition sent → scaduto.
+     * Called by cron when quote expiry date is passed.
+     */
+    public function transitionToScaduto(Quote $quote): Quote
+    {
+        $this->validateTransition($quote, Quote::STATUS_SCADUTO);
+
+        return DB::transaction(function () use ($quote) {
+            $quote->status = Quote::STATUS_SCADUTO;
+            $quote->save();
+
+            $this->logTransition($quote, Quote::STATUS_SENT, Quote::STATUS_SCADUTO, null, 'system', [
+                'reason' => 'Scadenza superata',
+                'scadenza' => $quote->scadenza?->toDateString(),
+            ]);
 
             return $quote->fresh();
         });

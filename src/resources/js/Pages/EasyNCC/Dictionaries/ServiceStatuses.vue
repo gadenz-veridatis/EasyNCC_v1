@@ -175,6 +175,9 @@
 import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
+import { useNotify } from '@/composables/useNotify.js';
+
+const notify = useNotify();
 
 export default {
   components: { Layout, PageHeader },
@@ -271,17 +274,18 @@ export default {
         await this.loadItems();
       } catch (e) {
         console.error(e);
-        alert('Errore durante il salvataggio');
+        notify.error('Errore durante il salvataggio');
       }
     },
     async deleteItem(item) {
-      if (!confirm(`Eliminare "${item.name}"?`)) return;
+      const confirmed = await notify.confirm('Elimina stato', `Eliminare "${item.name}"?`);
+      if (!confirmed) return;
       try {
         await axios.delete(`/api/dictionaries/service-statuses/${item.id}`);
         await this.loadItems();
       } catch (e) {
         console.error(e);
-        alert("Errore durante l'eliminazione");
+        notify.error("Errore durante l'eliminazione");
       }
     },
   },

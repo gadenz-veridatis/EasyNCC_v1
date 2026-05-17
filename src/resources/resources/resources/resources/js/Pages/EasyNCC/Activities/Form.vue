@@ -212,7 +212,7 @@
 
                             <!-- Action Buttons -->
                             <div class="d-flex justify-content-end gap-2">
-                                <Link :href="route('easyncc.activities.index')" class="btn btn-soft-secondary">
+                                <Link :href="returnUrl || route('easyncc.activities.index')" class="btn btn-soft-secondary">
                                     Annulla
                                 </Link>
                                 <button type="submit" class="btn btn-primary" :disabled="loading">
@@ -266,6 +266,7 @@ const suppliers = ref([]);
 const currentUser = ref(null);
 const loading = ref(false);
 const errors = ref([]);
+const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') || '';
 
 const isSuperAdmin = computed(() => {
     return currentUser.value?.role === 'super-admin';
@@ -342,7 +343,7 @@ const submitForm = async () => {
             await axios.post('/api/activities', data);
         }
 
-        router.visit(route('easyncc.activities.index'));
+        router.visit(returnUrl || route('easyncc.activities.index'));
     } catch (err) {
         if (err.response && err.response.status === 422) {
             const validationErrors = err.response.data.errors;

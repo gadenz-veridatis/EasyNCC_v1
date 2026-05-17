@@ -14,12 +14,15 @@ class Quote extends Model
     use HasFactory, HasCompany, SoftDeletes;
 
     const STATUS_DRAFT = 'draft';
+    const STATUS_IN_APPROVAZIONE = 'in_approvazione';
     const STATUS_APPROVED = 'approved';
     const STATUS_SENT = 'sent';
     const STATUS_DEPOSIT_RECEIVED = 'deposit_received';
+    const STATUS_SCADUTO = 'scaduto';
 
     protected $fillable = [
         'company_id',
+        'richiesta_id',
         'user_id',
         'status',
         'quote_group_id',
@@ -83,6 +86,7 @@ class Quote extends Model
         'approved_at',
         'sent_at',
         'deposit_received_at',
+        'scadenza',
         'created_by',
         'updated_by',
     ];
@@ -128,6 +132,7 @@ class Quote extends Model
         'archived_at' => 'datetime',
         'is_active_version' => 'boolean',
         'version' => 'integer',
+        'scadenza' => 'date',
     ];
 
     public function scopeActiveVersions($query)
@@ -188,5 +193,10 @@ class Quote extends Model
     public function items(): HasMany
     {
         return $this->hasMany(QuoteItem::class)->orderBy('sort_order');
+    }
+
+    public function richiesta(): BelongsTo
+    {
+        return $this->belongsTo(Richiesta::class);
     }
 }

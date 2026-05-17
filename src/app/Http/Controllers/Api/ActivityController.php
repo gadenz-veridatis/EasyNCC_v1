@@ -16,9 +16,11 @@ class ActivityController extends Controller
     {
         $query = Activity::with([
             'activityType',
-            'supplier',
-            'service:id,reference_number,client_id',
-            'service.client:id,name,surname,email',
+            'supplier:id,name,surname',
+            'service:id,reference_number,client_id,pickup_datetime',
+            'service.client:id,name,surname',
+            'service.drivers:id,name,surname',
+            'service.drivers.driverProfile:id,user_id,color',
             'company:id,name'
         ]);
 
@@ -51,12 +53,31 @@ class ActivityController extends Controller
             $query->where('payment_type', $request->payment_type);
         }
 
-        // Search on name
+        // Filter by client (via service)
+        if ($request->filled('client_id')) {
+            $query->whereHas('service', function ($q) use ($request) {
+                $q->where('client_id', $request->client_id);
+            });
+        }
+
+        // Filter by driver (via service)
+        if ($request->filled('driver_id')) {
+            $query->whereHas('service', function ($q) use ($request) {
+                $q->whereHas('drivers', function ($dq) use ($request) {
+                    $dq->where('users.id', $request->driver_id);
+                });
+            });
+        }
+
+        // Search on name, notes, and service reference_number
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('name', 'ilike', "%{$search}%")
-                  ->orWhere('notes', 'ilike', "%{$search}%");
+                  ->orWhere('notes', 'ilike', "%{$search}%")
+                  ->orWhereHas('service', function ($sq) use ($search) {
+                      $sq->where('reference_number', 'ilike', "%{$search}%");
+                  });
             });
         }
 
@@ -65,11 +86,15 @@ class ActivityController extends Controller
             $query->whereDate('start_time', '>=', $request->start_date);
         }
         if ($request->filled('end_date')) {
-            $query->whereDate('end_time', '<=', $request->end_date);
+            $query->whereDate('start_time', '<=', $request->end_date);
         }
 
         // Sorting
+        $allowedSorts = ['start_time', 'name', 'cost', 'payment_type', 'created_at'];
         $sortBy = $request->get('sort_by', 'start_time');
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'start_time';
+        }
         $sortOrder = $request->get('sort_order', 'desc');
         $query->orderBy($sortBy, $sortOrder);
 
@@ -103,8 +128,11 @@ class ActivityController extends Controller
             'end_time' => 'nullable|date',
             'cost' => 'nullable|numeric|min:0',
             'cost_per_person' => 'nullable|numeric|min:0',
-            'payment_type' => 'nullable|in:INCLUSO,CLIENTE,AGENZIA,NESSUNO',
+            'payment_type' => 'nullable|string|max:50',
             'should_account' => 'nullable|boolean',
+            'confirmation_enabled' => 'nullable|boolean',
+            'confirmation_assignee_id' => 'nullable|exists:users,id',
+            'accounting_transaction_id' => 'nullable|exists:accounting_transactions,id',
             'notes' => 'nullable|string',
         ]);
 
@@ -127,7 +155,7 @@ class ActivityController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Activity created successfully',
-            'data' => $activity->load(['activityType', 'supplier', 'service', 'company']),
+            'data' => $activity->load(['activityType', 'supplier', 'confirmationAssignee:id,name,surname', 'service', 'company']),
         ], 201);
     }
 
@@ -138,7 +166,7 @@ class ActivityController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => $activity->load(['activityType', 'supplier', 'service', 'company']),
+            'data' => $activity->load(['activityType', 'supplier', 'confirmationAssignee:id,name,surname', 'service', 'company']),
         ]);
     }
 
@@ -157,6 +185,9 @@ class ActivityController extends Controller
             'cost' => 'sometimes|nullable|numeric|min:0',
             'cost_per_person' => 'sometimes|nullable|numeric|min:0',
             'payment_type' => 'sometimes|nullable|in:INCLUSO,CLIENTE,AGENZIA,NESSUNO',
+            'confirmation_enabled' => 'sometimes|nullable|boolean',
+            'confirmation_assignee_id' => 'sometimes|nullable|exists:users,id',
+            'accounting_transaction_id' => 'sometimes|nullable|exists:accounting_transactions,id',
             'should_account' => 'nullable|boolean',
             'notes' => 'nullable|string',
         ]);
@@ -166,7 +197,7 @@ class ActivityController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Activity updated successfully',
-            'data' => $activity->load(['activityType', 'supplier', 'service', 'company']),
+            'data' => $activity->load(['activityType', 'supplier', 'confirmationAssignee:id,name,surname', 'service', 'company']),
         ]);
     }
 

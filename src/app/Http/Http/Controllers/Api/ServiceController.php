@@ -109,8 +109,11 @@ class ServiceController extends Controller
             },
             'dressCode:id,name',
             'passengers:id,service_id,name,surname,phone,nationality',
-            'activities.activityType:id,name',
-            'activities.supplier:id,name,surname',
+            'activities' => function ($query) {
+                $query->orderBy('sort_order', 'asc')
+                      ->orderBy('start_time', 'asc')
+                      ->with(['activityType:id,name', 'supplier:id,name,surname']);
+            },
         ]);
 
         // Add counts for notifications (lightweight counts only)
@@ -160,6 +163,11 @@ class ServiceController extends Controller
         // Filter by intermediary
         if ($request->filled('intermediary_id')) {
             $query->where('intermediary_id', $request->intermediary_id);
+        }
+
+        // Filter by supplier (collega)
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->supplier_id);
         }
 
         // Filter by service type (stored as string)
@@ -383,8 +391,11 @@ class ServiceController extends Controller
             'stops',
             'payments',
             'costs',
-            'activities.activityType',
-            'activities.supplier',
+            'activities' => function ($query) {
+                $query->orderBy('sort_order', 'asc')
+                      ->orderBy('start_time', 'asc')
+                      ->with(['activityType', 'supplier']);
+            },
             'accountingTransactions',
             'tasks.assignedUsers',
             'company',

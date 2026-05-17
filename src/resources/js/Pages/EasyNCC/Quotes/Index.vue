@@ -120,7 +120,7 @@
                         <!-- Action Buttons -->
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div></div>
-                            <Link href="/easyncc/quotes/create" class="btn btn-sm btn-success">
+                            <Link :href="withReturnUrl('/easyncc/quotes/create')" class="btn btn-sm btn-success">
                                 <i class="ri-add-line me-1"></i>Nuovo Preventivo
                             </Link>
                         </div>
@@ -219,10 +219,10 @@
                                         </td>
                                         <td>
                                             <div class="d-flex gap-1">
-                                                <Link :href="`/easyncc/quotes/${quote.id}`" class="btn btn-sm btn-outline-info" title="Visualizza">
+                                                <Link :href="withReturnUrl(`/easyncc/quotes/${quote.id}`)" class="btn btn-sm btn-outline-info" title="Visualizza">
                                                     <i class="ri-eye-line"></i>
                                                 </Link>
-                                                <Link :href="`/easyncc/quotes/${quote.id}/edit`" class="btn btn-sm btn-outline-primary" title="Modifica">
+                                                <Link :href="withReturnUrl(`/easyncc/quotes/${quote.id}/edit`)" class="btn btn-sm btn-outline-primary" title="Modifica">
                                                     <i class="ri-pencil-line"></i>
                                                 </Link>
                                                 <button
@@ -324,11 +324,16 @@ import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
 import moment from "moment";
 import { useServiceTypeColor } from '@/composables/useServiceTypeColor.js';
+import { useNotify } from '@/composables/useNotify.js';
 
 const { loadServiceTypes, serviceTypeBadgeStyle } = useServiceTypeColor();
 
 export default {
     components: { Head, Link, Layout, PageHeader },
+    setup() {
+        const notify = useNotify();
+        return { notify };
+    },
     data() {
         return {
             loading: true,
@@ -380,18 +385,41 @@ export default {
         },
     },
     async mounted() {
-        // Check URL for contact_id filter
+        // Restore filters from URL query params
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('contact_id')) {
-            this.filters.contact_id = urlParams.get('contact_id');
-            this.contactFilterName = urlParams.get('contact_name') || 'Contatto #' + urlParams.get('contact_id');
+        for (const key of Object.keys(this.filters)) {
+            if (urlParams.has(key)) {
+                this.filters[key] = urlParams.get(key);
+            }
+        }
+        if (urlParams.has('page')) this.pagination.current_page = parseInt(urlParams.get('page')) || 1;
+        if (urlParams.has('sort_by')) this.sortField = urlParams.get('sort_by');
+        if (urlParams.has('sort_order')) this.sortDirection = urlParams.get('sort_order');
+        if (this.filters.contact_id) {
+            this.contactFilterName = urlParams.get('contact_name') || 'Contatto #' + this.filters.contact_id;
             this.showFilters = true;
         }
-        await this.loadQuotes();
+        await this.loadQuotes(this.pagination.current_page);
         loadServiceTypes();
     },
     methods: {
         serviceTypeBadgeStyle,
+        syncFiltersToUrl() {
+            const params = new URLSearchParams();
+            for (const [key, value] of Object.entries(this.filters)) {
+                if (value !== '' && value !== null) params.set(key, value);
+            }
+            if (this.pagination.current_page > 1) params.set('page', this.pagination.current_page);
+            if (this.contactFilterName) params.set('contact_name', this.contactFilterName);
+            const qs = params.toString();
+            history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+        },
+        withReturnUrl(href) {
+            this.syncFiltersToUrl();
+            const currentUrl = window.location.pathname + window.location.search;
+            const separator = href.includes('?') ? '&' : '?';
+            return href + separator + 'returnUrl=' + encodeURIComponent(currentUrl);
+        },
         async loadQuotes(page = 1) {
             this.loading = true;
             try {
@@ -477,19 +505,20 @@ export default {
                 }
             } catch (error) {
                 console.error('Error duplicating quote:', error);
-                alert(error.response?.data?.message || 'Errore durante la duplicazione del preventivo');
+                this.notify.error(error.response?.data?.message || 'Errore durante la duplicazione del preventivo');
             } finally {
                 this.duplicatingId = null;
             }
         },
         async deleteQuote(id) {
-            if (!confirm('Eliminare questo preventivo?')) return;
+            const confirmed = await this.notify.confirm('Elimina Preventivo', 'Eliminare questo preventivo?');
+            if (!confirmed) return;
             try {
                 await axios.delete(`/api/quotes/${id}`);
                 this.loadQuotes(this.pagination.current_page);
             } catch (error) {
                 console.error('Error deleting quote:', error);
-                alert('Errore durante l\'eliminazione del preventivo');
+                this.notify.error('Errore durante l\'eliminazione del preventivo');
             }
         },
         openEmailPreview(quote) {

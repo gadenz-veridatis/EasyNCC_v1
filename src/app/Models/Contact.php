@@ -36,4 +36,9 @@ class Contact extends Model
     {
         return $this->hasMany(Quote::class)->where('is_active_version', true);
     }
+
+    public function richieste(): HasMany
+    {
+        return $this->hasMany(Richiesta::class);
+    }
 }

@@ -47,6 +47,7 @@ class DriverUnavailabilityController extends Controller
             'leave_type_id' => 'required|exists:leave_types,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'all_day' => 'boolean',
             'notes' => 'nullable|string',
         ]);
 
@@ -72,6 +73,7 @@ class DriverUnavailabilityController extends Controller
             'leave_type_id' => 'required|exists:leave_types,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'all_day' => 'boolean',
             'notes' => 'nullable|string',
         ]);
 
@@ -91,6 +93,7 @@ class DriverUnavailabilityController extends Controller
             'leave_type_id' => 'sometimes|exists:leave_types,id',
             'start_date' => 'sometimes|date',
             'end_date' => 'sometimes|date|after_or_equal:start_date',
+            'all_day' => 'boolean',
             'notes' => 'nullable|string',
         ]);
 

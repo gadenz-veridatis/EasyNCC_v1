@@ -58,8 +58,10 @@ class QuoteServiceCreationService
      */
     private function mapItemToServiceData(Quote $quote, $item, ServiceStatus $status, int $index): array
     {
-        $pickupDatetime = $quote->service_date
-            ? $quote->service_date->startOfDay()
+        // Use item-level date if available, otherwise fall back to quote-level date
+        $serviceDate = $item->service_date ?? $quote->service_date;
+        $pickupDatetime = $serviceDate
+            ? $serviceDate->startOfDay()
             : now()->startOfDay();
 
         $durationHours = floatval($item->duration_hours ?: 0);
@@ -99,6 +101,7 @@ class QuoteServiceCreationService
             'deposit_taxable' => $index === 0 ? $quote->deposit_taxable : null,
             'deposit_handling_fees' => $index === 0 ? $quote->deposit_handling_fees : null,
             'deposit_amount' => $index === 0 ? $quote->deposit_total : null,
+            'deposit_sale_type' => 'deposit_card_fees',
             'balance_taxable' => $index === 0 ? $quote->balance_taxable : null,
             'balance_handling_fees' => $index === 0 ? $quote->balance_handling_fees : null,
             'balance_card_fees' => $index === 0 ? $quote->balance_card_fees : null,
@@ -143,6 +146,7 @@ class QuoteServiceCreationService
             'deposit_taxable' => $quote->deposit_taxable,
             'deposit_handling_fees' => $quote->deposit_handling_fees,
             'deposit_amount' => $quote->deposit_total,
+            'deposit_sale_type' => 'deposit_card_fees',
             'balance_taxable' => $quote->balance_taxable,
             'balance_handling_fees' => $quote->balance_handling_fees,
             'balance_card_fees' => $quote->balance_card_fees,

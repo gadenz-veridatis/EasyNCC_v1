@@ -22,7 +22,6 @@ export const layoutMethods = mapActions('layout',
 
 export const authFackMethods = mapActions('authfack', ['login', 'registeruser', 'logout'])
 
-export const notificationMethods = mapActions('notification', ['success', 'error', 'clear'])
 
 export const todoComputed = {
   ...mapState('todo', {

@@ -236,6 +236,9 @@
 import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
+import { useNotify } from '@/composables/useNotify.js';
+
+const notify = useNotify();
 
 export default {
   components: {
@@ -414,16 +417,15 @@ export default {
       this.showModal = true;
     },
     async deleteItem(item) {
-      if (!confirm(`Sei sicuro di voler eliminare la ZTL di "${item.city}"?`)) {
-        return;
-      }
+      const confirmed = await notify.confirm('Elimina ZTL', `Sei sicuro di voler eliminare la ZTL di "${item.city}"?`);
+      if (!confirmed) return;
 
       try {
         await axios.delete(`/api/dictionaries/ztl/${item.id}`);
         await this.loadItems();
       } catch (error) {
         console.error("Error deleting item:", error);
-        alert("Errore durante l'eliminazione");
+        notify.error("Errore durante l'eliminazione");
       }
     },
     async saveItem() {
@@ -446,9 +448,9 @@ export default {
         console.error("Error saving item:", error);
         if (error.response?.data?.errors) {
           const errors = Object.values(error.response.data.errors).flat();
-          alert("Errori di validazione:\n" + errors.join("\n"));
+          notify.warning("Errori di validazione:\n" + errors.join("\n"));
         } else {
-          alert("Errore durante il salvataggio");
+          notify.error("Errore durante il salvataggio");
         }
       }
     },

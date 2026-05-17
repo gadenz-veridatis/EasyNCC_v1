@@ -21,6 +21,7 @@ class DictionaryController extends Controller
         'transaction-statuses' => \App\Models\TransactionStatus::class,
         'leave-types' => \App\Models\LeaveType::class,
         'vehicle-unavailability-types' => \App\Models\VehicleUnavailabilityType::class,
+        'activity-payment-types' => \App\Models\ActivityPaymentType::class,
     ];
 
     /**
@@ -271,6 +272,14 @@ class DictionaryController extends Controller
                 $baseRules['color'] = 'nullable|string|max:50';
                 $baseRules['transaction_type_group'] = 'required|in:purchase,sale,both';
                 $baseRules['is_final'] = 'boolean';
+                $baseRules['is_active'] = 'boolean';
+                $baseRules['sort_order'] = 'nullable|integer|min:0';
+                unset($baseRules['description']);
+                break;
+
+            case 'activity-payment-types':
+                $baseRules['code'] = 'required|string|max:50';
+                $baseRules['color'] = 'nullable|string|max:20';
                 $baseRules['is_active'] = 'boolean';
                 $baseRules['sort_order'] = 'nullable|integer|min:0';
                 unset($baseRules['description']);

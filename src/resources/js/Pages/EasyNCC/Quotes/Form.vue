@@ -32,6 +32,49 @@
                     {{ transitionError }}
                     <button type="button" class="btn-close" @click="transitionError = ''"></button>
                 </div>
+
+                <!-- Source messages panel (only for quotes linked to a richiesta) -->
+                <div v-if="richiestaEmails.length > 0">
+                    <div class="d-flex align-items-center mb-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @click="showSourceMessages = !showSourceMessages">
+                            <i :class="showSourceMessages ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'" class="me-1"></i>
+                            <i class="ri-mail-line me-1"></i>Messaggi sorgente ({{ richiestaEmails.length }})
+                        </button>
+                        <Link v-if="quote && quote.richiesta_id" :href="`/easyncc/richieste/${quote.richiesta_id}`" class="btn btn-sm btn-outline-primary ms-2">
+                            <i class="ri-external-link-line me-1"></i>Apri Richiesta
+                        </Link>
+                    </div>
+                    <BCard v-show="showSourceMessages" no-body class="mb-3 border-info">
+                        <BCardBody style="max-height: 400px; overflow-y: auto;">
+                            <div v-for="email in richiestaEmails" :key="email.id" class="mb-3">
+                                <div class="d-flex align-items-start gap-2">
+                                    <div class="flex-shrink-0">
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center"
+                                             style="width: 28px; height: 28px;"
+                                             :class="email.direzione === 'inbound' ? 'bg-primary-subtle' : 'bg-success-subtle'">
+                                            <i class="small" :class="email.direzione === 'inbound' ? 'ri-mail-download-line text-primary' : 'ri-mail-send-line text-success'"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 border rounded p-2"
+                                         :class="email.direzione === 'outbound' ? 'bg-light' : ''">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <strong class="small">{{ email.mittente }}</strong>
+                                            <small class="text-muted">{{ formatSourceDate(email.ricevuto_at) }}</small>
+                                        </div>
+                                        <div class="small fw-semibold mb-1">{{ email.subject }}</div>
+                                        <div class="small" v-html="expandedSourceEmails[email.id] ? getFullBody(email) : getStrippedBody(email)"></div>
+                                        <div v-if="bodyWasStripped(email)" class="mt-1">
+                                            <a href="#" class="small text-muted" @click.prevent="expandedSourceEmails = { ...expandedSourceEmails, [email.id]: !expandedSourceEmails[email.id] }">
+                                                <i :class="expandedSourceEmails[email.id] ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'" class="me-1"></i>
+                                                {{ expandedSourceEmails[email.id] ? 'Nascondi' : 'Mostra tutto' }}
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </BCardBody>
+                    </BCard>
+                </div>
             </BCol>
         </BRow>
 
@@ -150,6 +193,10 @@
                                         <BCol md="3" class="mb-3">
                                             <label class="form-label">Nome Destinazione</label>
                                             <input v-model="item.destination_name" type="text" class="form-control" placeholder="Es. Chianti Classico" :disabled="isReadOnly" />
+                                        </BCol>
+                                        <BCol md="3" class="mb-3">
+                                            <label class="form-label">Data Servizio</label>
+                                            <input v-model="item.service_date" type="date" class="form-control" :disabled="isReadOnly" @change="autoUpdateHeaderDate" />
                                         </BCol>
                                     </BRow>
                                     <BRow>
@@ -393,6 +440,9 @@
                             <button v-if="isEditing && quoteStatus === 'draft'" type="button" class="btn btn-success" @click="openApproveModal">
                                 <i class="ri-check-double-line me-1"></i>Approva Preventivo
                             </button>
+                            <button v-if="isEditing && (quoteStatus === 'approved' || quoteStatus === 'sent')" type="button" class="btn btn-success" @click="showPaymentModal = true">
+                                <i class="ri-money-euro-circle-line me-1"></i>Registra Pagamento
+                            </button>
                         </div>
                     </div>
                 </form>
@@ -401,6 +451,10 @@
 
         <!-- Modale Approvazione -->
         <BModal v-model="showApproveModal" title="Approva Preventivo" hide-footer size="lg">
+            <div class="alert alert-info small mb-3">
+                <i class="ri-information-line me-1"></i>
+                Il preventivo verrà salvato automaticamente prima di procedere con l'approvazione.
+            </div>
             <div v-if="approveError" class="alert alert-danger">{{ approveError }}</div>
 
             <div class="mb-3">
@@ -455,10 +509,56 @@
 
             <div class="d-flex justify-content-end gap-2 mt-3">
                 <BButton variant="light" @click="showApproveModal = false">Annulla</BButton>
-                <BButton variant="success" @click="confirmApprove" :disabled="transitioning || !approveForm.client_email">
-                    <span v-if="transitioning" class="spinner-border spinner-border-sm me-1"></span>
+                <BButton variant="success" @click="confirmApprove" :disabled="transitioning || approveSaving || !approveForm.client_email">
+                    <span v-if="approveSaving || transitioning" class="spinner-border spinner-border-sm me-1"></span>
                     <i v-else class="ri-check-double-line me-1"></i>
-                    Conferma Approvazione
+                    {{ approveSaving ? 'Salvataggio...' : 'Conferma Approvazione' }}
+                </BButton>
+            </div>
+        </BModal>
+
+        <!-- Modale Registrazione Pagamento -->
+        <BModal v-model="showPaymentModal" title="Registra Pagamento Manuale" hide-footer size="md">
+            <div class="alert alert-info small">
+                <i class="ri-information-line me-1"></i>
+                Registra un pagamento ricevuto al di fuori di SumUp (es. bonifico, contanti).
+                Questa azione creerà automaticamente i servizi collegati.
+            </div>
+            <div v-if="paymentError" class="alert alert-danger">{{ paymentError }}</div>
+
+            <BRow>
+                <BCol md="6" class="mb-3">
+                    <label class="form-label">Tipologia Pagamento <span class="text-danger">*</span></label>
+                    <select v-model="paymentForm.payment_type_id" class="form-select">
+                        <option :value="null">-- Seleziona --</option>
+                        <option v-for="pt in paymentTypes" :key="pt.id" :value="pt.id">
+                            {{ pt.name }}
+                        </option>
+                    </select>
+                </BCol>
+                <BCol md="6" class="mb-3">
+                    <label class="form-label">Data Pagamento</label>
+                    <input v-model="paymentForm.payment_date" type="date" class="form-control" />
+                </BCol>
+                <BCol md="12" class="mb-3">
+                    <label class="form-label">Riferimento (CRO, numero ricevuta, nota)</label>
+                    <input v-model="paymentForm.payment_reference" type="text" class="form-control" placeholder="Es. CRO 12345678" />
+                </BCol>
+            </BRow>
+
+            <div class="border rounded p-2 bg-light small mb-3">
+                <div class="d-flex justify-content-between">
+                    <span>Acconto da registrare:</span>
+                    <strong>{{ formatPaymentAmount(result.deposit_total) }}</strong>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <BButton variant="light" @click="showPaymentModal = false">Annulla</BButton>
+                <BButton variant="success" @click="confirmPayment" :disabled="registeringPayment || !paymentForm.payment_type_id">
+                    <span v-if="registeringPayment" class="spinner-border spinner-border-sm me-1"></span>
+                    <i v-else class="ri-check-line me-1"></i>
+                    Conferma Pagamento
                 </BButton>
             </div>
         </BModal>
@@ -492,6 +592,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
+import moment from "moment";
 import { usePricingCalculator } from "@/composables/usePricingCalculator.js";
 import { useQuoteWorkflow } from "@/composables/useQuoteWorkflow.js";
 import { ClassicEditor, Essentials, Bold, Italic, Underline, Strikethrough, Font, Link as CKLink, List, BlockQuote, Table, TableToolbar, Heading, Paragraph, Undo, Alignment } from 'ckeditor5';
@@ -504,6 +605,7 @@ import ContactAutocomplete from './components/ContactAutocomplete.vue';
 import QuoteVersionsSidebar from './components/QuoteVersionsSidebar.vue';
 import QuoteVersionPreviewModal from './components/QuoteVersionPreviewModal.vue';
 import { useServiceTypeColor } from '@/composables/useServiceTypeColor.js';
+import { useNotify } from '@/composables/useNotify.js';
 
 const { loadServiceTypes, serviceTypeBadgeStyle } = useServiceTypeColor();
 
@@ -526,10 +628,13 @@ export default {
             executeTransition, loadEmailPreview,
         } = useQuoteWorkflow();
 
+        const notify = useNotify();
+
         return {
             transitioning, transitionError, emailPreview, previewLoading,
             STEPS, getStatusLabel, getStatusColor, getStepIndex,
             executeTransition, loadEmailPreview,
+            notify,
         };
     },
     data() {
@@ -538,6 +643,7 @@ export default {
             saving: false,
             errors: [],
             successMessage: '',
+            returnUrl: new URLSearchParams(window.location.search).get('returnUrl') || '',
             expandedItems: [true],
             // Versioning
             versionsList: [...(this.versions || [])],
@@ -546,6 +652,10 @@ export default {
             showPreviewModal: false,
             previewLoading2: false,
             previewData: null,
+            // Source messages
+            richiestaEmails: [],
+            showSourceMessages: false,
+            expandedSourceEmails: {},
             // Calculator
             showCalculatorModal: false,
             calculatorItemIndex: null,
@@ -585,12 +695,19 @@ export default {
             // Workflow
             showApproveModal: false,
             approveError: '',
+            approveSaving: false,
             approveForm: {
                 client_email: '',
                 sumup_config_id: null,
                 gmail_account_id: null,
                 email_template_id: null,
             },
+            // Payment registration
+            showPaymentModal: false,
+            registeringPayment: false,
+            paymentError: '',
+            paymentForm: { payment_type_id: null, payment_date: '', payment_reference: '' },
+            paymentTypes: [],
             // Email editing (approved state)
             editableSubject: '',
             editableBodyHtml: '',
@@ -650,6 +767,13 @@ export default {
     async mounted() {
         if (!this.pricingConfig) {
             await this.loadSettings();
+        } else if (!this.quote) {
+            // pricingConfig is provided but this is a new quote — load deposit/card defaults from settings
+            try {
+                const res = await axios.get('/api/settings/public');
+                if (res.data.deposit_percentage) this.form.deposit_percentage = res.data.deposit_percentage;
+                if (res.data.card_fees_percentage) this.form.card_fees_percentage = res.data.card_fees_percentage;
+            } catch (e) { /* */ }
         }
 
         if (this.quote) {
@@ -669,9 +793,96 @@ export default {
         this.recalculate();
         this.loading = false;
         loadServiceTypes();
+
+        // Load source messages if quote is linked to a richiesta
+        if (this.quote?.richiesta_id) {
+            this.loadRichiestaEmails();
+        }
+
+        // Load payment types for manual payment registration
+        this.loadPaymentTypes();
     },
     methods: {
         serviceTypeBadgeStyle,
+        // --- Payment registration ---
+        async loadPaymentTypes() {
+            try {
+                const res = await axios.get('/api/dictionaries/payment-types');
+                this.paymentTypes = res.data.data || [];
+            } catch (e) { /* */ }
+        },
+        async confirmPayment() {
+            this.registeringPayment = true;
+            this.paymentError = '';
+            try {
+                await this.executeTransition(this.quote.id, 'register_payment', {
+                    payment_type_id: this.paymentForm.payment_type_id,
+                    payment_reference: this.paymentForm.payment_reference,
+                    payment_date: this.paymentForm.payment_date || new Date().toISOString().substring(0, 10),
+                });
+                this.showPaymentModal = false;
+                window.location.reload();
+            } catch (error) {
+                this.paymentError = error.response?.data?.message || 'Errore nella registrazione del pagamento';
+            } finally {
+                this.registeringPayment = false;
+            }
+        },
+        formatPaymentAmount(amount) {
+            if (!amount) return '0,00 €';
+            return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(amount);
+        },
+        // --- Auto header date ---
+        autoUpdateHeaderDate() {
+            const dates = this.form.items
+                .map(i => i.service_date)
+                .filter(d => d);
+            if (dates.length > 0) {
+                this.form.service_date = dates.sort()[0]; // min date
+            }
+        },
+        // --- Source messages ---
+        async loadRichiestaEmails() {
+            try {
+                const res = await axios.get(`/api/richieste/${this.quote.richiesta_id}/thread-emails`);
+                this.richiestaEmails = res.data.data || [];
+            } catch (e) { /* silently fail */ }
+        },
+        formatSourceDate(date) {
+            return date ? moment(date).format('DD/MM/YYYY HH:mm') : '-';
+        },
+        getFullBody(email) {
+            if (email.body_html) return email.body_html;
+            return (email.body_text || '').replace(/\n/g, '<br>');
+        },
+        getStrippedBody(email) {
+            const raw = email.body_text || this.stripHtmlToText(email.body_html || '');
+            return this.stripQuotedText(raw).replace(/\n/g, '<br>');
+        },
+        bodyWasStripped(email) {
+            const raw = email.body_text || this.stripHtmlToText(email.body_html || '');
+            return this.stripQuotedText(raw).length < raw.length - 10;
+        },
+        stripQuotedText(text) {
+            if (!text) return '';
+            const lines = text.split('\n');
+            let cutIndex = lines.length;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (/^(On |Il giorno |Am |Le ).+(wrote:|ha scritto:|schrieb:|a écrit:)\s*$/i.test(line)) { cutIndex = i; break; }
+                if (i < lines.length - 1 && line.startsWith('>') && lines[i + 1]?.trim().startsWith('>')) {
+                    cutIndex = i > 0 && /wrote:|scritto:|schrieb:|écrit:/i.test(lines[i - 1]) ? i - 1 : i; break;
+                }
+                if (/^-{5,}\s*(Forwarded|Messaggio inoltrato)/i.test(line)) { cutIndex = i; break; }
+                if (/^-{3,}$/.test(line) && i + 1 < lines.length && /^(From|Da|Von|De)\s*:/i.test(lines[i + 1]?.trim())) { cutIndex = i; break; }
+            }
+            return lines.slice(0, cutIndex).join('\n').trim();
+        },
+        stripHtmlToText(html) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            return tmp.textContent || tmp.innerText || '';
+        },
         // --- Contact ---
         onContactSelect(contact) {
             this.form.contact_id = contact.id;
@@ -693,6 +904,7 @@ export default {
                 pax_count: 0,
                 experience_per_pax: 0,
                 taxable_price: 0,
+                service_date: '',
             };
         },
         addItem() {
@@ -702,9 +914,10 @@ export default {
                 this.expandedItems[i] = false;
             }
         },
-        removeItem(index) {
+        async removeItem(index) {
             if (this.form.items.length <= 1) return;
-            if (!confirm('Rimuovere questo servizio?')) return;
+            const confirmed = await this.notify.confirm('Rimuovi Servizio', 'Rimuovere questo servizio?');
+            if (!confirmed) return;
             this.form.items.splice(index, 1);
             this.expandedItems.splice(index, 1);
             this.recalculate();
@@ -799,6 +1012,7 @@ export default {
                     pax_count: parseInt(item.pax_count) || 0,
                     experience_per_pax: parseFloat(item.experience_per_pax) || 0,
                     taxable_price: parseFloat(item.taxable_price) || 0,
+                    service_date: item.service_date ? item.service_date.substring(0, 10) : '',
                 }));
                 this.expandedItems = this.form.items.map((_, i) => i === 0);
             } else {
@@ -832,13 +1046,14 @@ export default {
         },
         // --- Versioning ---
         async createNewVersion() {
-            if (!confirm('Creare una nuova versione? La versione attuale verr\u00E0 archiviata.')) return;
+            const confirmed = await this.notify.confirm('Nuova Versione', 'Creare una nuova versione? La versione attuale verr\u00E0 archiviata.');
+            if (!confirmed) return;
             this.creatingVersion = true;
             try {
                 const { data } = await axios.post(`/api/quotes/${this.quote.id}/create-version`);
                 window.location.href = `/easyncc/quotes/${data.data.id}/edit`;
             } catch (e) {
-                alert(e.response?.data?.message || 'Errore nella creazione della versione');
+                this.notify.error(e.response?.data?.message || 'Errore nella creazione della versione');
                 this.creatingVersion = false;
             }
         },
@@ -850,21 +1065,22 @@ export default {
                 const { data } = await axios.get(`/api/quotes/${ver.id}`);
                 this.previewData = data.data;
             } catch (e) {
-                alert('Errore nel caricamento dell\'anteprima');
+                this.notify.error('Errore nel caricamento dell\'anteprima');
                 this.showPreviewModal = false;
             } finally {
                 this.previewLoading2 = false;
             }
         },
         async confirmRestoreVersion(ver) {
-            if (!confirm(`Ripristinare la versione v${ver.version}? La versione attuale verr\u00E0 archiviata e verr\u00E0 creata una nuova versione in bozza con i dati della v${ver.version}.`)) return;
+            const confirmed = await this.notify.confirm('Ripristina Versione', `Ripristinare la versione v${ver.version}? La versione attuale verr\u00E0 archiviata e verr\u00E0 creata una nuova versione in bozza con i dati della v${ver.version}.`);
+            if (!confirmed) return;
             this.restoringVersion = true;
             try {
                 const { data } = await axios.post(`/api/quotes/${ver.id}/restore-version`);
                 this.showPreviewModal = false;
                 window.location.href = `/easyncc/quotes/${data.data.id}/edit`;
             } catch (e) {
-                alert(e.response?.data?.message || 'Errore nel ripristino della versione');
+                this.notify.error(e.response?.data?.message || 'Errore nel ripristino della versione');
                 this.restoringVersion = false;
             }
         },
@@ -901,7 +1117,7 @@ export default {
                     await axios.post('/api/quotes', payload);
                 }
 
-                window.location.href = '/easyncc/quotes';
+                window.location.href = this.returnUrl || '/easyncc/quotes';
             } catch (error) {
                 console.error('Error saving quote:', error);
                 if (error.response?.data?.errors) {
@@ -932,7 +1148,26 @@ export default {
         },
         async confirmApprove() {
             this.approveError = '';
+            this.approveSaving = true;
             try {
+                // Auto-save before approving
+                const payload = {
+                    contact_id: this.form.contact_id,
+                    client_name: this.form.client_name,
+                    client_email: this.approveForm.client_email || this.form.client_email,
+                    service_date: this.form.service_date,
+                    notes: this.form.notes,
+                    vat_percentage: this.form.vat_percentage,
+                    card_fees_percentage: this.form.card_fees_percentage,
+                    override_taxable: this.form.override_taxable,
+                    discount_percentage: this.form.discount_percentage,
+                    discount_name: this.form.discount_name,
+                    deposit_percentage: this.form.deposit_percentage,
+                    items: this.form.items,
+                };
+                await axios.put(`/api/quotes/${this.quote.id}`, payload);
+
+                // Now approve
                 await this.executeTransition(this.quote.id, 'approve', {
                     client_email: this.approveForm.client_email,
                     sumup_config_id: this.approveForm.sumup_config_id,
@@ -943,10 +1178,13 @@ export default {
                 window.location.reload();
             } catch (error) {
                 this.approveError = error.response?.data?.message || this.transitionError || 'Errore durante l\'approvazione';
+            } finally {
+                this.approveSaving = false;
             }
         },
         async sendEmail() {
-            if (!confirm('Inviare l\'email al cliente?')) return;
+            const confirmed = await this.notify.confirm('Invio Email', 'Inviare l\'email al cliente?');
+            if (!confirmed) return;
             try {
                 await this.executeTransition(this.quote.id, 'send', {
                     rendered_subject: this.editableSubject,
@@ -958,7 +1196,8 @@ export default {
             }
         },
         async revertToDraft() {
-            if (!confirm('Tornare allo stato bozza? Il checkout SumUp e la bozza Gmail verranno eliminati.')) return;
+            const confirmed = await this.notify.confirm('Torna a Bozza', 'Tornare allo stato bozza? Il checkout SumUp e la bozza Gmail verranno eliminati.');
+            if (!confirmed) return;
             try {
                 await this.executeTransition(this.quote.id, 'revert_to_draft');
                 window.location.reload();

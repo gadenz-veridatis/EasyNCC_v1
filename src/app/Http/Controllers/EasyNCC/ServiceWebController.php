@@ -42,7 +42,7 @@ class ServiceWebController extends Controller
             'activities' => function ($query) {
                 $query->orderBy('sort_order', 'asc')
                       ->orderBy('start_time', 'asc')
-                      ->with(['activityType', 'supplier']);
+                      ->with(['activityType', 'supplier', 'confirmationAssignee:id,name,surname']);
             },
             'accountingTransactions.accountingEntry',
             'accountingTransactions.counterpart',
@@ -53,6 +53,11 @@ class ServiceWebController extends Controller
         ])->findOrFail($id);
 
         return Inertia::render('EasyNCC/Services/Form', ['service' => $service]);
+    }
+
+    public function compactIndex(): Response
+    {
+        return Inertia::render('EasyNCC/Services/CompactIndex');
     }
 
     public function calendar(): Response

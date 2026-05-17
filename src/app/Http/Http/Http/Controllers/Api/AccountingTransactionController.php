@@ -209,6 +209,11 @@ class AccountingTransactionController extends Controller
 
         $transaction = AccountingTransaction::create($validated);
 
+        // Refresh status map
+        if ($transaction->service_id) {
+            $transaction->service->refreshTransactionStatusMap();
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Transaction created successfully',
@@ -260,6 +265,11 @@ class AccountingTransactionController extends Controller
         ]);
 
         $accountingTransaction->update($validated);
+
+        // Refresh status map if status changed
+        if (isset($validated['status']) && $accountingTransaction->service_id) {
+            $accountingTransaction->service->refreshTransactionStatusMap();
+        }
 
         return response()->json([
             'success' => true,
@@ -406,6 +416,12 @@ class AccountingTransactionController extends Controller
             }
         });
 
+        // Refresh the denormalized status map on the service
+        $service = Service::find($serviceId);
+        if ($service) {
+            $service->refreshTransactionStatusMap();
+        }
+
         // Return updated list of transactions for this service
         $transactions = AccountingTransaction::where('service_id', $serviceId)
             ->with(['accountingEntry:id,name,abbreviation', 'counterpart:id,name,surname'])
@@ -422,7 +438,13 @@ class AccountingTransactionController extends Controller
      */
     public function destroy(AccountingTransaction $accountingTransaction): JsonResponse
     {
+        $serviceId = $accountingTransaction->service_id;
         $accountingTransaction->delete();
+
+        // Refresh status map
+        if ($serviceId) {
+            Service::find($serviceId)?->refreshTransactionStatusMap();
+        }
 
         return response()->json([
             'success' => true,

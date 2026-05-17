@@ -1,6 +1,6 @@
 <template>
     <Layout>
-        <PageHeader title="Template Email Preventivi" pageTitle="Impostazioni" />
+        <PageHeader title="Template Email" pageTitle="Impostazioni" />
         <BRow>
             <BCol lg="8">
                 <BCard no-body>
@@ -32,6 +32,18 @@
                                         </option>
                                     </select>
                                 </div>
+                            </BCol>
+                        </BRow>
+
+                        <!-- Type filter -->
+                        <BRow v-if="selectedCompanyId && !loading" class="mb-3">
+                            <BCol md="6">
+                                <label class="form-label fw-bold">Tipologia Template</label>
+                                <select v-model="selectedType" class="form-select" @change="loadTemplates">
+                                    <option value="quote">Preventivi</option>
+                                    <option value="service_assignment">Assegnazione Servizio</option>
+                                    <option value="service_closure">Chiusura Servizio</option>
+                                </select>
                             </BCol>
                         </BRow>
 
@@ -108,11 +120,11 @@
                     </BCardHeader>
                     <BCardBody>
                         <p class="text-muted small mb-3">
-                            Usa questi segnaposto nell'oggetto e nel corpo del template. Verranno sostituiti con i dati del preventivo.
+                            Usa questi segnaposto nell'oggetto e nel corpo del template. Verranno sostituiti con i dati reali.
                         </p>
 
-                        <!-- Quote-level placeholders -->
-                        <h6 class="text-uppercase text-muted small fw-bold mb-2">Preventivo</h6>
+                        <!-- Placeholders -->
+                        <h6 class="text-uppercase text-muted small fw-bold mb-2">Segnaposto</h6>
                         <div class="table-responsive">
                             <table class="table table-sm table-borderless mb-0">
                                 <tbody>
@@ -259,6 +271,8 @@ export default {
             successMessage: '',
             companies: [],
             selectedCompanyId: '',
+            selectedType: 'quote',
+            availablePlaceholders: [],
             templates: [],
             editingTemplate: null,
             modalForm: {
@@ -341,9 +355,16 @@ export default {
             this.successMessage = '';
 
             try {
-                const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
-                const response = await axios.get('/api/quote-email-templates', { params });
-                this.templates = response.data.data || [];
+                const params = {
+                    type: this.selectedType,
+                    ...(this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {}),
+                };
+                const [templatesRes, placeholdersRes] = await Promise.all([
+                    axios.get('/api/quote-email-templates', { params }),
+                    axios.get('/api/quote-email-templates/placeholders', { params: { type: this.selectedType } }),
+                ]);
+                this.templates = templatesRes.data.data || [];
+                this.availablePlaceholders = placeholdersRes.data.data || [];
             } catch (error) {
                 console.error('Error loading templates:', error);
                 this.errors = ['Errore nel caricamento dei template'];
@@ -383,7 +404,7 @@ export default {
             this.modalErrors = [];
 
             try {
-                const payload = { ...this.modalForm };
+                const payload = { ...this.modalForm, type: this.selectedType };
                 if (this.isSuperAdmin) {
                     payload.company_id = this.selectedCompanyId;
                 }

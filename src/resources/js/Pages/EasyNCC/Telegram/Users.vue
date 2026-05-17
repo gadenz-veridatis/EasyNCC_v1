@@ -253,6 +253,9 @@ import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
 import { driverLabel } from '@/composables/useDriverLabel.js';
+import { useNotify } from '@/composables/useNotify.js';
+
+const notify = useNotify();
 
 export default {
     components: {
@@ -381,15 +384,17 @@ export default {
                 await this.loadUsers();
             } catch (error) {
                 console.error('Error associating driver:', error);
-                alert('Errore nell\'associazione del driver');
+                notify.error('Errore nell\'associazione del driver');
             } finally {
                 this.saving = false;
             }
         },
         async removeAssociation(tgUser) {
-            if (!confirm(`Rimuovere l'associazione di ${tgUser.first_name || ''} ${tgUser.last_name || ''} con il driver ${this.driverLabel(tgUser.driver)}?`)) {
-                return;
-            }
+            const confirmed = await notify.confirm(
+                'Rimuovi associazione',
+                `Rimuovere l'associazione di ${tgUser.first_name || ''} ${tgUser.last_name || ''} con il driver ${this.driverLabel(tgUser.driver)}?`
+            );
+            if (!confirmed) return;
 
             try {
                 await axios.put(
@@ -402,7 +407,7 @@ export default {
                 await this.loadUsers();
             } catch (error) {
                 console.error('Error removing association:', error);
-                alert('Errore nella rimozione dell\'associazione');
+                notify.error('Errore nella rimozione dell\'associazione');
             }
         },
         getInitials(tgUser) {

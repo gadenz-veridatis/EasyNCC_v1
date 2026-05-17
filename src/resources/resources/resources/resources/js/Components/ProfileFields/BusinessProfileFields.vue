@@ -6,7 +6,7 @@
 
         <BRow>
             <!-- Is Committente -->
-            <BCol md="6" class="mb-3">
+            <BCol md="4" class="mb-3">
                 <div class="form-check form-switch">
                     <input
                         id="is_committente"
@@ -24,7 +24,7 @@
             </BCol>
 
             <!-- Is Fornitore -->
-            <BCol md="6" class="mb-3">
+            <BCol md="4" class="mb-3">
                 <div class="form-check form-switch">
                     <input
                         id="is_fornitore"
@@ -38,6 +38,24 @@
                 </div>
                 <small class="text-muted d-block mt-1">
                     Il collaboratore può fornire servizi
+                </small>
+            </BCol>
+
+            <!-- Is Collega -->
+            <BCol md="4" class="mb-3">
+                <div class="form-check form-switch">
+                    <input
+                        id="is_collega"
+                        v-model="localProfile.is_collega"
+                        type="checkbox"
+                        class="form-check-input"
+                    />
+                    <label for="is_collega" class="form-check-label">
+                        È Collega
+                    </label>
+                </div>
+                <small class="text-muted d-block mt-1">
+                    Il collaboratore è un collega per i servizi
                 </small>
             </BCol>
 
@@ -412,6 +430,7 @@ const props = defineProps({
         default: () => ({
             is_committente: false,
             is_fornitore: false,
+            is_collega: false,
             business_name: '',
             trade_name: '',
             vat_number: '',
@@ -447,6 +466,7 @@ const initializeProfile = (value) => {
         return {
             is_committente: false,
             is_fornitore: false,
+            is_collega: false,
             business_name: '',
             trade_name: '',
             vat_number: '',
@@ -470,6 +490,7 @@ const initializeProfile = (value) => {
         ...value,
         is_committente: value.is_committente ?? false,
         is_fornitore: value.is_fornitore ?? false,
+        is_collega: value.is_collega ?? false,
         business_contacts: value.business_contacts || []
     };
 };

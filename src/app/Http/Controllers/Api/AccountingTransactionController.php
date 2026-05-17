@@ -43,9 +43,23 @@ class AccountingTransactionController extends Controller
             $query->where('service_id', $request->service_id);
         }
 
-        // Filter by counterpart
+        // Filter by counterpart (direct field on transaction)
         if ($request->filled('counterpart_id')) {
             $query->where('counterpart_id', $request->counterpart_id);
+        }
+
+        // Filter by service relationships
+        if ($request->filled('client_id')) {
+            $query->whereHas('service', fn($q) => $q->where('client_id', $request->client_id));
+        }
+        if ($request->filled('supplier_id')) {
+            $query->whereHas('service', fn($q) => $q->where('supplier_id', $request->supplier_id));
+        }
+        if ($request->filled('intermediary_id')) {
+            $query->whereHas('service', fn($q) => $q->where('intermediary_id', $request->intermediary_id));
+        }
+        if ($request->filled('driver_id')) {
+            $query->whereHas('service', fn($q) => $q->whereHas('drivers', fn($d) => $d->where('users.id', $request->driver_id)));
         }
 
         // Filter by accounting entry
@@ -117,6 +131,9 @@ class AccountingTransactionController extends Controller
         $query = AccountingTransaction::query();
         $this->applyFilters($query, $request);
 
+        // Exclude cancelled transactions from summary aggregates
+        $query->where('status', '!=', 'cancelled');
+
         $results = $query->select(
             'transaction_type',
             'installment',
@@ -187,7 +204,7 @@ class AccountingTransactionController extends Controller
             'amount' => 'required|numeric|min:0',
             'transaction_type' => 'required|in:purchase,sale,intermediation',
             'accounting_entry_id' => 'nullable|exists:accounting_entries,id',
-            'installment' => 'required|in:deposit,balance,supplier_refund,customer_refund',
+            'installment' => 'required|in:deposit,balance,extra,supplier_refund,customer_refund',
             'counterpart_id' => 'nullable|exists:users,id',
             'document_number' => 'nullable|string|max:255',
             'document_due_date' => 'nullable|date',
@@ -251,7 +268,7 @@ class AccountingTransactionController extends Controller
             'amount' => 'sometimes|required|numeric|min:0',
             'transaction_type' => 'sometimes|required|in:purchase,sale,intermediation',
             'accounting_entry_id' => 'sometimes|nullable|exists:accounting_entries,id',
-            'installment' => 'sometimes|required|in:deposit,balance,supplier_refund,customer_refund',
+            'installment' => 'sometimes|required|in:deposit,balance,extra,supplier_refund,customer_refund',
             'counterpart_id' => 'sometimes|nullable|exists:users,id',
             'document_number' => 'nullable|string|max:255',
             'document_due_date' => 'nullable|date',
@@ -302,31 +319,63 @@ class AccountingTransactionController extends Controller
     }
 
     /**
-     * Lightweight endpoint for counterparts dropdown (only id, name, surname, role).
+     * Lightweight endpoint for counterparts dropdown.
+     * Returns only users that actually appear as counterpart_id in accounting_transactions.
      */
     public function counterpartsForDropdown(Request $request): JsonResponse
     {
-        $query = User::select('id', 'name', 'surname', 'username', 'email', 'role', 'is_intermediario', 'company_id')
-            ->with(['clientProfile:user_id,is_committente,is_fornitore']);
+        // Get distinct counterpart_ids from accounting_transactions for the user's company
+        $txQuery = AccountingTransaction::whereNotNull('counterpart_id');
 
         if ($request->user()->isSuperAdmin()) {
             if ($request->filled('company_id')) {
-                $query->where('company_id', $request->company_id);
+                $txQuery->where('company_id', $request->company_id);
             }
         } else {
-            $query->where('company_id', $request->user()->company_id);
+            $txQuery->where('company_id', $request->user()->company_id);
         }
 
-        // Only return users that can be counterparts (have intermediario, committente, or fornitore flags)
-        $query->where(function ($q) {
-            $q->where('is_intermediario', true)
-              ->orWhereHas('clientProfile', function ($sub) {
-                  $sub->where('is_committente', true)
-                      ->orWhere('is_fornitore', true);
-              });
-        });
+        $counterpartIds = $txQuery->distinct()->pluck('counterpart_id');
 
-        $users = $query->orderBy('surname')->orderBy('name')->get();
+        // Fetch only those users
+        $query = User::select('id', 'name', 'surname', 'username', 'email', 'role', 'is_intermediario', 'company_id')
+            ->with(['clientProfile:user_id,is_committente,is_fornitore,is_collega'])
+            ->whereIn('id', $counterpartIds);
+
+        // Search by name/surname
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ilike', "%{$search}%")
+                  ->orWhere('surname', 'ilike', "%{$search}%");
+            });
+        }
+
+        $users = $query->orderBy('surname')->orderBy('name')->limit(30)->get();
+
+        // Add type_label for each user
+        $users->transform(function ($user) {
+            $types = [];
+            if ($user->role === 'driver') {
+                $types[] = 'Autista';
+            }
+            if ($user->is_intermediario) {
+                $types[] = 'Intermediario';
+            }
+            if ($user->clientProfile) {
+                if ($user->clientProfile->is_committente) {
+                    $types[] = 'Committente';
+                }
+                if ($user->clientProfile->is_fornitore) {
+                    $types[] = 'Fornitore';
+                }
+                if ($user->clientProfile->is_collega) {
+                    $types[] = 'Collega';
+                }
+            }
+            $user->type_label = implode(' / ', $types) ?: $user->role;
+            return $user;
+        });
 
         return response()->json([
             'success' => true,
@@ -436,8 +485,71 @@ class AccountingTransactionController extends Controller
     /**
      * Remove the specified resource from storage.
      */
+    /**
+     * Cancel non-final balance transactions for a service (set status to 'cancelled').
+     * Cancels both sale and purchase balance transactions that are not already in a final state.
+     * Used when service goes to no-show/cancellato status.
+     */
+    public function cancelBalanceTransactions(Request $request, Service $service): JsonResponse
+    {
+        // Get final status codes from the company's transaction statuses
+        $finalStatusCodes = TransactionStatus::where('company_id', $service->company_id)
+            ->where('is_final', true)
+            ->pluck('code')
+            ->toArray();
+
+        // Get amounts before cancellation for the note
+        $transactionsToCancel = AccountingTransaction::where('service_id', $service->id)
+            ->where('installment', 'balance')
+            ->where('status', '!=', 'cancelled')
+            ->whereNotIn('status', $finalStatusCodes)
+            ->get(['id', 'transaction_type', 'amount', 'payment_reason']);
+
+        // Cancel all balance transactions (sale + purchase) that are not final and not already cancelled
+        $updated = AccountingTransaction::where('service_id', $service->id)
+            ->where('installment', 'balance')
+            ->where('status', '!=', 'cancelled')
+            ->whereNotIn('status', $finalStatusCodes)
+            ->update(['status' => 'cancelled']);
+
+        // Refresh status map
+        $service->refreshTransactionStatusMap();
+
+        // Append cancellation note to service
+        if ($updated > 0) {
+            $user = $request->user();
+            $userName = trim(($user->name ?? '') . ' ' . ($user->surname ?? '')) ?: $user->email;
+            $now = now()->format('d/m/Y H:i');
+
+            $details = $transactionsToCancel->map(function ($t) {
+                $type = $t->transaction_type === 'sale' ? 'Vendita' : 'Acquisto';
+                return "  - {$type}: €" . number_format($t->amount, 2, ',', '.') . ($t->payment_reason ? " ({$t->payment_reason})" : '');
+            })->implode("\n");
+
+            $note = "[{$now}] Annullamento saldi da {$userName} — {$updated} movimenti annullati:\n{$details}";
+
+            $existingNotes = $service->notes ?? '';
+            $service->update([
+                'notes' => $existingNotes ? $existingNotes . "\n\n" . $note : $note,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Annullati {$updated} movimenti di saldo",
+            'cancelled_count' => $updated,
+        ]);
+    }
+
     public function destroy(AccountingTransaction $accountingTransaction): JsonResponse
     {
+        if ($accountingTransaction->is_automatic) {
+            return response()->json([
+                'success' => false,
+                'message' => 'I movimenti automatici non possono essere eliminati.',
+            ], 422);
+        }
+
         $serviceId = $accountingTransaction->service_id;
         $accountingTransaction->delete();
 

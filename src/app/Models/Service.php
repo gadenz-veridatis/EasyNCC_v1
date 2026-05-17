@@ -17,6 +17,7 @@ class Service extends Model
     protected $fillable = [
         'company_id',
         'reference_number',
+        'external_reference',
         'client_id',
         'intermediary_id',
         'supplier_id',
@@ -58,6 +59,7 @@ class Service extends Model
         'deposit_taxable',
         'deposit_handling_fees',
         'deposit_amount',
+        'deposit_sale_type',
         'balance_taxable',
         'balance_handling_fees',
         'balance_card_fees',
@@ -65,6 +67,7 @@ class Service extends Model
         'driver_compensation',
         'intermediary_commission',
         'expenses',
+        'extra_revenues',
         'fuel_cost',
         'toll_cost',
         'parking_cost',
@@ -108,6 +111,7 @@ class Service extends Model
         'driver_compensation' => 'decimal:2',
         'intermediary_commission' => 'decimal:2',
         'expenses' => 'decimal:2',
+        'extra_revenues' => 'array',
         'fuel_cost' => 'decimal:2',
         'toll_cost' => 'decimal:2',
         'parking_cost' => 'decimal:2',
@@ -244,8 +248,9 @@ class Service extends Model
         // Load company settings to map entry_ids to semantic field names
         $settings = Settings::where('company_id', $this->company_id)->first();
 
-        // Build reverse map: accounting_entry_id → semantic field name
-        $entryToField = [];
+        // Build reverse map: accounting_entry_id → array of semantic field names
+        // (multiple settings fields can point to the same entry_id, e.g. deposit and balance)
+        $entryToFields = [];
         if ($settings) {
             $fieldMap = [
                 'deposit_accounting_entry_id' => 'deposit_amount',
@@ -260,12 +265,13 @@ class Service extends Model
                 'experience_accounting_entry_id' => 'experience_cost',
                 'handling_fees_accounting_entry_id' => 'handling_fees',
                 'card_fees_accounting_entry_id' => 'card_fees',
+                'extra_revenue_accounting_entry_id' => 'extra_revenue',
             ];
 
             foreach ($fieldMap as $settingsField => $semanticName) {
                 $entryId = $settings->$settingsField;
                 if ($entryId) {
-                    $entryToField[$entryId] = $semanticName;
+                    $entryToFields[$entryId][] = $semanticName;
                 }
             }
         }
@@ -284,26 +290,31 @@ class Service extends Model
         $groups = []; // group_key => [statuses]
 
         foreach ($transactions as $t) {
-            // Semantic key from settings mapping
-            $semanticKey = null;
-            if ($t->accounting_entry_id && isset($entryToField[$t->accounting_entry_id])) {
-                $fieldName = $entryToField[$t->accounting_entry_id];
-                // Disambiguate deposit vs balance for same entry_id (e.g. both use "Ricavo Servizio")
-                if ($t->installment === 'deposit' && $fieldName === 'deposit_amount') {
-                    $semanticKey = 'deposit_amount';
-                } elseif ($t->installment === 'balance' && $fieldName === 'balance') {
-                    $semanticKey = 'balance';
-                } elseif ($t->installment === 'deposit' && in_array($fieldName, ['handling_fees', 'card_fees'])) {
-                    $semanticKey = 'deposit_' . $fieldName;
-                } elseif ($t->installment === 'balance' && in_array($fieldName, ['handling_fees', 'card_fees'])) {
-                    $semanticKey = 'balance_' . $fieldName;
-                } else {
-                    $semanticKey = $fieldName;
+            // Semantic keys from settings mapping
+            $semanticKeys = [];
+            if ($t->accounting_entry_id && isset($entryToFields[$t->accounting_entry_id])) {
+                $fieldNames = $entryToFields[$t->accounting_entry_id];
+                foreach ($fieldNames as $fieldName) {
+                    // Disambiguate deposit vs balance vs extra for same entry_id
+                    if ($fieldName === 'extra_revenue' && $t->installment === 'extra') {
+                        $semanticKeys[] = 'extra_revenue';
+                    } elseif ($fieldName === 'deposit_amount' && $t->installment === 'deposit') {
+                        $semanticKeys[] = 'deposit_amount';
+                    } elseif ($fieldName === 'balance' && $t->installment === 'balance') {
+                        $semanticKeys[] = 'balance';
+                    } elseif (in_array($fieldName, ['handling_fees', 'card_fees']) && $t->installment === 'deposit') {
+                        $semanticKeys[] = 'deposit_' . $fieldName;
+                    } elseif (in_array($fieldName, ['handling_fees', 'card_fees']) && $t->installment === 'balance') {
+                        $semanticKeys[] = 'balance_' . $fieldName;
+                    } elseif (!in_array($fieldName, ['deposit_amount', 'balance', 'extra_revenue'])) {
+                        // Non-deposit/balance/extra fields (driver_compensation, etc.) — no installment disambiguation needed
+                        $semanticKeys[] = $fieldName;
+                    }
                 }
             }
 
-            // Write semantic key
-            if ($semanticKey) {
+            // Write semantic keys
+            foreach ($semanticKeys as $semanticKey) {
                 $map[$semanticKey] = $t->status;
             }
 

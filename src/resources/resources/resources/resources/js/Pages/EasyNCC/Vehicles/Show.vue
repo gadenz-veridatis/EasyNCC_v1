@@ -16,7 +16,7 @@
                                 <i class="ri-edit-line me-1"></i> Modifica
                             </Link>
                             <Link
-                                href="/easyncc/vehicles"
+                                :href="returnUrl || '/easyncc/vehicles'"
                                 class="btn btn-soft-secondary btn-sm"
                             >
                                 <i class="ri-arrow-left-line me-1"></i> Torna alla Lista
@@ -138,6 +138,8 @@ import VehicleAttachmentsReadOnly from '@/Components/ProfileFields/VehicleAttach
 import VehicleUnavailabilitiesReadOnly from '@/Components/ProfileFields/VehicleUnavailabilitiesReadOnly.vue';
 import VehicleMileageEntriesReadOnly from '@/Components/ProfileFields/VehicleMileageEntriesReadOnly.vue';
 import moment from 'moment';
+
+const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') || '';
 
 const props = defineProps({
     vehicle: {

@@ -83,7 +83,7 @@ class VehicleController extends Controller
         $query->orderBy($sortBy, $sortOrder);
 
         // Paginazione
-        $perPage = $request->get('per_page', 15);
+        $perPage = $request->get('per_page', 25);
         $vehicles = $query->paginate($perPage);
 
         return response()->json($vehicles);

@@ -62,6 +62,7 @@ class QuoteTemplateService
             // --- Blocco ripetitivo per servizi ---
             ['key' => '{{#each_service}}', 'description' => 'Inizio blocco ripetuto per ogni servizio', 'is_block' => true],
             ['key' => '{{item_number}}', 'description' => 'Numero progressivo servizio (1, 2, 3...)', 'is_item' => true],
+            ['key' => '{{item_service_date}}', 'description' => 'Data del servizio (DD/MM/YYYY)', 'is_item' => true],
             ['key' => '{{item_destination_name}}', 'description' => 'Destinazione del servizio', 'is_item' => true],
             ['key' => '{{item_service_type}}', 'description' => 'Tipo servizio (TRF, TOUR HD, etc.)', 'is_item' => true],
             ['key' => '{{item_mileage}}', 'description' => 'Chilometraggio', 'is_item' => true],
@@ -190,6 +191,7 @@ class QuoteTemplateService
     {
         return [
             '{{item_number}}' => (string)$number,
+            '{{item_service_date}}' => $item->service_date ? $item->service_date->format('d/m/Y') : '',
             '{{item_destination_name}}' => $item->destination_name ?? '',
             '{{item_service_type}}' => $item->service_type ?? '',
             '{{item_mileage}}' => number_format(floatval($item->mileage), 0),

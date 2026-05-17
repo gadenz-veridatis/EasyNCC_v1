@@ -19,7 +19,7 @@
                                 {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
                                 <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
                             </button>
-                            <Link :href="route('easyncc.activities.create')" class="btn btn-primary btn-sm">
+                            <Link :href="withReturnUrl(route('easyncc.activities.create'))" class="btn btn-primary btn-sm">
                                 <i class="bx bx-plus me-1"></i>
                                 Nuova Esperienza
                             </Link>
@@ -173,7 +173,7 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <Link :href="route('easyncc.activities.edit', activity.id)" class="btn btn-sm btn-soft-primary me-2">
+                                            <Link :href="withReturnUrl(route('easyncc.activities.edit', activity.id))" class="btn btn-sm btn-soft-primary me-2">
                                                 <i class="bx bx-edit"></i>
                                             </Link>
                                             <button
@@ -334,6 +334,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
+import { useUrlFilters } from '@/composables/useUrlFilters.js';
 import moment from 'moment';
 
 const activities = ref([]);
@@ -360,6 +361,12 @@ const filters = ref({
     supplier_id: '',
     payment_type: '',
     service_id: ''
+});
+
+const { readFromUrl, withReturnUrl } = useUrlFilters(filters, {
+    page: currentPage,
+    sortField: sortBy,
+    sortDirection: sortOrder,
 });
 
 const hasActiveFilters = computed(() => {
@@ -552,6 +559,7 @@ const loadServices = async () => {
 
 onMounted(async () => {
     await loadCurrentUser();
+    readFromUrl();
     await loadCompanies();
     await loadActivityTypes();
     await loadSuppliers();

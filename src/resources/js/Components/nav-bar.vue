@@ -103,16 +103,16 @@ export default {
           window.location.href = `/easyncc/services/${item.id}/edit`;
           break;
         case 'drivers':
-          window.location.href = `/easyncc/drivers/${item.id}/edit`;
+          window.location.href = `/easyncc/users/${item.id}/edit`;
           break;
         case 'vehicles':
           window.location.href = `/easyncc/vehicles/${item.id}/edit`;
           break;
         case 'clients':
-          window.location.href = `/easyncc/committenti/${item.id}/edit`;
+          window.location.href = `/easyncc/users/${item.id}/edit`;
           break;
         case 'suppliers':
-          window.location.href = `/easyncc/fornitori/${item.id}/edit`;
+          window.location.href = `/easyncc/users/${item.id}/edit`;
           break;
         case 'accounting':
           window.location.href = `/easyncc/accounting-transactions`;

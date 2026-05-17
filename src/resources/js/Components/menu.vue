@@ -28,6 +28,12 @@ export default {
     canManage() {
       return ['super-admin', 'admin', 'operator'].includes(this.userRole);
     },
+    isDriver() {
+      return this.userRole === 'driver';
+    },
+    canManageOrDriver() {
+      return this.canManage || this.isDriver;
+    },
     isAdmin() {
       return ['super-admin', 'admin'].includes(this.userRole);
     },
@@ -196,15 +202,13 @@ export default {
           <span data-key="t-menu">Servizi</span>
         </li>
 
-        <!-- Dashboard (currently disabled) -->
-        <!--
-        <li class="nav-item">
-          <Link href="/" class="nav-link menu-link">
+        <!-- Dashboard -->
+        <li class="nav-item" v-if="canManage">
+          <Link href="/easyncc/dashboard" class="nav-link menu-link">
             <i class="ri-dashboard-2-line"></i>
             <span>Dashboard</span>
           </Link>
         </li>
-        -->
 
         <!-- Lista Servizi -->
         <li class="nav-item">
@@ -213,7 +217,6 @@ export default {
             <span>Lista</span>
           </Link>
         </li>
-
         <!-- Calendario -->
         <li class="nav-item">
           <Link href="/easyncc/services/calendar" class="nav-link menu-link">
@@ -222,11 +225,11 @@ export default {
           </Link>
         </li>
 
-        <!-- Esperienze -->
+        <!-- Soste -->
         <li class="nav-item" v-if="canManage">
           <Link href="/easyncc/activities" class="nav-link menu-link">
             <i class="ri-calendar-event-line"></i>
-            <span>Esperienze</span>
+            <span>Soste</span>
           </Link>
         </li>
 
@@ -234,6 +237,14 @@ export default {
         <li class="menu-title" v-if="canManage">
           <i class="ri-more-fill"></i>
           <span data-key="t-quotes">Richieste &amp; Preventivi</span>
+        </li>
+
+        <!-- Richieste -->
+        <li class="nav-item" v-if="canManage">
+          <Link href="/easyncc/richieste" class="nav-link menu-link">
+            <i class="ri-mail-line"></i>
+            <span>Richieste</span>
+          </Link>
         </li>
 
         <!-- Contatti -->
@@ -276,10 +287,45 @@ export default {
 
         <!-- Contabilità -->
         <li class="nav-item" v-if="canManage">
-          <Link href="/easyncc/accounting-transactions" class="nav-link menu-link">
+          <a class="nav-link menu-link" href="#sidebarAccounting" data-bs-toggle="collapse" role="button" aria-expanded="false"
+            aria-controls="sidebarAccounting">
             <i class="ri-money-euro-circle-line"></i>
             <span>Contabilità</span>
-          </Link>
+          </a>
+          <div class="collapse menu-dropdown" id="sidebarAccounting">
+            <ul class="nav nav-sm flex-column">
+              <li class="nav-item">
+                <Link href="/easyncc/accounting-transactions" class="nav-link">
+                  Movimenti
+                </Link>
+              </li>
+              <li class="nav-item" v-if="isAdmin">
+                <Link href="/easyncc/accounting-reports/trends" class="nav-link">
+                  Andamento
+                </Link>
+              </li>
+              <li class="nav-item">
+                <Link href="/easyncc/accounting-reports/driver-costs" class="nav-link">
+                  Costi Driver
+                </Link>
+              </li>
+              <li class="nav-item">
+                <Link href="/easyncc/accounting-reports/client-revenue" class="nav-link">
+                  Ricavi Committenti
+                </Link>
+              </li>
+              <li class="nav-item">
+                <Link href="/easyncc/accounting-reports/intermediary-costs" class="nav-link">
+                  Costi Intermediari
+                </Link>
+              </li>
+              <li class="nav-item">
+                <Link href="/easyncc/accounting-reports/supplier-costs" class="nav-link">
+                  Costi Fornitori
+                </Link>
+              </li>
+            </ul>
+          </div>
         </li>
 
         <!-- Assenze Driver -->
@@ -299,13 +345,13 @@ export default {
         </li>
 
         <!-- ANAGRAFICHE -->
-        <li class="menu-title" v-if="canManage">
+        <li class="menu-title" v-if="canManageOrDriver">
           <i class="ri-more-fill"></i>
           <span data-key="t-registries">Anagrafiche</span>
         </li>
 
         <!-- Veicoli -->
-        <li class="nav-item" v-if="canManage">
+        <li class="nav-item" v-if="canManageOrDriver">
           <Link href="/easyncc/vehicles" class="nav-link menu-link">
             <i class="ri-car-line"></i>
             <span>Veicoli</span>
@@ -313,7 +359,7 @@ export default {
         </li>
 
         <!-- Driver -->
-        <li class="nav-item" v-if="canManage">
+        <li class="nav-item" v-if="canManageOrDriver">
           <Link href="/easyncc/drivers" class="nav-link menu-link">
             <i class="ri-steering-2-line"></i>
             <span>Driver</span>
@@ -402,7 +448,12 @@ export default {
               </li>
               <li class="nav-item">
                 <Link href="/easyncc/dictionaries/activity-types" class="nav-link">
-                  Tipologie di Esperienze
+                  Tipologie di Soste
+                </Link>
+              </li>
+              <li class="nav-item">
+                <Link href="/easyncc/dictionaries/activity-payment-types" class="nav-link">
+                  Pagamento Soste
                 </Link>
               </li>
               <li class="nav-item">
@@ -464,7 +515,7 @@ export default {
               </li>
               <li class="nav-item">
                 <Link href="/easyncc/settings/quote-email-templates" class="nav-link">
-                  Template Email Preventivi
+                  Template Email
                 </Link>
               </li>
               <li class="nav-item">

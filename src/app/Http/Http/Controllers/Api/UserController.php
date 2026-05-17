@@ -40,6 +40,9 @@ class UserController extends Controller
             if ($request->boolean('is_fornitore')) {
                 $query->whereHas('clientProfile', fn($q) => $q->where('is_fornitore', true));
             }
+            if ($request->boolean('is_collega')) {
+                $query->whereHas('clientProfile', fn($q) => $q->where('is_collega', true));
+            }
 
             $perPage = $request->input('per_page', 200);
             return response()->json($query->orderBy('surname')->paginate($perPage));
@@ -48,7 +51,7 @@ class UserController extends Controller
         // For list view, load company, clientProfile for collaboratore users, and driverProfile for drivers
         $relationships = [
             'company:id,name',
-            'clientProfile:user_id,is_committente,is_fornitore',
+            'clientProfile:user_id,is_committente,is_fornitore,is_collega',
             'driverProfile:user_id,color,fiscal_code,vat_number,allow_overlapping',
         ];
 
@@ -102,6 +105,13 @@ class UserController extends Controller
         if ($request->filled('is_fornitore')) {
             $query->whereHas('clientProfile', function($q) use ($request) {
                 $q->where('is_fornitore', $request->boolean('is_fornitore'));
+            });
+        }
+
+        // Filter by is_collega (for collaboratore role)
+        if ($request->filled('is_collega')) {
+            $query->whereHas('clientProfile', function($q) use ($request) {
+                $q->where('is_collega', $request->boolean('is_collega'));
             });
         }
 

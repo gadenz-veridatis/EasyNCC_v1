@@ -44,11 +44,41 @@
                         <li class="nav-item" role="presentation">
                             <button
                                 class="nav-link"
-                                :class="{ active: activeTab === 'settings' }"
-                                @click="activeTab = 'settings'"
+                                :class="{ active: activeTab === 'accounting' }"
+                                @click="activeTab = 'accounting'"
                                 type="button"
                             >
-                                <i class="ri-settings-3-line me-1"></i> Impostazioni
+                                <i class="ri-money-dollar-circle-line me-1"></i> Contabilit&agrave;
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button
+                                class="nav-link"
+                                :class="{ active: activeTab === 'services' }"
+                                @click="activeTab = 'services'"
+                                type="button"
+                            >
+                                <i class="ri-car-line me-1"></i> Servizi
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button
+                                class="nav-link"
+                                :class="{ active: activeTab === 'notifications' }"
+                                @click="activeTab = 'notifications'"
+                                type="button"
+                            >
+                                <i class="ri-notification-3-line me-1"></i> Notifiche
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button
+                                class="nav-link"
+                                :class="{ active: activeTab === 'maintenance' }"
+                                @click="activeTab = 'maintenance'"
+                                type="button"
+                            >
+                                <i class="ri-tools-line me-1"></i> Manutenzione
                             </button>
                         </li>
                     </ul>
@@ -294,8 +324,8 @@
                         </BCardBody>
                     </BCard>
 
-                    <!-- Tab: Impostazioni -->
-                    <BCard v-show="activeTab === 'settings'" no-body class="border-top-0 rounded-top-0">
+                    <!-- Tab: Contabilità -->
+                    <BCard v-show="activeTab === 'accounting'" no-body class="border-top-0 rounded-top-0">
                         <BCardBody>
                             <form @submit.prevent="saveSettings">
                                 <!-- Sezione Ricavi -->
@@ -792,6 +822,30 @@
                                     </BRow>
                                 </fieldset>
 
+                                <!-- Alert per errori -->
+                                <div v-if="errors.length > 0" class="alert alert-danger">
+                                    <ul class="mb-0">
+                                        <li v-for="(error, index) in errors" :key="index">{{ error }}</li>
+                                    </ul>
+                                </div>
+                                <div v-if="successMessage" class="alert alert-success">
+                                    {{ successMessage }}
+                                </div>
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary" :disabled="saving">
+                                        <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                                        <i v-else class="ri-save-line me-1"></i>
+                                        Salva Contabilit&agrave;
+                                    </button>
+                                </div>
+                            </form>
+                        </BCardBody>
+                    </BCard>
+
+                    <!-- Tab: Servizi -->
+                    <BCard v-show="activeTab === 'services'" no-body class="border-top-0 rounded-top-0">
+                        <BCardBody>
+                            <form @submit.prevent="saveSettings">
                                 <!-- Sezione Esperienze -->
                                 <fieldset class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
@@ -865,6 +919,30 @@
                                     </BRow>
                                 </fieldset>
 
+                                <!-- Alert per errori -->
+                                <div v-if="errors.length > 0" class="alert alert-danger">
+                                    <ul class="mb-0">
+                                        <li v-for="(error, index) in errors" :key="index">{{ error }}</li>
+                                    </ul>
+                                </div>
+                                <div v-if="successMessage" class="alert alert-success">
+                                    {{ successMessage }}
+                                </div>
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary" :disabled="saving">
+                                        <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                                        <i v-else class="ri-save-line me-1"></i>
+                                        Salva Servizi
+                                    </button>
+                                </div>
+                            </form>
+                        </BCardBody>
+                    </BCard>
+
+                    <!-- Tab: Notifiche -->
+                    <BCard v-show="activeTab === 'notifications'" no-body class="border-top-0 rounded-top-0">
+                        <BCardBody>
+                            <form @submit.prevent="saveSettings">
                                 <!-- Sezione Notifiche Telegram -->
                                 <fieldset class="border rounded p-3 mb-4">
                                     <legend class="fs-5 fw-semibold text-primary mb-3">
@@ -1016,6 +1094,173 @@
                                     </div>
                                 </fieldset>
 
+                                <!-- Sezione Notifiche Email Colleghi -->
+                                <fieldset class="border rounded p-3 mb-4">
+                                    <legend class="fs-5 fw-semibold text-primary mb-3">
+                                        <i class="ri-mail-send-line me-2"></i>Notifiche Email Colleghi
+                                    </legend>
+
+                                    <div class="alert alert-info small mb-3">
+                                        <i class="ri-information-line me-2"></i>
+                                        Quando un servizio viene assegnato a un fornitore <strong>diverso dal fornitore di default</strong>,
+                                        il sistema utilizza l'email invece di Telegram per notificare il collega.
+                                        Configura qui i parametri per il flusso email.
+                                    </div>
+
+                                    <BRow>
+                                        <!-- Account Gmail -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Account Gmail per Invio
+                                                <span class="text-muted small">(obbligatorio)</span>
+                                            </label>
+                                            <select
+                                                v-model="form.email_gmail_account_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">-- Seleziona account Gmail --</option>
+                                                <option
+                                                    v-for="account in gmailAccounts"
+                                                    :key="account.id"
+                                                    :value="account.id"
+                                                >
+                                                    {{ account.account_label }} ({{ account.email_address }})
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Account Gmail da cui verranno inviate le email ai colleghi
+                                            </small>
+                                        </BCol>
+
+                                        <!-- Email notifiche admin -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Email Notifiche Accettazione/Chiusura
+                                                <span class="text-muted small">(obbligatorio)</span>
+                                            </label>
+                                            <input
+                                                v-model="form.email_notification_address"
+                                                type="email"
+                                                class="form-control"
+                                                placeholder="admin@azienda.it"
+                                            />
+                                            <small class="form-text text-muted">
+                                                Email che riceverà le notifiche quando il collega accetta o chiude il servizio
+                                            </small>
+                                        </BCol>
+
+                                        <!-- Template Assegnazione -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Template Email Assegnazione
+                                            </label>
+                                            <select
+                                                v-model="form.email_assignment_template_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">-- Usa template di default --</option>
+                                                <option
+                                                    v-for="tpl in assignmentTemplates"
+                                                    :key="tpl.id"
+                                                    :value="tpl.id"
+                                                >
+                                                    {{ tpl.name }}{{ tpl.is_default ? ' (default)' : '' }}
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Template utilizzato per l'email di assegnazione servizio al collega
+                                            </small>
+                                        </BCol>
+
+                                        <!-- Template Chiusura -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Template Email Chiusura
+                                            </label>
+                                            <select
+                                                v-model="form.email_closure_template_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">-- Usa template di default --</option>
+                                                <option
+                                                    v-for="tpl in closureTemplates"
+                                                    :key="tpl.id"
+                                                    :value="tpl.id"
+                                                >
+                                                    {{ tpl.name }}{{ tpl.is_default ? ' (default)' : '' }}
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Template utilizzato per l'email di chiusura servizio inviata dopo l'accettazione
+                                            </small>
+                                        </BCol>
+
+                                        <!-- Stato Accettazione Email -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Stato dopo Accettazione via Email
+                                            </label>
+                                            <select
+                                                v-model="form.email_accepted_status_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">-- Non modificare stato --</option>
+                                                <option
+                                                    v-for="status in serviceStatuses"
+                                                    :key="status.id"
+                                                    :value="status.id"
+                                                >
+                                                    {{ status.name }}
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Stato del servizio dopo che il collega accetta tramite il link email
+                                            </small>
+                                        </BCol>
+
+                                        <!-- Stato Chiusura Email -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Stato dopo Chiusura via Email
+                                            </label>
+                                            <select
+                                                v-model="form.email_closed_status_id"
+                                                class="form-select"
+                                            >
+                                                <option :value="null">-- Non modificare stato --</option>
+                                                <option
+                                                    v-for="status in serviceStatuses"
+                                                    :key="status.id"
+                                                    :value="status.id"
+                                                >
+                                                    {{ status.name }}
+                                                </option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Stato del servizio dopo che il collega conferma la chiusura tramite il link email
+                                            </small>
+                                        </BCol>
+
+                                        <!-- Scadenza Token -->
+                                        <BCol md="6" class="mb-3">
+                                            <label class="form-label">
+                                                Scadenza Link (giorni)
+                                            </label>
+                                            <input
+                                                v-model.number="form.email_token_expiry_days"
+                                                type="number"
+                                                class="form-control"
+                                                min="1"
+                                                max="90"
+                                                placeholder="7"
+                                            />
+                                            <small class="form-text text-muted">
+                                                Numero di giorni dopo i quali i link di accettazione/chiusura scadranno
+                                            </small>
+                                        </BCol>
+                                    </BRow>
+                                </fieldset>
+
                                 <!-- Alert per errori -->
                                 <div v-if="errors.length > 0" class="alert alert-danger">
                                     <ul class="mb-0">
@@ -1033,13 +1278,16 @@
                                     <button type="submit" class="btn btn-primary" :disabled="saving">
                                         <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
                                         <i v-else class="ri-save-line me-1"></i>
-                                        Salva Impostazioni
+                                        Salva Notifiche
                                     </button>
                                 </div>
                             </form>
+                        </BCardBody>
+                    </BCard>
 
-                            <!-- Sezione Manutenzione -->
-                            <hr class="my-4" />
+                    <!-- Tab: Manutenzione -->
+                    <BCard v-show="activeTab === 'maintenance'" no-body class="border-top-0 rounded-top-0">
+                        <BCardBody>
                             <h5 class="mb-3"><i class="ri-tools-line me-2"></i>Manutenzione</h5>
 
                             <div class="d-flex align-items-center justify-content-between p-3 border rounded bg-light">
@@ -1103,6 +1351,9 @@ export default {
             accountingEntries: [],
             suppliers: [],
             serviceStatuses: [],
+            gmailAccounts: [],
+            assignmentTemplates: [],
+            closureTemplates: [],
             activeTab: 'company',
             recalculatingOverlaps: false,
             recalculateResult: null,
@@ -1142,6 +1393,13 @@ export default {
                 telegram_closed_ok_status_id: null,
                 telegram_closed_ko_status_id: null,
                 telegram_collected_status_id: null,
+                email_accepted_status_id: null,
+                email_closed_status_id: null,
+                email_notification_address: null,
+                email_assignment_template_id: null,
+                email_closure_template_id: null,
+                email_gmail_account_id: null,
+                email_token_expiry_days: 7,
             },
             // Company form
             companyForm: {
@@ -1230,6 +1488,8 @@ export default {
                     this.loadSuppliers(),
                     this.loadServiceStatuses(),
                     this.loadCompanyData(),
+                    this.loadGmailAccounts(),
+                    this.loadEmailTemplates(),
                 ]);
             } catch (error) {
                 console.error('Error loading settings page data:', error);
@@ -1280,6 +1540,13 @@ export default {
                 telegram_closed_ok_status_id: data.telegram_closed_ok_status_id || null,
                 telegram_closed_ko_status_id: data.telegram_closed_ko_status_id || null,
                 telegram_collected_status_id: data.telegram_collected_status_id || null,
+                email_accepted_status_id: data.email_accepted_status_id || null,
+                email_closed_status_id: data.email_closed_status_id || null,
+                email_notification_address: data.email_notification_address || null,
+                email_assignment_template_id: data.email_assignment_template_id || null,
+                email_closure_template_id: data.email_closure_template_id || null,
+                email_gmail_account_id: data.email_gmail_account_id || null,
+                email_token_expiry_days: data.email_token_expiry_days || 7,
             };
         },
         async loadCompanyData() {
@@ -1336,6 +1603,31 @@ export default {
             } catch (error) {
                 console.error('Error loading service statuses:', error);
                 this.serviceStatuses = [];
+            }
+        },
+        async loadGmailAccounts() {
+            try {
+                const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
+                const response = await axios.get('/api/gmail-accounts', { params });
+                this.gmailAccounts = response.data.data || response.data || [];
+            } catch (error) {
+                console.error('Error loading Gmail accounts:', error);
+                this.gmailAccounts = [];
+            }
+        },
+        async loadEmailTemplates() {
+            try {
+                const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
+                const [assignmentRes, closureRes] = await Promise.all([
+                    axios.get('/api/quote-email-templates', { params: { ...params, type: 'service_assignment' } }),
+                    axios.get('/api/quote-email-templates', { params: { ...params, type: 'service_closure' } }),
+                ]);
+                this.assignmentTemplates = assignmentRes.data.data || [];
+                this.closureTemplates = closureRes.data.data || [];
+            } catch (error) {
+                console.error('Error loading email templates:', error);
+                this.assignmentTemplates = [];
+                this.closureTemplates = [];
             }
         },
         onFileChange(event, field) {

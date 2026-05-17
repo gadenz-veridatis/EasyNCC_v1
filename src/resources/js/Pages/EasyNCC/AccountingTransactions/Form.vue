@@ -319,6 +319,7 @@ import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
 import moment from 'moment';
+import { useNotify } from '@/composables/useNotify.js';
 
 export default {
     components: {
@@ -334,6 +335,7 @@ export default {
         },
     },
     setup(props) {
+        const notify = useNotify();
         const loading = ref(false);
         const companies = ref([]);
         const services = ref([]);
@@ -532,9 +534,9 @@ export default {
                 if (error.response?.status === 422) {
                     const errors = error.response.data.errors;
                     const errorMessages = Object.values(errors).flat().join('\n');
-                    alert('Errori di validazione:\n' + errorMessages);
+                    notify.error('Errori di validazione:\n' + errorMessages);
                 } else {
-                    alert('Errore durante il salvataggio del movimento');
+                    notify.error('Errore durante il salvataggio del movimento');
                 }
             } finally {
                 loading.value = false;

@@ -119,6 +119,9 @@
 import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
+import { useNotify } from '@/composables/useNotify.js';
+
+const notify = useNotify();
 
 export default {
   components: {
@@ -168,16 +171,15 @@ export default {
       }
     },
     async deleteCompany(company) {
-      if (!confirm(`Sei sicuro di voler eliminare l'azienda "${company.name}"?`)) {
-        return;
-      }
+      const confirmed = await notify.confirm('Elimina azienda', `Sei sicuro di voler eliminare l'azienda "${company.name}"?`);
+      if (!confirmed) return;
 
       try {
         await axios.delete(`/api/companies/${company.id}`);
         await this.loadCompanies();
       } catch (error) {
         console.error("Error deleting company:", error);
-        alert("Errore durante l'eliminazione");
+        notify.error("Errore durante l'eliminazione");
       }
     },
   },

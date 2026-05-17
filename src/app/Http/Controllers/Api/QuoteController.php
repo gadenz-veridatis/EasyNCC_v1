@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Quote;
 use App\Models\QuoteItem;
 use App\Models\QuoteStateTransition;
+use App\Models\Richiesta;
 use App\Services\PricingCalculatorService;
 use App\Services\QuoteStateMachineService;
+use App\Services\RichiestaStateMachineService;
 use App\Services\QuoteTemplateService;
 use App\Models\QuoteEmailTemplate;
 use Illuminate\Http\Request;
@@ -305,13 +307,16 @@ class QuoteController extends Controller
     public function transition(Request $request, Quote $quote)
     {
         $request->validate([
-            'action' => 'required|string|in:approve,send,revert_to_draft',
+            'action' => 'required|string|in:approve,send,revert_to_draft,register_payment',
             'sumup_config_id' => 'nullable|integer',
             'gmail_account_id' => 'nullable|integer',
             'email_template_id' => 'nullable|integer',
             'client_email' => 'nullable|email|max:255',
             'rendered_subject' => 'nullable|string|max:500',
             'rendered_body_html' => 'nullable|string',
+            'payment_type_id' => 'nullable|integer|exists:payment_types,id',
+            'payment_reference' => 'nullable|string|max:500',
+            'payment_date' => 'nullable|date',
         ]);
 
         $user = Auth::user();
@@ -330,6 +335,13 @@ class QuoteController extends Controller
                     'rendered_body_html' => $request->rendered_body_html,
                 ]),
                 'revert_to_draft' => $stateMachine->revertToDraft($quote, $user),
+                'register_payment' => $stateMachine->transitionToDepositReceived($quote, [
+                    'source' => 'manual',
+                    'payment_type_id' => $request->payment_type_id,
+                    'payment_reference' => $request->payment_reference,
+                    'payment_date' => $request->payment_date,
+                    'registered_by' => $user->id,
+                ]),
             };
 
             return response()->json([
@@ -515,7 +527,7 @@ class QuoteController extends Controller
                 'pricing_destination_id', 'destination_name', 'service_type',
                 'mileage', 'extra_km', 'duration_hours', 'extension_hours',
                 'extra_travel_hours', 'toll_cost', 'pax_count',
-                'experience_per_pax', 'taxable_price', 'sort_order',
+                'experience_per_pax', 'taxable_price', 'sort_order', 'service_date',
             ]);
         })->toArray();
 
@@ -546,6 +558,118 @@ class QuoteController extends Controller
         }
 
         return $newQuote;
+    }
+
+    /**
+     * Create a Quote from a Richiesta, pre-populating items from righe_richiesta.
+     */
+    public function createFromRichiesta(Request $request, string $richiestaId)
+    {
+        $richiesta = Richiesta::with(['contact', 'righe'])->findOrFail($richiestaId);
+        $user = Auth::user();
+
+        $quoteGroupId = 0;
+        $version = 1;
+
+        // If archive_current is set, archive the existing active quote and create new version in same group
+        if ($request->boolean('archive_current')) {
+            $existingQuote = Quote::withoutGlobalScopes()
+                ->where('richiesta_id', $richiesta->id)
+                ->where('is_active_version', true)
+                ->first();
+
+            if ($existingQuote) {
+                // Cleanup SumUp checkout (deactivate so old link stops working)
+                if ($existingQuote->sumup_checkout_id && $existingQuote->sumupConfig) {
+                    try {
+                        $sumupService = new \App\Services\SumUpService($existingQuote->sumupConfig);
+                        $sumupService->deactivateCheckout($existingQuote->sumup_checkout_id);
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::channel('gmail')->warning(
+                            "Failed to deactivate SumUp checkout on archive: " . $e->getMessage()
+                        );
+                    }
+                }
+
+                // Cleanup Gmail draft (delete if exists)
+                if ($existingQuote->gmail_draft_id && $existingQuote->gmailAccount) {
+                    try {
+                        $gmailService = new \App\Services\GmailService($existingQuote->gmailAccount);
+                        $gmailService->deleteDraft($existingQuote->gmail_draft_id);
+                    } catch (\Exception $e) {
+                        // Draft may already be sent — ignore
+                    }
+                }
+
+                // Archive without changing status
+                $existingQuote->update([
+                    'is_active_version' => false,
+                    'archived_at' => now(),
+                ]);
+
+                $quoteGroupId = $existingQuote->quote_group_id;
+                $version = Quote::withoutGlobalScopes()
+                    ->where('quote_group_id', $quoteGroupId)
+                    ->max('version') + 1;
+            }
+        }
+
+        // Min date from righe
+        $minDate = $richiesta->righe->whereNotNull('data_servizio')->min('data_servizio');
+
+        $quote = Quote::create([
+            'company_id' => $richiesta->company_id,
+            'richiesta_id' => $richiesta->id,
+            'user_id' => $user->id,
+            'status' => Quote::STATUS_DRAFT,
+            'contact_id' => $richiesta->contact_id,
+            'client_name' => $richiesta->contact->name ?? '',
+            'client_email' => $richiesta->contact->email ?? '',
+            'service_date' => $minDate,
+            'quote_group_id' => $quoteGroupId,
+            'version' => $version,
+            'is_active_version' => true,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        // Set quote_group_id = quote id if new group
+        if ($quoteGroupId === 0) {
+            $quote->update(['quote_group_id' => $quote->id]);
+        }
+
+        // Create quote items from righe_richiesta
+        foreach ($richiesta->righe as $index => $riga) {
+            QuoteItem::create([
+                'quote_id' => $quote->id,
+                'riga_richiesta_id' => $riga->id,
+                'destination_name' => $riga->dropoff,
+                'service_type' => $riga->tipo_servizio,
+                'pax_count' => $riga->passeggeri ?? 0,
+                'sort_order' => $index,
+                'service_date' => $riga->data_servizio,
+            ]);
+        }
+
+        // Transition richiesta to preventivata if in_lavorazione
+        if (in_array($richiesta->stato, [Richiesta::STATO_NUOVA, Richiesta::STATO_IN_LAVORAZIONE])) {
+            $richiestaStateMachine = new RichiestaStateMachineService();
+            try {
+                if ($richiesta->stato === Richiesta::STATO_NUOVA) {
+                    $richiestaStateMachine->transition($richiesta, Richiesta::STATO_IN_LAVORAZIONE);
+                    $richiesta->refresh();
+                }
+                $richiestaStateMachine->transition($richiesta, Richiesta::STATO_PREVENTIVATA);
+            } catch (\Exception $e) {
+                // Don't fail quote creation if richiesta transition fails
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Preventivo creato dalla richiesta',
+            'data' => $quote->fresh()->load(['user:id,name,surname', 'creator:id,name,surname', 'contact', 'items', 'richiesta']),
+        ], 201);
     }
 
     private function validateQuote(Request $request, bool $isUpdate = false): array
@@ -583,6 +707,7 @@ class QuoteController extends Controller
             'items.*.pax_count' => 'nullable|integer|min:0',
             'items.*.experience_per_pax' => 'nullable|numeric|min:0',
             'items.*.taxable_price' => 'nullable|numeric|min:0',
+            'items.*.service_date' => 'nullable|date',
         ]);
 
         return collect($request->input('items', []))->map(function ($item) {
@@ -599,6 +724,7 @@ class QuoteController extends Controller
                 'pax_count' => $item['pax_count'] ?? 0,
                 'experience_per_pax' => $item['experience_per_pax'] ?? 0,
                 'taxable_price' => $item['taxable_price'] ?? 0,
+                'service_date' => $item['service_date'] ?? null,
             ];
         })->toArray();
     }

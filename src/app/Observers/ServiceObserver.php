@@ -4,8 +4,10 @@ namespace App\Observers;
 
 use App\Models\Service;
 use App\Models\ServiceStatus;
+use App\Models\Settings;
 use App\Models\Task;
 use App\Services\ServiceOverlapService;
+use App\Services\ServiceEmailNotificationService;
 use App\Services\TelegramNotificationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -33,12 +35,14 @@ class ServiceObserver
 
     /**
      * Handle status change: send Telegram notification if configured.
+     * Email flow is NOT triggered here — it requires user interaction and is
+     * handled by the frontend calling the ServiceEmailController API.
      */
     private function handleStatusChange(Service $service): void
     {
         try {
             // Load company settings
-            $settings = \App\Models\Settings::withoutGlobalScopes()
+            $settings = Settings::withoutGlobalScopes()
                 ->where('company_id', $service->company_id)
                 ->first();
 
@@ -48,13 +52,29 @@ class ServiceObserver
             }
 
             // Check if new status matches the configured trigger status
-            if ($service->status_id === $settings->telegram_trigger_status_id) {
-                $notificationService = app(TelegramNotificationService::class);
-                $notificationService->notifyServiceConfirmed($service);
-
-                // Create task "Accettare servizio" for assigned drivers
-                $this->createAcceptTask($service);
+            if ($service->status_id !== $settings->telegram_trigger_status_id) {
+                return;
             }
+
+            // Check if supplier is the default supplier (Telegram flow)
+            // If supplier is different from default, the email flow is handled
+            // by the frontend — do NOT send Telegram notification
+            if ($settings->default_supplier_id && $service->supplier_id
+                && $service->supplier_id !== $settings->default_supplier_id) {
+                Log::channel('telegram')->info('Service uses external supplier — skipping Telegram, email flow expected', [
+                    'service_id' => $service->id,
+                    'supplier_id' => $service->supplier_id,
+                    'default_supplier_id' => $settings->default_supplier_id,
+                ]);
+                return;
+            }
+
+            // Default supplier or no supplier set — proceed with Telegram flow
+            $notificationService = app(TelegramNotificationService::class);
+            $notificationService->notifyServiceConfirmed($service);
+
+            // Create task "Accettare servizio" for assigned drivers
+            $this->createAcceptTask($service);
         } catch (\Exception $e) {
             Log::channel('telegram')->error('Error in ServiceObserver status change handler', [
                 'service_id' => $service->id,

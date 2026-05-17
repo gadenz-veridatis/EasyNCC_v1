@@ -20,7 +20,7 @@
                                 {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
                                 <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
                             </button>
-                            <Link v-if="!isDriver" :href="route('easyncc.services.create')" class="btn btn-primary btn-sm">
+                            <Link v-if="!isDriver" :href="withReturnUrl(route('easyncc.services.create'))" class="btn btn-primary btn-sm">
                                 <i class="bx bx-plus me-1"></i>
                                 Nuovo Servizio
                             </Link>
@@ -67,6 +67,18 @@
                                     </option>
                                 </select>
                             </BCol>
+                            <BCol md="2">
+                                <label class="form-label">Stato</label>
+                                <select v-model="filters.status" class="form-select form-select-sm" @change="loadServicesFromFilter">
+                                    <option value="">Tutti gli stati</option>
+                                    <option value="preventivo">Preventivo</option>
+                                    <option value="confermato">Confermato</option>
+                                    <option value="in corso">In Corso</option>
+                                    <option value="completato">Completato</option>
+                                    <option value="cancellato">Cancellato</option>
+                                    <option value="no-show">No Show</option>
+                                </select>
+                            </BCol>
                         </BRow>
 
                         <BRow class="mb-4">
@@ -76,6 +88,15 @@
                                     <option value="">Tutti i committenti</option>
                                     <option v-for="client in clients" :key="client.id" :value="client.id">
                                         {{ client.name }} {{ client.surname }}
+                                    </option>
+                                </select>
+                            </BCol>
+                            <BCol md="2">
+                                <label class="form-label">Collega</label>
+                                <select v-model="filters.supplier_id" class="form-select form-select-sm" @change="loadServicesFromFilter">
+                                    <option value="">Tutti i colleghi</option>
+                                    <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
+                                        {{ supplier.surname }} {{ supplier.name }}
                                     </option>
                                 </select>
                             </BCol>
@@ -104,18 +125,6 @@
                                     <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
                                         {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
                                     </option>
-                                </select>
-                            </BCol>
-                            <BCol md="2">
-                                <label class="form-label">Stato</label>
-                                <select v-model="filters.status" class="form-select form-select-sm" @change="loadServicesFromFilter">
-                                    <option value="">Tutti gli stati</option>
-                                    <option value="preventivo">Preventivo</option>
-                                    <option value="confermato">Confermato</option>
-                                    <option value="in corso">In Corso</option>
-                                    <option value="completato">Completato</option>
-                                    <option value="cancellato">Cancellato</option>
-                                    <option value="no-show">No Show</option>
                                 </select>
                             </BCol>
                             <BCol md="2" v-if="isSuperAdmin">
@@ -275,10 +284,10 @@
                                                     <label v-if="!isDriver" class="bulk-checkbox-touch" @click.stop>
                                                     <input type="checkbox" v-model="selectedServices" :value="service.id" class="form-check-input">
                                                 </label>
-                                                <Link v-if="!isDriver || isServiceAssignedOrAccepted(service)" :href="route('easyncc.services.show', service.id)" class="btn btn-sm btn-soft-primary" title="Visualizza">
+                                                <Link v-if="!isDriver || isServiceAssignedOrAccepted(service)" :href="withReturnUrl(route('easyncc.services.show', service.id))" class="btn btn-sm btn-soft-primary" title="Visualizza">
                                                     <i class="ri-eye-line"></i>
                                                 </Link>
-                                                <Link v-if="!isDriver" :href="route('easyncc.services.edit', service.id)" class="btn btn-sm btn-soft-info" title="Modifica">
+                                                <Link v-if="!isDriver" :href="withReturnUrl(route('easyncc.services.edit', service.id))" class="btn btn-sm btn-soft-info" title="Modifica">
                                                     <i class="ri-edit-line"></i>
                                                 </Link>
                                                 <!-- Dropdown menu azioni secondarie -->
@@ -362,14 +371,15 @@
                                         </td>
                                         <!-- Dati Identificativi -->
                                         <td>
+                                          <div class="cell-scroll-inner">
                                             <!-- Tipologia Servizio come Tag, più visibile -->
                                             <div class="mb-2" v-if="service.service_type">
                                                 <span
                                                     class="badge"
-                                                    :class="serviceTypeBadgeClass(service.service_type, 'bg-primary text-white')"
-                                                    style="font-size: 0.9rem; padding: 0.45rem 0.85rem;"
+                                                    :style="{ ...serviceTypeBadgeStyle(service.service_type), fontSize: '0.9rem', padding: '0.45rem 0.85rem' }"
+                                                    :title="service.service_type"
                                                 >
-                                                    {{ service.service_type }}
+                                                    {{ getServiceTypeAbbreviation(service.service_type) }}
                                                 </span>
                                             </div>
 
@@ -407,6 +417,7 @@
                                             <div class="small text-muted">
                                                 #{{ service.reference_number || service.id }}
                                             </div>
+                                          </div>
                                         </td>
                                         <!-- Data -->
                                         <td>
@@ -429,6 +440,8 @@
                                                     <label class="text-success fw-bold" style="font-size: 0.65rem;">Pickup</label>
                                                     <input type="datetime-local" v-model="editingDatetimeValues.pickup_datetime"
                                                            class="form-control form-control-sm" style="font-size: 0.75rem;" />
+                                                    <input type="text" v-model="editingDatetimeValues.pickup_address"
+                                                           class="form-control form-control-sm mt-1" style="font-size: 0.75rem;" placeholder="Luogo pickup" />
                                                 </div>
                                                 <div class="mb-1">
                                                     <label class="text-muted" style="font-size: 0.65rem;">Uscita mezzo</label>
@@ -439,6 +452,8 @@
                                                     <label class="text-danger fw-bold" style="font-size: 0.65rem;">Dropoff</label>
                                                     <input type="datetime-local" v-model="editingDatetimeValues.dropoff_datetime"
                                                            class="form-control form-control-sm" style="font-size: 0.75rem;" />
+                                                    <input type="text" v-model="editingDatetimeValues.dropoff_address"
+                                                           class="form-control form-control-sm mt-1" style="font-size: 0.75rem;" placeholder="Luogo dropoff" />
                                                 </div>
                                                 <div class="mb-1">
                                                     <label class="text-muted" style="font-size: 0.65rem;">Rientro mezzo</label>
@@ -458,6 +473,7 @@
                                         </td>
                                         <!-- Passeggeri -->
                                         <td>
+                                          <div class="cell-scroll-inner">
                                             <!-- Passenger Count Inline Edit -->
                                             <div class="mb-1">
                                                 <!-- Display mode -->
@@ -519,6 +535,7 @@
                                                     </span>
                                                 </span>
                                             </div>
+                                          </div>
                                         </td>
                                         <!-- Committente/Intermediario -->
                                         <td>
@@ -555,6 +572,7 @@
                                         </td>
                                         <!-- Autista -->
                                         <td>
+                                          <div class="cell-scroll-inner">
                                             <!-- Driver user: conditional display -->
                                             <template v-if="isDriver">
                                                 <div v-if="isServiceAssignedOrAccepted(service)">
@@ -663,12 +681,15 @@
                                                         </div>
                                                     </div>
                                             </template>
+                                          </div>
                                         </td>
                                         <!-- Veicolo -->
                                         <td>
+                                          <div class="cell-scroll-inner">
                                             <!-- Driver user: conditional display -->
                                             <template v-if="isDriver">
                                                 <div v-if="isServiceAssignedOrAccepted(service) && service.vehicle">
+                                                    <div class="small fw-bold mb-1">{{ service.vehicle.brand }} {{ service.vehicle.model }}</div>
                                                     <div
                                                         class="targa-auto"
                                                         :title="`${service.vehicle.brand} ${service.vehicle.model} - ${service.vehicle.passenger_capacity} posti`"
@@ -690,6 +711,7 @@
                                                         @click="startEditVehicle(service)"
                                                         title="Clicca per modificare"
                                                     >
+                                                        <div class="small fw-bold mb-1">{{ service.vehicle.brand }} {{ service.vehicle.model }}</div>
                                                         <div
                                                             class="targa-auto"
                                                             :title="`${service.vehicle.brand} ${service.vehicle.model} - ${service.vehicle.passenger_capacity} posti`"
@@ -735,9 +757,11 @@
                                                     </div>
                                                 </div>
                                             </template>
+                                          </div>
                                         </td>
                                         <!-- Esperienze -->
                                         <td>
+                                          <div class="cell-scroll-inner">
                                             <div v-if="service.activities && service.activities.length > 0">
                                                 <div v-for="activity in service.activities" :key="activity.id" class="small mb-1">
                                                     <!-- Ora | Tipologia -->
@@ -758,6 +782,7 @@
                                                 </div>
                                             </div>
                                             <div v-else class="text-muted">-</div>
+                                          </div>
                                         </td>
                                         <!-- Ricavi -->
                                         <td>
@@ -788,11 +813,11 @@
                                                     <div v-if="(parseFloat(service.deposit_amount) || 0) > 0 || getBalanceValue(service) > 0">
                                                         <div v-if="(parseFloat(service.deposit_amount) || 0) > 0" class="text-start mb-1">
                                                             <div class="text-muted" style="font-size: 0.65rem;">Acconto</div>
-                                                            <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'sale_deposit')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.deposit_amount) }}</span>
+                                                            <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'deposit_amount', 'sale_deposit')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.deposit_amount) }}</span>
                                                         </div>
                                                         <div v-if="getBalanceValue(service) > 0" class="text-start mb-1">
                                                             <div class="text-muted" style="font-size: 0.65rem;">{{ getBalanceLabel(service) }}</div>
-                                                            <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'sale_balance')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(getBalanceValue(service)) }}</span>
+                                                            <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'balance', 'sale_balance')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(getBalanceValue(service)) }}</span>
                                                         </div>
                                                         <hr class="my-1" style="border-color: #ccc;">
                                                         <div class="text-start">
@@ -807,37 +832,43 @@
                                         <!-- Costi -->
                                         <td>
                                             <span v-if="isDriver" class="text-muted small">--</span>
-                                            <div v-else-if="hasAnyCost(service)" class="d-flex flex-column gap-1">
-                                                <div v-if="service.driver_compensation > 0" class="text-start">
+                                            <div v-else class="d-flex flex-column gap-1 cell-scroll-inner" style="cursor: pointer;" @click="showEconomicsModal(service)" title="Clicca per modificare importi">
+                                                <div class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Autista</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.driver_compensation) }}</span>
+                                                    <span v-if="service.driver_compensation > 0" class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'driver_compensation', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.driver_compensation) }}</span>
+                                                    <span v-else class="text-muted" style="font-size: 0.7rem;">--</span>
                                                 </div>
-                                                <div v-if="service.colleague_cost > 0" class="text-start">
+                                                <div class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Collega</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.colleague_cost) }}</span>
+                                                    <span v-if="service.colleague_cost > 0" class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'colleague_cost', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.colleague_cost) }}</span>
+                                                    <span v-else class="text-muted" style="font-size: 0.7rem;">--</span>
                                                 </div>
-                                                <div v-if="service.intermediary_commission > 0" class="text-start">
+                                                <div class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Intermediazione</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'intermediation')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.intermediary_commission) }}</span>
+                                                    <span v-if="service.intermediary_commission > 0" class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'intermediary_commission', 'intermediation')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.intermediary_commission) }}</span>
+                                                    <span v-else class="text-muted" style="font-size: 0.7rem;">--</span>
                                                 </div>
-                                                <div v-if="service.fuel_cost > 0" class="text-start">
+                                                <div class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Carburante</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.fuel_cost) }}</span>
+                                                    <span v-if="service.fuel_cost > 0" class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'fuel_cost', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.fuel_cost) }}</span>
+                                                    <span v-else class="text-muted" style="font-size: 0.7rem;">--</span>
                                                 </div>
-                                                <div v-if="service.toll_cost > 0" class="text-start">
+                                                <div class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Pedaggi</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.toll_cost) }}</span>
+                                                    <span v-if="service.toll_cost > 0" class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'toll_cost', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.toll_cost) }}</span>
+                                                    <span v-else class="text-muted" style="font-size: 0.7rem;">--</span>
                                                 </div>
-                                                <div v-if="service.parking_cost > 0" class="text-start">
+                                                <div class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Parcheggi</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.parking_cost) }}</span>
+                                                    <span v-if="service.parking_cost > 0" class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'parking_cost', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.parking_cost) }}</span>
+                                                    <span v-else class="text-muted" style="font-size: 0.7rem;">--</span>
                                                 </div>
-                                                <div v-if="service.other_vehicle_costs > 0" class="text-start">
+                                                <div class="text-start">
                                                     <div class="text-muted" style="font-size: 0.65rem;">Altri costi</div>
-                                                    <span class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.other_vehicle_costs) }}</span>
+                                                    <span v-if="service.other_vehicle_costs > 0" class="badge px-2 py-1" :class="transactionBadgeClass(service.transaction_status_map, 'other_vehicle_costs', 'purchase')" style="font-size: 0.7rem;">&euro;{{ formatCurrency(service.other_vehicle_costs) }}</span>
+                                                    <span v-else class="text-muted" style="font-size: 0.7rem;">--</span>
                                                 </div>
                                             </div>
-                                            <span v-else class="text-muted small">--</span>
                                         </td>
                                         <!-- Azienda (solo per super-admin) -->
                                         <td v-if="isSuperAdmin">
@@ -1208,57 +1239,166 @@
         <!-- Economics Modal -->
         <BModal
             v-model="showEconomicsModalFlag"
-            title="Dettagli Economici"
-            size="lg"
-            hide-footer
+            title="Modifica Importi"
+            size="xl"
             centered
+            @hidden="resetEconomicsForm"
         >
-            <div v-if="selectedService">
+            <div v-if="economicsForm">
                 <h6 class="mb-3">
-                    Servizio: <strong>#{{ selectedService.reference_number || selectedService.id }}</strong>
+                    Servizio: <strong>#{{ selectedService?.reference_number || selectedService?.id }}</strong>
+                    <span v-if="selectedService?.passengers?.length" class="text-muted ms-2">
+                        - {{ selectedService.passengers[0]?.surname }} {{ selectedService.passengers[0]?.name }}
+                    </span>
                 </h6>
 
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <tbody>
-                            <tr>
-                                <td class="fw-bold">Prezzo Totale</td>
-                                <td class="text-end">
-                                    <span class="badge bg-success fs-6 px-3 py-2">€{{ formatCurrency(selectedService.service_price) }}</span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <i class="ri-wallet-3-line me-1 text-primary"></i>
-                                    Acconto
-                                </td>
-                                <td class="text-end">€{{ formatCurrency(selectedService.deposit_amount) }}</td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <i class="ri-money-euro-circle-line me-1 text-success"></i>
-                                    Saldo Imponibile
-                                </td>
-                                <td class="text-end">€{{ formatCurrency(selectedService.balance_taxable) }}</td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <i class="ri-percent-line me-1 text-warning"></i>
-                                    Diritti di Agenzia
-                                </td>
-                                <td class="text-end">€{{ formatCurrency(selectedService.balance_handling_fees) }}</td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <i class="ri-bank-card-line me-1 text-info"></i>
-                                    Commissioni Carta
-                                </td>
-                                <td class="text-end">€{{ formatCurrency(selectedService.balance_card_fees) }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <BRow>
+                    <!-- RICAVI -->
+                    <BCol md="6">
+                        <div class="border rounded p-3 mb-3">
+                            <h6 class="text-primary mb-3"><i class="ri-money-euro-circle-line me-1"></i>Ricavi</h6>
+
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Prezzo Imponibile (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.service_price" @change="recalculateTotals" />
+                            </div>
+
+                            <BRow class="mb-2">
+                                <BCol cols="4">
+                                    <label class="form-label small mb-1">IVA %</label>
+                                    <select class="form-select form-select-sm" v-model.number="economicsForm.vat_rate" @change="recalculateTotals">
+                                        <option :value="10">10%</option>
+                                        <option :value="22">22%</option>
+                                    </select>
+                                </BCol>
+                                <BCol cols="4">
+                                    <label class="form-label small mb-1">Card Fees %</label>
+                                    <input type="number" step="0.1" min="0" class="form-control form-control-sm"
+                                        v-model.number="economicsForm.card_fees_percentage" @change="recalculateTotals" />
+                                </BCol>
+                                <BCol cols="4">
+                                    <label class="form-label small mb-1">Acconto %</label>
+                                    <input type="number" step="1" min="0" max="100" class="form-control form-control-sm"
+                                        v-model.number="economicsForm.deposit_percentage" @change="recalculateTotals" />
+                                </BCol>
+                            </BRow>
+
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Tipo Saldo</label>
+                                <select class="form-select form-select-sm" v-model="economicsForm.balance_sale_type">
+                                    <option value="balance_taxable">Imponibile</option>
+                                    <option value="balance_handling_fees">Handling Fees</option>
+                                    <option value="balance_card_fees">Card Fees</option>
+                                </select>
+                            </div>
+
+                            <!-- Corrispettivi editabili -->
+                            <div class="bg-light rounded p-2 mt-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small text-muted fw-bold">Corrispettivi</span>
+                                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size: 0.7rem;" @click="recalculateTotals" title="Ricalcola da prezzo e percentuali">
+                                        <i class="ri-refresh-line me-1"></i>Ricalcola
+                                    </button>
+                                </div>
+                                <BRow class="mb-1">
+                                    <BCol cols="6">
+                                        <label class="form-label small mb-0" style="font-size: 0.75rem;">Acconto Imponibile</label>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                            v-model.number="economicsForm.deposit_taxable" />
+                                    </BCol>
+                                    <BCol cols="6">
+                                        <label class="form-label small mb-0" style="font-size: 0.75rem;">Saldo Imponibile</label>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                            v-model.number="economicsForm.balance_taxable" />
+                                    </BCol>
+                                </BRow>
+                                <BRow class="mb-1">
+                                    <BCol cols="6">
+                                        <label class="form-label small mb-0" style="font-size: 0.75rem;">Acconto Handling Fees</label>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                            v-model.number="economicsForm.deposit_handling_fees" />
+                                    </BCol>
+                                    <BCol cols="6">
+                                        <label class="form-label small mb-0" style="font-size: 0.75rem;">Saldo Handling Fees</label>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                            v-model.number="economicsForm.balance_handling_fees" />
+                                    </BCol>
+                                </BRow>
+                                <BRow>
+                                    <BCol cols="6">
+                                        <label class="form-label small mb-0" style="font-size: 0.75rem;">Acconto Card Fees</label>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                            v-model.number="economicsForm.deposit_amount" />
+                                    </BCol>
+                                    <BCol cols="6">
+                                        <label class="form-label small mb-0" style="font-size: 0.75rem;">Saldo Card Fees</label>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                            v-model.number="economicsForm.balance_card_fees" />
+                                    </BCol>
+                                </BRow>
+                            </div>
+                        </div>
+                    </BCol>
+
+                    <!-- COSTI -->
+                    <BCol md="6">
+                        <div class="border rounded p-3 mb-3">
+                            <h6 class="text-danger mb-3"><i class="ri-shopping-cart-line me-1"></i>Costi</h6>
+
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Compenso Autista (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.driver_compensation" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Costo Collega (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.colleague_cost" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Intermediazione (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.intermediary_commission" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Carburante (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.fuel_cost" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Pedaggi (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.toll_cost" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Parcheggi (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.parking_cost" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Altri Costi (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    v-model.number="economicsForm.other_vehicle_costs" />
+                            </div>
+                        </div>
+                    </BCol>
+                </BRow>
+            </div>
+
+            <div v-if="economicsLoading" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Caricamento...</span>
                 </div>
             </div>
+
+            <template #footer>
+                <button type="button" class="btn btn-light" @click="showEconomicsModalFlag = false">Annulla</button>
+                <button type="button" class="btn btn-primary" @click="saveEconomics" :disabled="economicsSaving">
+                    <span v-if="economicsSaving" class="spinner-border spinner-border-sm me-1"></span>
+                    Salva
+                </button>
+            </template>
         </BModal>
         <!-- Floating Bottom Action Bar -->
         <Teleport to="body">
@@ -1374,6 +1514,10 @@ import Swal from 'sweetalert2';
 import { driverLabel } from '@/composables/useDriverLabel.js';
 import { useServiceTypeColor } from '@/composables/useServiceTypeColor.js';
 import { useTransactionStatusColor } from '@/composables/useTransactionStatusColor.js';
+import { useUrlFilters } from '@/composables/useUrlFilters.js';
+import { useServicePricing } from '@/composables/useServicePricing.js';
+
+const { calculateServiceTotals, buildAccountingOperations } = useServicePricing();
 
 const services = ref([]);
 const loading = ref(false);
@@ -1387,6 +1531,10 @@ const selectedService = ref(null);
 
 // Economics Modal
 const showEconomicsModalFlag = ref(false);
+const economicsForm = ref(null);
+const economicsSettings = ref(null);
+const economicsLoading = ref(false);
+const economicsSaving = ref(false);
 
 // Inline editing
 const editingDressCode = ref(null);
@@ -1416,6 +1564,8 @@ const editingDatetimeValues = ref({
     dropoff_datetime: '',
     vehicle_departure_datetime: '',
     vehicle_return_datetime: '',
+    pickup_address: '',
+    dropoff_address: '',
 });
 
 // Inline status editing
@@ -1435,6 +1585,7 @@ const savingField = ref(false);
 const serviceTypes = ref(null);
 const clients = ref(null);
 const intermediaries = ref(null);
+const suppliers = ref(null);
 const drivers = ref(null);
 const vehicles = ref(null);
 const companies = ref(null);
@@ -1452,6 +1603,7 @@ const filters = ref({
     intermediary_id: '',
     driver_id: '',
     vehicle_id: '',
+    supplier_id: '',
     status: '',
     company_id: ''
 });
@@ -1481,10 +1633,23 @@ const totalPages = ref(1);
 const totalItems = ref(0);
 const perPage = ref(15);
 
+// URL sync for filters, pagination, sorting
+const { readFromUrl, withReturnUrl } = useUrlFilters(filters, {
+    page: currentPage,
+    sortField,
+    sortDirection,
+});
+
 const isSuperAdmin = computed(() => currentUser.value?.role === 'super-admin');
 const isDriver = computed(() => currentUser.value?.role === 'driver');
 
-const { loadServiceTypes: loadServiceTypeColors, serviceTypeBadgeClass } = useServiceTypeColor();
+const { serviceTypes: serviceTypeColors, loadServiceTypes: loadServiceTypeColors, serviceTypeBadgeStyle } = useServiceTypeColor();
+
+const getServiceTypeAbbreviation = (serviceTypeName) => {
+    if (!serviceTypeName || !serviceTypeColors.value.length) return serviceTypeName;
+    const found = serviceTypeColors.value.find(st => st.name?.toLowerCase() === serviceTypeName.toLowerCase());
+    return found?.abbreviation || serviceTypeName;
+};
 const { loadTransactionStatuses, transactionBadgeClass } = useTransactionStatusColor();
 const acceptedStatusId = ref(null);
 const triggerStatusId = ref(null);
@@ -1551,6 +1716,14 @@ const ensureClients = async () => {
             const { data } = await axios.get('/api/users', { params: { role: 'collaboratore', is_committente: true, per_page: 200, light: 1 } });
             clients.value = data.data || [];
         } catch (e) { clients.value = []; }
+    }
+};
+const ensureSuppliers = async () => {
+    if (suppliers.value === null) {
+        try {
+            const { data } = await axios.get('/api/users', { params: { role: 'collaboratore', is_fornitore: true, is_collega: true, per_page: 200, light: 1 } });
+            suppliers.value = data.data || [];
+        } catch (e) { suppliers.value = []; }
     }
 };
 const ensureIntermediaries = async () => {
@@ -1687,9 +1860,147 @@ const showPassengersModal = (service) => {
     showPassengersModalFlag.value = true;
 };
 
-const showEconomicsModal = (service) => {
+const showEconomicsModal = async (service) => {
     selectedService.value = service;
+    economicsLoading.value = true;
     showEconomicsModalFlag.value = true;
+
+    try {
+        // Load full service data
+        const serviceRes = await axios.get(`/api/services/${service.id}`);
+        const svc = serviceRes.data.data || serviceRes.data;
+
+        // Load settings for this company
+        const companyId = svc.company_id || currentUser.value?.company_id;
+        const cacheKey = `easyncc_settings_${companyId}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        let settingsData;
+
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Date.now() - parsed._cachedAt < 300000) {
+                settingsData = parsed.data;
+            }
+        }
+
+        if (!settingsData) {
+            const params = isSuperAdmin.value ? { company_id: companyId } : {};
+            const settingsRes = await axios.get('/api/settings', { params });
+            settingsData = settingsRes.data.data;
+            sessionStorage.setItem(cacheKey, JSON.stringify({ data: settingsData, _cachedAt: Date.now() }));
+        }
+
+        economicsSettings.value = settingsData;
+
+        // Build form from service data
+        economicsForm.value = {
+            service_price: parseFloat(svc.service_price) || 0,
+            vat_rate: parseFloat(svc.vat_rate) || 10,
+            card_fees_percentage: parseFloat(svc.card_fees_percentage) || 0,
+            deposit_percentage: parseFloat(svc.deposit_percentage) || 0,
+            balance_sale_type: svc.balance_sale_type || 'balance_taxable',
+            deposit_taxable: parseFloat(svc.deposit_taxable) || 0,
+            deposit_handling_fees: parseFloat(svc.deposit_handling_fees) || 0,
+            deposit_amount: parseFloat(svc.deposit_amount) || 0,
+            balance_taxable: parseFloat(svc.balance_taxable) || 0,
+            balance_handling_fees: parseFloat(svc.balance_handling_fees) || 0,
+            balance_card_fees: parseFloat(svc.balance_card_fees) || 0,
+            driver_compensation: parseFloat(svc.driver_compensation) || 0,
+            colleague_cost: parseFloat(svc.colleague_cost) || 0,
+            intermediary_commission: parseFloat(svc.intermediary_commission) || 0,
+            fuel_cost: parseFloat(svc.fuel_cost) || 0,
+            toll_cost: parseFloat(svc.toll_cost) || 0,
+            parking_cost: parseFloat(svc.parking_cost) || 0,
+            other_vehicle_costs: parseFloat(svc.other_vehicle_costs) || 0,
+            // Context fields needed for accounting operations
+            client_id: svc.client_id,
+            intermediary_id: svc.intermediary_id,
+            supplier_id: svc.supplier_id,
+            pickup_datetime: svc.pickup_datetime,
+            driver_ids: (svc.drivers || []).map(d => d.id),
+            activities: svc.activities || [],
+        };
+    } catch (err) {
+        console.error('Error loading economics data:', err);
+        Swal.fire('Errore', 'Impossibile caricare i dati economici.', 'error');
+        showEconomicsModalFlag.value = false;
+    } finally {
+        economicsLoading.value = false;
+    }
+};
+
+const recalculateTotals = () => {
+    if (economicsForm.value) {
+        calculateServiceTotals(economicsForm.value);
+    }
+};
+
+const resetEconomicsForm = () => {
+    economicsForm.value = null;
+    economicsSettings.value = null;
+};
+
+const saveEconomics = async () => {
+    if (!selectedService.value || !economicsForm.value) return;
+
+    economicsSaving.value = true;
+    try {
+        const serviceId = selectedService.value.id;
+        const form = economicsForm.value;
+
+        // Recalculate totals before saving
+        calculateServiceTotals(form);
+
+        // Save service financial fields
+        const payload = {
+            service_price: form.service_price,
+            vat_rate: form.vat_rate,
+            card_fees_percentage: form.card_fees_percentage,
+            deposit_percentage: form.deposit_percentage,
+            balance_sale_type: form.balance_sale_type,
+            deposit_taxable: form.deposit_taxable,
+            deposit_handling_fees: form.deposit_handling_fees,
+            deposit_amount: form.deposit_amount,
+            balance_taxable: form.balance_taxable,
+            balance_handling_fees: form.balance_handling_fees,
+            balance_card_fees: form.balance_card_fees,
+            driver_compensation: form.driver_compensation,
+            colleague_cost: form.colleague_cost,
+            intermediary_commission: form.intermediary_commission,
+            fuel_cost: form.fuel_cost,
+            toll_cost: form.toll_cost,
+            parking_cost: form.parking_cost,
+            other_vehicle_costs: form.other_vehicle_costs,
+        };
+
+        await axios.put(`/api/services/${serviceId}`, payload);
+
+        // Regenerate accounting transactions
+        if (economicsSettings.value) {
+            const operations = buildAccountingOperations(form, economicsSettings.value);
+            if (operations.length > 0) {
+                await axios.post('/api/accounting-transactions/batch', {
+                    service_id: serviceId,
+                    operations: operations,
+                });
+            }
+        }
+
+        // Update local service data in the list
+        const idx = services.value.findIndex(s => s.id === serviceId);
+        if (idx !== -1) {
+            Object.assign(services.value[idx], payload);
+        }
+
+        showEconomicsModalFlag.value = false;
+        Swal.fire({ icon: 'success', title: 'Salvato', text: 'Importi aggiornati con successo.', timer: 1500, showConfirmButton: false });
+    } catch (err) {
+        console.error('Error saving economics:', err);
+        const msg = err.response?.data?.message || 'Errore durante il salvataggio.';
+        Swal.fire('Errore', msg, 'error');
+    } finally {
+        economicsSaving.value = false;
+    }
 };
 
 const loadServices = async () => {
@@ -2207,6 +2518,7 @@ const resetFilters = () => {
         intermediary_id: '',
         driver_id: '',
         vehicle_id: '',
+        supplier_id: '',
         status: '',
         company_id: ''
     };
@@ -2576,6 +2888,8 @@ const startEditDatetimes = (service) => {
         dropoff_datetime: formatDateTimeForInput(service.dropoff_datetime),
         vehicle_departure_datetime: formatDateTimeForInput(service.vehicle_departure_datetime),
         vehicle_return_datetime: formatDateTimeForInput(service.vehicle_return_datetime),
+        pickup_address: service.pickup_address || '',
+        dropoff_address: service.dropoff_address || '',
     };
 };
 
@@ -2587,6 +2901,8 @@ const saveDatetimes = async (service) => {
         dropoff_datetime: editingDatetimeValues.value.dropoff_datetime,
         vehicle_departure_datetime: editingDatetimeValues.value.vehicle_departure_datetime,
         vehicle_return_datetime: editingDatetimeValues.value.vehicle_return_datetime,
+        pickup_address: editingDatetimeValues.value.pickup_address,
+        dropoff_address: editingDatetimeValues.value.dropoff_address,
     };
 
     const success = await saveServiceField(service.id, payload);
@@ -2602,6 +2918,8 @@ const cancelEditDatetimes = () => {
         dropoff_datetime: '',
         vehicle_departure_datetime: '',
         vehicle_return_datetime: '',
+        pickup_address: '',
+        dropoff_address: '',
     };
 };
 
@@ -2617,6 +2935,11 @@ onMounted(async () => {
             console.error('Error loading public settings:', e);
         }
     }
+    // Restore filters/pagination from URL query params (if any)
+    const hadUrlParams = readFromUrl();
+    if (hadUrlParams) {
+        activePreset.value = null; // don't apply default preset when restoring from URL
+    }
     // Load services immediately (critical for page display)
     await loadServices();
 
@@ -2626,6 +2949,7 @@ onMounted(async () => {
     loadTransactionStatuses();
     ensureClients();
     ensureIntermediaries();
+    ensureSuppliers();
     ensureDrivers();
     ensureVehicles();
     ensureServiceStatuses();
@@ -2682,6 +3006,20 @@ onMounted(async () => {
 .table td {
     vertical-align: top;
     padding: 0.75rem 0.5rem;
+}
+
+/* Scrollable cells: limit height on columns that can grow */
+.table td.cell-scrollable {
+    max-height: 160px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Make td act as a scroll container */
+.cell-scroll-inner {
+    max-height: 150px;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .table th {

@@ -10,7 +10,6 @@ import axios from 'axios';
 import {
   authMethods,
   authFackMethods,
-  notificationMethods,
 } from "@/state/helpers";
 
 
@@ -44,7 +43,6 @@ export default {
   methods: {
     ...authMethods,
     ...authFackMethods,
-    ...notificationMethods,
 
     async signinapi() {
       this.processing = true;

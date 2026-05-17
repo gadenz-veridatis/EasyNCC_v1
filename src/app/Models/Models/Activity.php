@@ -24,6 +24,7 @@ class Activity extends Model
         'cost_per_person',
         'payment_type',
         'should_account',
+        'sort_order',
         'notes',
     ];
 

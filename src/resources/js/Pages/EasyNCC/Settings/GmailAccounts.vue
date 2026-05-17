@@ -55,12 +55,13 @@
                                         <th>Indirizzo Email</th>
                                         <th class="text-center">Attivo</th>
                                         <th class="text-center">Token</th>
+                                        <th class="text-center">Ingestion</th>
                                         <th class="text-center">Azioni</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr v-if="accounts.length === 0">
-                                        <td colspan="5" class="text-center text-muted py-4">
+                                        <td colspan="6" class="text-center text-muted py-4">
                                             Nessun account Gmail configurato. Aggiungi il primo account.
                                         </td>
                                     </tr>
@@ -79,12 +80,26 @@
                                             <span v-else class="badge bg-warning">Non impostato</span>
                                         </td>
                                         <td class="text-center">
+                                            <span v-if="account.ingestion_attiva" class="badge bg-success">
+                                                <i class="ri-mail-download-line me-1"></i>Attiva
+                                            </span>
+                                            <span v-else-if="account.label_richieste_id" class="badge bg-warning-subtle text-warning">
+                                                Label OK
+                                            </span>
+                                            <span v-else class="badge bg-secondary-subtle text-secondary">
+                                                Non configurata
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
                                             <button class="btn btn-sm btn-soft-success me-1" @click="testConnection(account)" title="Testa Connessione" :disabled="testingId === account.id">
                                                 <span v-if="testingId === account.id" class="spinner-border spinner-border-sm"></span>
                                                 <i v-else class="ri-link-check"></i>
                                             </button>
                                             <button class="btn btn-sm btn-soft-primary me-1" @click="openEditModal(account)" title="Modifica">
                                                 <i class="ri-edit-line"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-soft-warning me-1" @click="openIngestionModal(account)" title="Configura Ingestion">
+                                                <i class="ri-mail-settings-line"></i>
                                             </button>
                                             <button class="btn btn-sm btn-soft-danger" @click="deleteAccount(account)" title="Elimina" :disabled="actionLoading">
                                                 <i class="ri-delete-bin-line"></i>
@@ -204,6 +219,81 @@
                 </div>
             </form>
         </BModal>
+        <!-- Ingestion Config Modal -->
+        <BModal v-model="showIngestionModal" title="Configurazione Ingestion Email" hide-footer size="md">
+            <div v-if="ingestionAccount">
+                <div class="mb-3">
+                    <label class="form-label">Account</label>
+                    <div class="fw-semibold">{{ ingestionAccount.account_label }} ({{ ingestionAccount.email_address }})</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Nome Label Gmail <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input
+                            v-model="ingestionForm.label_richieste"
+                            type="text"
+                            class="form-control"
+                            placeholder="es. NCC/Richiesta"
+                        />
+                        <button class="btn btn-outline-primary" type="button" @click="resolveLabel" :disabled="resolvingLabel || !ingestionForm.label_richieste">
+                            <span v-if="resolvingLabel" class="spinner-border spinner-border-sm"></span>
+                            <span v-else><i class="ri-check-double-line me-1"></i>Verifica</span>
+                        </button>
+                    </div>
+                    <div v-if="ingestionAccount.label_richieste_id" class="mt-1">
+                        <small class="text-success"><i class="ri-check-line me-1"></i>Label verificata: {{ ingestionAccount.label_richieste_id }}</small>
+                    </div>
+                    <small class="form-text text-muted">La label deve esistere nella casella Gmail. Creala manualmente in Gmail se non esiste.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Subject Tag (opzionale)</label>
+                    <input v-model="ingestionForm.subject_tag" type="text" class="form-control" placeholder="es. [NCC]" />
+                    <small class="form-text text-muted">Tag nel subject come segnale secondario</small>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input
+                            v-model="ingestionForm.ingestion_attiva"
+                            type="checkbox"
+                            class="form-check-input"
+                            id="ingestionAttivaCheck"
+                            :disabled="!ingestionAccount.label_richieste_id"
+                        />
+                        <label class="form-check-label" for="ingestionAttivaCheck">
+                            Attiva Ingestion
+                        </label>
+                    </div>
+                    <small v-if="!ingestionAccount.label_richieste_id" class="text-warning">
+                        <i class="ri-alert-line me-1"></i>Verifica la label prima di attivare l'ingestion
+                    </small>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button
+                        class="btn btn-sm btn-outline-info"
+                        @click="fetchNow"
+                        :disabled="fetchingNow || !ingestionAccount.ingestion_attiva"
+                    >
+                        <span v-if="fetchingNow" class="spinner-border spinner-border-sm me-1"></span>
+                        <i v-else class="ri-refresh-line me-1"></i>Controlla Ora
+                    </button>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-light" @click="showIngestionModal = false">Chiudi</button>
+                        <button class="btn btn-primary" @click="saveIngestion" :disabled="savingIngestion">
+                            <span v-if="savingIngestion" class="spinner-border spinner-border-sm me-1"></span>
+                            Salva
+                        </button>
+                    </div>
+                </div>
+
+                <div v-if="fetchResult" class="mt-3 alert" :class="fetchResult.success ? 'alert-success' : 'alert-danger'">
+                    {{ fetchResult.message }}
+                </div>
+            </div>
+        </BModal>
     </Layout>
 </template>
 
@@ -238,6 +328,14 @@ export default {
             },
             showModal: false,
             testingId: null,
+            // Ingestion modal
+            showIngestionModal: false,
+            ingestionAccount: null,
+            ingestionForm: { label_richieste: '', subject_tag: '', ingestion_attiva: false },
+            resolvingLabel: false,
+            savingIngestion: false,
+            fetchingNow: false,
+            fetchResult: null,
         };
     },
     computed: {
@@ -365,6 +463,74 @@ export default {
         isTokenExpired(expiresAt) {
             if (!expiresAt) return true;
             return new Date(expiresAt) < new Date();
+        },
+        // Ingestion methods
+        openIngestionModal(account) {
+            this.ingestionAccount = { ...account };
+            this.ingestionForm = {
+                label_richieste: account.label_richieste || '',
+                subject_tag: account.subject_tag || '',
+                ingestion_attiva: account.ingestion_attiva || false,
+            };
+            this.fetchResult = null;
+            this.showIngestionModal = true;
+        },
+        async resolveLabel() {
+            this.resolvingLabel = true;
+            try {
+                const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
+                const res = await axios.post(
+                    `/api/gmail-accounts/${this.ingestionAccount.id}/resolve-label`,
+                    { label_name: this.ingestionForm.label_richieste, ...params }
+                );
+                if (res.data.success) {
+                    this.successMessage = res.data.message;
+                    this.ingestionAccount = res.data.data;
+                    await this.loadAccounts();
+                }
+            } catch (error) {
+                this.errors = [error.response?.data?.message || 'Errore nella verifica della label'];
+            } finally {
+                this.resolvingLabel = false;
+            }
+        },
+        async saveIngestion() {
+            this.savingIngestion = true;
+            try {
+                const payload = {
+                    label_richieste: this.ingestionForm.label_richieste,
+                    subject_tag: this.ingestionForm.subject_tag,
+                    ingestion_attiva: this.ingestionForm.ingestion_attiva,
+                };
+                if (this.isSuperAdmin) payload.company_id = this.selectedCompanyId;
+                await axios.put(`/api/gmail-accounts/${this.ingestionAccount.id}`, payload);
+                this.successMessage = 'Configurazione ingestion salvata';
+                this.showIngestionModal = false;
+                await this.loadAccounts();
+            } catch (error) {
+                this.errors = [error.response?.data?.message || 'Errore nel salvataggio'];
+            } finally {
+                this.savingIngestion = false;
+            }
+        },
+        async fetchNow() {
+            this.fetchingNow = true;
+            this.fetchResult = null;
+            try {
+                const params = this.isSuperAdmin ? { company_id: this.selectedCompanyId } : {};
+                const res = await axios.post(
+                    `/api/gmail-accounts/${this.ingestionAccount.id}/fetch-now`,
+                    params
+                );
+                this.fetchResult = { success: true, message: res.data.message };
+                // Refresh account data
+                this.ingestionAccount = res.data.data;
+                await this.loadAccounts();
+            } catch (error) {
+                this.fetchResult = { success: false, message: error.response?.data?.message || 'Errore nel fetch' };
+            } finally {
+                this.fetchingNow = false;
+            }
         },
     },
 };

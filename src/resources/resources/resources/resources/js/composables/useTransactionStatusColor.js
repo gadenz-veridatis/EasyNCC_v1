@@ -39,12 +39,14 @@ export function useTransactionStatusColor() {
     /**
      * Get the badge class for a transaction status from the service's transaction_status_map.
      * @param {Object} statusMap - The service.transaction_status_map object
-     * @param {string} key - The map key (e.g., 'sale_deposit', 'purchase_balance_11')
-     * @param {string} fallback - Fallback Bootstrap class if no status found
+     * @param {string} key - Semantic key (e.g., 'deposit_amount', 'driver_compensation')
+     * @param {string} aggregateKey - Fallback aggregate key (e.g., 'purchase', 'sale')
+     * @param {string} fallback - Fallback Bootstrap class if no status found at all
      */
-    const transactionBadgeClass = (statusMap, key, fallback = 'bg-danger bg-opacity-75') => {
-        if (!statusMap || !key) return fallback;
-        const statusCode = statusMap[key];
+    const transactionBadgeClass = (statusMap, key, aggregateKey = null, fallback = 'bg-danger bg-opacity-75') => {
+        if (!statusMap) return fallback;
+        // Try semantic key first, then aggregate key
+        const statusCode = statusMap[key] || (aggregateKey ? statusMap[aggregateKey] : null);
         if (!statusCode) return fallback;
         const color = getTransactionStatusColor(statusCode);
         return color ? `bg-${color}` : fallback;

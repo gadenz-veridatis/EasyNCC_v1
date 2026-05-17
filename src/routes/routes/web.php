@@ -6,6 +6,7 @@ use App\Http\Controllers\EasyNCC\ServiceWebController;
 use App\Http\Controllers\EasyNCC\UserWebController;
 use App\Http\Controllers\EasyNCC\QuoteWebController;
 use App\Http\Controllers\EasyNCC\QuoteEmailTemplateWebController;
+use App\Http\Controllers\ServiceEmailActionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -19,6 +20,10 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Public routes for service email actions (no auth required)
+Route::get('/service-action/{token}', [ServiceEmailActionController::class, 'handle']);
+Route::post('/service-action/{token}/confirm', [ServiceEmailActionController::class, 'confirm']);
+
 Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified', 'active'])->group(function () {
 
     // EasyNCC Routes
@@ -28,11 +33,11 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
         // Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
         // Vehicles
-        Route::prefix('vehicles')->name('vehicles.')->middleware('role:super-admin,admin,operator')->group(function () {
-            Route::get('/', [VehicleWebController::class, 'index'])->name('index');
-            Route::get('/create', [VehicleWebController::class, 'create'])->name('create');
-            Route::get('/{id}', [VehicleWebController::class, 'show'])->name('show');
-            Route::get('/{id}/edit', [VehicleWebController::class, 'edit'])->name('edit');
+        Route::prefix('vehicles')->name('vehicles.')->group(function () {
+            Route::get('/', [VehicleWebController::class, 'index'])->name('index')->middleware('role:super-admin,admin,operator,driver');
+            Route::get('/{id}', [VehicleWebController::class, 'show'])->name('show')->middleware('role:super-admin,admin,operator,driver');
+            Route::get('/create', [VehicleWebController::class, 'create'])->name('create')->middleware('role:super-admin,admin,operator');
+            Route::get('/{id}/edit', [VehicleWebController::class, 'edit'])->name('edit')->middleware('role:super-admin,admin,operator');
         });
 
         // Services
@@ -71,7 +76,7 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified',
             ->middleware('role:super-admin,admin,operator');
 
         // Drivers
-        Route::prefix('drivers')->name('drivers.')->middleware('role:super-admin,admin,operator')->group(function () {
+        Route::prefix('drivers')->name('drivers.')->middleware('role:super-admin,admin,operator,driver')->group(function () {
             Route::get('/', function () {
                 return inertia('EasyNCC/Drivers/Index');
             })->name('index');

@@ -12,6 +12,7 @@ class QuoteItem extends Model
 
     protected $fillable = [
         'quote_id',
+        'riga_richiesta_id',
         'pricing_destination_id',
         'destination_name',
         'service_type',
@@ -25,6 +26,7 @@ class QuoteItem extends Model
         'experience_per_pax',
         'taxable_price',
         'sort_order',
+        'service_date',
     ];
 
     protected $casts = [
@@ -38,6 +40,7 @@ class QuoteItem extends Model
         'experience_per_pax' => 'decimal:2',
         'taxable_price' => 'decimal:2',
         'sort_order' => 'integer',
+        'service_date' => 'date',
     ];
 
     public function quote(): BelongsTo
@@ -48,5 +51,10 @@ class QuoteItem extends Model
     public function pricingDestination(): BelongsTo
     {
         return $this->belongsTo(PricingDestination::class);
+    }
+
+    public function rigaRichiesta(): BelongsTo
+    {
+        return $this->belongsTo(RigaRichiesta::class);
     }
 }

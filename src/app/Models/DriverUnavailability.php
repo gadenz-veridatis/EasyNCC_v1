@@ -12,15 +12,18 @@ class DriverUnavailability extends Model
 
     protected $fillable = [
         'user_id',
+        'company_id',
         'leave_type_id',
         'start_date',
         'end_date',
+        'all_day',
         'notes',
     ];
 
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
+        'all_day' => 'boolean',
     ];
 
     public function user(): BelongsTo

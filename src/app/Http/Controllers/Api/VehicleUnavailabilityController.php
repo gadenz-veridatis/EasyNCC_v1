@@ -16,23 +16,21 @@ class VehicleUnavailabilityController extends Controller
     public function listAll(Request $request): JsonResponse
     {
         $user = $request->user();
-        $query = VehicleUnavailability::with(['vehicle:id,license_plate,brand,model,company_id', 'unavailabilityType:id,name'])
-            ->join('vehicles', 'vehicle_unavailabilities.vehicle_id', '=', 'vehicles.id')
-            ->select('vehicle_unavailabilities.*');
+        $query = VehicleUnavailability::with(['vehicle:id,license_plate,brand,model,company_id', 'unavailabilityType:id,name']);
 
         if ($user->isSuperAdmin()) {
             if ($request->filled('company_id')) {
-                $query->where('vehicles.company_id', $request->company_id);
+                $query->where('company_id', $request->company_id);
             }
         } else {
-            $query->where('vehicles.company_id', $user->company_id);
+            $query->where('company_id', $user->company_id);
         }
 
         if ($request->filled('vehicle_id')) {
-            $query->where('vehicle_unavailabilities.vehicle_id', $request->vehicle_id);
+            $query->where('vehicle_id', $request->vehicle_id);
         }
 
-        $unavailabilities = $query->orderBy('vehicle_unavailabilities.start_date', 'desc')->get();
+        $unavailabilities = $query->orderBy('start_date', 'desc')->get();
 
         return response()->json($unavailabilities);
     }
@@ -47,8 +45,13 @@ class VehicleUnavailabilityController extends Controller
             'vehicle_unavailability_type_id' => 'required|exists:vehicle_unavailability_types,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'all_day' => 'boolean',
             'notes' => 'nullable|string',
         ]);
+
+        // Set company_id from the vehicle's company
+        $vehicle = Vehicle::findOrFail($validated['vehicle_id']);
+        $validated['company_id'] = $vehicle->company_id;
 
         $unavailability = VehicleUnavailability::create($validated);
         $unavailability->load(['vehicle:id,license_plate,brand,model,company_id', 'unavailabilityType:id,name']);
@@ -72,9 +75,11 @@ class VehicleUnavailabilityController extends Controller
             'vehicle_unavailability_type_id' => 'required|exists:vehicle_unavailability_types,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'all_day' => 'boolean',
             'notes' => 'nullable|string',
         ]);
 
+        $validated['company_id'] = $vehicle->company_id;
         $unavailability = $vehicle->unavailabilities()->create($validated);
         $unavailability->load('unavailabilityType:id,name');
 
@@ -91,6 +96,7 @@ class VehicleUnavailabilityController extends Controller
             'vehicle_unavailability_type_id' => 'sometimes|exists:vehicle_unavailability_types,id',
             'start_date' => 'sometimes|date',
             'end_date' => 'sometimes|date|after_or_equal:start_date',
+            'all_day' => 'boolean',
             'notes' => 'nullable|string',
         ]);
 

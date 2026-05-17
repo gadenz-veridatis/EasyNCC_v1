@@ -39,8 +39,11 @@ class ServiceWebController extends Controller
             'stops',
             'payments',
             'costs',
-            'activities.activityType',
-            'activities.supplier',
+            'activities' => function ($query) {
+                $query->orderBy('sort_order', 'asc')
+                      ->orderBy('start_time', 'asc')
+                      ->with(['activityType', 'supplier']);
+            },
             'accountingTransactions.accountingEntry',
             'accountingTransactions.counterpart',
             'tasks.assignedUsers',

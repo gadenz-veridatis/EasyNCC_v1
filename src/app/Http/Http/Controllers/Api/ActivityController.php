@@ -115,6 +115,13 @@ class ActivityController extends Controller
             $validated['company_id'] = $request->user()->company_id;
         }
 
+        // Auto-assign sort_order: append at end of service's activities
+        if (!empty($validated['service_id'])) {
+            $maxSortOrder = Activity::where('service_id', $validated['service_id'])
+                ->max('sort_order') ?? 0;
+            $validated['sort_order'] = $maxSortOrder + 1;
+        }
+
         $activity = Activity::create($validated);
 
         return response()->json([
@@ -160,6 +167,33 @@ class ActivityController extends Controller
             'success' => true,
             'message' => 'Activity updated successfully',
             'data' => $activity->load(['activityType', 'supplier', 'service', 'company']),
+        ]);
+    }
+
+    /**
+     * Reorder activities for a service.
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'activities' => 'required|array',
+            'activities.*.id' => 'required|integer|exists:activities,id',
+            'activities.*.sort_order' => 'required|integer|min:0',
+        ]);
+
+        $companyId = $request->user()->isSuperAdmin() && $request->filled('company_id')
+            ? $request->company_id
+            : $request->user()->company_id;
+
+        foreach ($validated['activities'] as $item) {
+            Activity::where('id', $item['id'])
+                ->where('company_id', $companyId)
+                ->update(['sort_order' => $item['sort_order']]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Activities reordered successfully',
         ]);
     }
 

@@ -159,7 +159,7 @@
         <div class="section-header">VEICOLO e CONDUCENTE</div>
         <table class="data-table">
             <tr>
-                <td class="lbl">NOME CONDUCENTE:</td>
+                <td class="lbl">CONDUCENTE:</td>
                 <td class="val">{{ $driverName }}</td>
                 <td class="lbl">TARGA VEICOLO:</td>
                 <td class="val">{{ $service->vehicle->license_plate ?? '' }}</td>
@@ -221,12 +221,23 @@
         {{-- PASSEGGERI --}}
         <div class="section-header">PASSEGGERI</div>
         <table class="data-table">
-            <tr>
-                <td class="lbl">NOME PASSEGGERO:</td>
-                <td class="val">{{ $nomePasseggero }}</td>
-                <td class="lbl">CONTATTO:</td>
-                <td class="val">{{ $telefonoPasseggero }}</td>
-            </tr>
+            @if($passengers->isNotEmpty())
+                @foreach($passengers as $index => $pax)
+                <tr>
+                    <td class="lbl">PASSEGGERO{{ $passengers->count() > 1 ? ' ' . ($index + 1) : '' }}:</td>
+                    <td class="val">{{ $pax['fullName'] }}</td>
+                    <td class="lbl">CONTATTO:</td>
+                    <td class="val">{{ $pax['phone'] }}</td>
+                </tr>
+                @endforeach
+            @else
+                <tr>
+                    <td class="lbl">PASSEGGERO:</td>
+                    <td class="val"></td>
+                    <td class="lbl">CONTATTO:</td>
+                    <td class="val"></td>
+                </tr>
+            @endif
         </table>
 
         {{-- FIRMA --}}

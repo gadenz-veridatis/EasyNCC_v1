@@ -19,7 +19,7 @@
                                 {{ showFilters ? 'Nascondi Filtri' : 'Mostra Filtri' }}
                                 <span v-if="hasActiveFilters" class="badge bg-primary ms-2">{{ activeFiltersCount }}</span>
                             </button>
-                            <Link :href="route('easyncc.users.create')" class="btn btn-primary btn-sm">
+                            <Link :href="withReturnUrl(route('easyncc.users.create'))" class="btn btn-primary btn-sm">
                                 <i class="bx bx-plus me-1"></i>
                                 Nuovo Utente
                             </Link>
@@ -45,7 +45,7 @@
                                         type="text"
                                         class="form-control form-control-sm"
                                         placeholder="Nome, email, username..."
-                                        @input="applyFilters"
+                                        @input="debouncedApplyFilters"
                                     />
                                 </BCol>
                                 <BCol :md="isSuperAdmin ? 2 : 2">
@@ -188,7 +188,7 @@
                                             >
                                                 <i class="bx bx-show"></i>
                                             </button>
-                                            <Link :href="route('easyncc.users.edit', user.id)" class="btn btn-sm btn-soft-primary me-1">
+                                            <Link :href="withReturnUrl(route('easyncc.users.edit', user.id))" class="btn btn-sm btn-soft-primary me-1">
                                                 <i class="bx bx-edit"></i>
                                             </Link>
                                             <button
@@ -427,7 +427,7 @@
                 <div class="d-flex justify-content-between mt-4 pt-3 border-top">
                     <Link
                         v-if="contactUser"
-                        :href="route('easyncc.users.edit', contactUser.id)"
+                        :href="withReturnUrl(route('easyncc.users.edit', contactUser.id))"
                         class="btn btn-primary"
                     >
                         <i class="ri-edit-line me-1"></i> Modifica
@@ -710,7 +710,7 @@
                 <div class="d-flex justify-content-between mt-4 pt-3 border-top">
                     <Link
                         v-if="selectedUser"
-                        :href="route('easyncc.users.edit', selectedUser.id)"
+                        :href="withReturnUrl(route('easyncc.users.edit', selectedUser.id))"
                         class="btn btn-primary"
                     >
                         <i class="ri-edit-line me-1"></i> Modifica
@@ -730,6 +730,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import Layout from '@/Layouts/vertical.vue';
 import PageHeader from '@/Components/page-header.vue';
 import axios from 'axios';
+import { useUrlFilters } from '@/composables/useUrlFilters.js';
 
 const users = ref([]);
 const loading = ref(false);
@@ -748,6 +749,17 @@ const filters = ref({
 const sortField = ref('');
 const sortDirection = ref('asc');
 const currentPage = ref(1);
+
+const { readFromUrl, withReturnUrl } = useUrlFilters(filters, {
+    page: currentPage,
+    sortField,
+    sortDirection,
+});
+
+// Debounce & request counter
+let searchTimer = null;
+let requestCounter = 0;
+
 const perPage = ref(10);
 const totalPages = ref(1);
 const totalRecords = ref(0);
@@ -762,6 +774,7 @@ const showFilters = ref(true);
 const loadUsers = async () => {
     loading.value = true;
     error.value = '';
+    const thisRequest = ++requestCounter;
 
     try {
         const params = {
@@ -776,6 +789,9 @@ const loadUsers = async () => {
         }
 
         const response = await axios.get('/api/users', { params });
+
+        if (thisRequest !== requestCounter) return;
+
         users.value = response.data.data || [];
 
         // Handle pagination metadata - Laravel paginate() returns meta directly in response.data
@@ -794,10 +810,13 @@ const loadUsers = async () => {
             totalRecords.value = users.value.length;
         }
     } catch (err) {
+        if (thisRequest !== requestCounter) return;
         error.value = 'Errore nel caricamento degli utenti';
         console.error('Error loading users:', err);
     } finally {
-        loading.value = false;
+        if (thisRequest === requestCounter) {
+            loading.value = false;
+        }
     }
 };
 
@@ -829,7 +848,15 @@ const applyFilters = () => {
     loadUsers();
 };
 
+const debouncedApplyFilters = () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        applyFilters();
+    }, 300);
+};
+
 const resetFilters = () => {
+    clearTimeout(searchTimer);
     filters.value = {
         company_id: '',
         search: '',
@@ -988,6 +1015,7 @@ const formatDate = (dateString) => {
 
 onMounted(async () => {
     await loadCurrentUser();
+    readFromUrl();
     await loadCompanies();
     await loadUsers();
 });

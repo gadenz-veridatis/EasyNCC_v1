@@ -48,7 +48,7 @@
                                 <tr v-for="(item, idx) in versionData.items" :key="idx">
                                     <td>{{ idx + 1 }}</td>
                                     <td>{{ item.destination_name || '-' }}</td>
-                                    <td><span class="badge" :class="serviceTypeBadgeClass(item.service_type, 'bg-info-subtle text-info')">{{ item.service_type || '-' }}</span></td>
+                                    <td><span class="badge" :style="serviceTypeBadgeStyle(item.service_type, '#299cdb')">{{ item.service_type || '-' }}</span></td>
                                     <td class="text-end">{{ item.mileage }}</td>
                                     <td class="text-end">{{ item.duration_hours }}</td>
                                     <td class="text-end">{{ item.pax_count }}</td>
@@ -87,7 +87,7 @@
 import moment from "moment";
 import { useServiceTypeColor } from '@/composables/useServiceTypeColor.js';
 
-const { serviceTypeBadgeClass } = useServiceTypeColor();
+const { serviceTypeBadgeStyle } = useServiceTypeColor();
 
 const STATUS_LABELS = {
     draft: 'Bozza',
@@ -112,7 +112,7 @@ export default {
     },
     emits: ['update:show', 'restore'],
     methods: {
-        serviceTypeBadgeClass,
+        serviceTypeBadgeStyle,
         getStatusLabel(status) {
             return STATUS_LABELS[status] || status;
         },

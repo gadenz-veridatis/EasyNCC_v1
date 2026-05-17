@@ -28,6 +28,12 @@ export default {
     canManage() {
       return ['super-admin', 'admin', 'operator'].includes(this.userRole);
     },
+    isDriver() {
+      return this.userRole === 'driver';
+    },
+    canManageOrDriver() {
+      return this.canManage || this.isDriver;
+    },
     isAdmin() {
       return ['super-admin', 'admin'].includes(this.userRole);
     },
@@ -282,14 +288,30 @@ export default {
           </Link>
         </li>
 
+        <!-- Assenze Driver -->
+        <li class="nav-item" v-if="isAdmin">
+          <Link href="/easyncc/settings/driver-unavailabilities" class="nav-link menu-link">
+            <i class="ri-user-unfollow-line"></i>
+            <span>Assenze Driver</span>
+          </Link>
+        </li>
+
+        <!-- Non Disp. Veicoli -->
+        <li class="nav-item" v-if="isAdmin">
+          <Link href="/easyncc/settings/vehicle-unavailabilities" class="nav-link menu-link">
+            <i class="ri-car-washing-line"></i>
+            <span>Non Disp. Veicoli</span>
+          </Link>
+        </li>
+
         <!-- ANAGRAFICHE -->
-        <li class="menu-title" v-if="canManage">
+        <li class="menu-title" v-if="canManageOrDriver">
           <i class="ri-more-fill"></i>
           <span data-key="t-registries">Anagrafiche</span>
         </li>
 
         <!-- Veicoli -->
-        <li class="nav-item" v-if="canManage">
+        <li class="nav-item" v-if="canManageOrDriver">
           <Link href="/easyncc/vehicles" class="nav-link menu-link">
             <i class="ri-car-line"></i>
             <span>Veicoli</span>
@@ -297,7 +319,7 @@ export default {
         </li>
 
         <!-- Driver -->
-        <li class="nav-item" v-if="canManage">
+        <li class="nav-item" v-if="canManageOrDriver">
           <Link href="/easyncc/drivers" class="nav-link menu-link">
             <i class="ri-steering-2-line"></i>
             <span>Driver</span>
@@ -448,7 +470,7 @@ export default {
               </li>
               <li class="nav-item">
                 <Link href="/easyncc/settings/quote-email-templates" class="nav-link">
-                  Template Email Preventivi
+                  Template Email
                 </Link>
               </li>
               <li class="nav-item">
@@ -463,20 +485,6 @@ export default {
               </li>
             </ul>
           </div>
-        </li>
-
-        <!-- Assenze e Non Disponibilità (primo livello, solo admin e super-admin) -->
-        <li class="nav-item" v-if="isAdmin">
-          <Link href="/easyncc/settings/driver-unavailabilities" class="nav-link menu-link">
-            <i class="ri-user-unfollow-line"></i>
-            <span>Assenze Driver</span>
-          </Link>
-        </li>
-        <li class="nav-item" v-if="isAdmin">
-          <Link href="/easyncc/settings/vehicle-unavailabilities" class="nav-link menu-link">
-            <i class="ri-car-washing-line"></i>
-            <span>Non Disp. Veicoli</span>
-          </Link>
         </li>
 
         <!-- Cestino (solo per admin e super-admin) -->

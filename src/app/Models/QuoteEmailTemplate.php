@@ -14,6 +14,7 @@ class QuoteEmailTemplate extends Model
 
     protected $fillable = [
         'company_id',
+        'type',
         'name',
         'subject',
         'body_html',

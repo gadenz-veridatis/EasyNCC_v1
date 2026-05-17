@@ -29,7 +29,7 @@ const resolveColorToHex = (color) => {
  */
 const hexToBadgeStyle = (hex) => {
     return {
-        backgroundColor: hex + '20', // ~12% opacity
+        backgroundColor: hex + '99', // ~60% opacity
         color: hex,
         fontWeight: '500',
     };
